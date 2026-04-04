@@ -1,0 +1,18 @@
+{
+  "name": "Meryem",
+  "short_name": "Meryem",
+  "description": "Bizim anılarımız ve sevgimiz",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#fdf6f0",
+  "theme_color": "#e74c6f",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "img/heart.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
