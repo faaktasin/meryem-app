@@ -19,6 +19,16 @@ function initDaily() {
     renderTodos();
   });
 
+  /* Shuffle button */
+  document.getElementById('shuffle-btn').addEventListener('click', function () {
+    var msgEl = document.getElementById('daily-message');
+    msgEl.style.opacity = '0';
+    setTimeout(function () {
+      msgEl.textContent = getRandomMessage(msgEl.textContent);
+      msgEl.style.opacity = '1';
+    }, 250);
+  });
+
   document.getElementById('todo-form').addEventListener('submit', function (e) {
     e.preventDefault();
     addTodo();

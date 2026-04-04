@@ -261,6 +261,29 @@ body {
   font-weight: 400;
   line-height: 1.6;
   color: var(--text);
+  transition: opacity 0.25s ease;
+}
+
+.btn-shuffle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  padding: 8px 16px;
+  border: 1px solid var(--rose);
+  border-radius: 20px;
+  background: var(--warm-white);
+  color: var(--pink);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-shuffle:hover {
+  background: var(--pink-light);
+}
+
+.btn-shuffle:active {
+  transform: scale(0.93);
 }
 
 /* Countdown Card */
