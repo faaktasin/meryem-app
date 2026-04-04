@@ -207,6 +207,18 @@ function makeThumbnail(file) {
 }
 
 /**
+ * Creates a medium-quality preview for Firestore fallback (when Drive is unavailable).
+ * Same quality as the map upload preview: 600px, q=0.6.
+ * @param {File} file
+ * @returns {Promise<string>} base64 data URL
+ */
+function makePreview(file) {
+  return processImage(file, CONFIG.maxPhotoWidth, 0.6).then(function (result) {
+    return result.dataUrl;
+  });
+}
+
+/**
  * Returns the original file as a Blob for Drive upload.
  * No resizing or compression — uploads at full quality.
  * @param {File} file
@@ -397,10 +409,12 @@ function uploadSingleGalleryPhoto(file) {
 
   return Promise.all([
     readExifGps(file),
-    makeThumbnail(file)
+    makeThumbnail(file),
+    makePreview(file)
   ]).then(function (results) {
     var gps = results[0];
     var thumbnail = results[1];
+    var preview = results[2];
 
     var memory = {
       id: memoryId,
@@ -411,16 +425,15 @@ function uploadSingleGalleryPhoto(file) {
       lng: gps ? gps.lng : null,
       source: 'gallery',
       thumbnail: thumbnail,
-      photo: thumbnail
+      photo: preview
     };
 
     /* Try Drive upload, but save to Firestore either way */
     return uploadPhotoForMemory(file, memoryId).then(function (photoData) {
       memory.thumbnail = photoData.thumbnail;
       memory.driveFileId = photoData.driveFileId;
-      memory.photo = photoData.thumbnail;
     }).catch(function (err) {
-      console.warn('Drive upload failed, saving with thumbnail only:', err);
+      console.warn('Drive upload failed, saving with preview:', err);
     }).then(function () {
       return addMemoryToFirestore(memory);
     });
