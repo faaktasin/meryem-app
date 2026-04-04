@@ -1,9 +1,9 @@
 /**
  * Meryem App — Service Worker
- * Offline caching for PWA support. Firebase handles its own caching.
+ * Network-first strategy: always fetches latest, falls back to cache offline.
  */
 
-var CACHE_NAME = 'meryem-v5';
+var CACHE_NAME = 'meryem-v6';
 var ASSETS = [
   './',
   './index.html',
@@ -50,20 +50,17 @@ self.addEventListener('fetch', function (event) {
     return;
   }
 
-  /* Network-first for map tiles */
-  if (url.includes('tile.openstreetmap.org')) {
-    event.respondWith(
-      fetch(event.request).catch(function () {
-        return caches.match(event.request);
-      })
-    );
-    return;
-  }
-
-  /* Cache-first for app assets */
+  /* Network-first for everything: try network, fall back to cache */
   event.respondWith(
-    caches.match(event.request).then(function (cached) {
-      return cached || fetch(event.request);
+    fetch(event.request).then(function (response) {
+      /* Cache the fresh response for offline use */
+      var clone = response.clone();
+      caches.open(CACHE_NAME).then(function (cache) {
+        cache.put(event.request, clone);
+      });
+      return response;
+    }).catch(function () {
+      return caches.match(event.request);
     })
   );
 });
