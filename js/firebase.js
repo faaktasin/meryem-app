@@ -1,6 +1,7 @@
 /**
  * Meryem App — Firebase Backend
  * Authentication, Firestore sync, and data migration.
+ * All data is scoped under /users/{uid}/ for security.
  */
 
 /* ── Firebase Config ────────────────────────────────── */
@@ -26,6 +27,12 @@ db.enablePersistence().catch(function (err) {
     /* Browser does not support persistence */
   }
 });
+
+/* ── User-scoped collection helpers ─────────────────── */
+
+function userCollection(name) {
+  return db.collection('users').doc(auth.currentUser.uid).collection(name);
+}
 
 /* ── Auth State ─────────────────────────────────────── */
 
@@ -60,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function () {
     auth.signInWithEmailAndPassword(email, password)
       .catch(function (error) {
         var msg = 'Giriş başarısız.';
-        if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
           msg = 'E-posta veya şifre hatalı.';
         } else if (error.code === 'auth/too-many-requests') {
           msg = 'Çok fazla deneme. Biraz bekle.';
@@ -69,6 +76,11 @@ document.addEventListener('DOMContentLoaded', function () {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Giriş Yap';
       });
+  });
+
+  /* Logout button */
+  document.getElementById('logout-btn').addEventListener('click', function () {
+    auth.signOut();
   });
 });
 
@@ -87,10 +99,10 @@ function onAppReady() {
   migrateLocalStorage();
 }
 
-/* ── Firestore: Memories ────────────────────────────── */
+/* ── Firestore: Memories (user-scoped) ──────────────── */
 
 function subscribeMemories(callback) {
-  return db.collection('memories').orderBy('date', 'desc').onSnapshot(function (snapshot) {
+  return userCollection('memories').orderBy('date', 'desc').onSnapshot(function (snapshot) {
     var items = [];
     snapshot.forEach(function (doc) {
       var data = doc.data();
@@ -104,17 +116,17 @@ function subscribeMemories(callback) {
 function addMemoryToFirestore(memory) {
   var id = memory.id;
   delete memory.id;
-  return db.collection('memories').doc(id).set(memory);
+  return userCollection('memories').doc(id).set(memory);
 }
 
 function deleteMemoryFromFirestore(id) {
-  return db.collection('memories').doc(id).delete();
+  return userCollection('memories').doc(id).delete();
 }
 
-/* ── Firestore: Todos ───────────────────────────────── */
+/* ── Firestore: Todos (user-scoped) ─────────────────── */
 
 function subscribeTodos(callback) {
-  return db.collection('todos').orderBy('createdAt', 'asc').onSnapshot(function (snapshot) {
+  return userCollection('todos').orderBy('createdAt', 'asc').onSnapshot(function (snapshot) {
     var items = [];
     snapshot.forEach(function (doc) {
       var data = doc.data();
@@ -127,15 +139,22 @@ function subscribeTodos(callback) {
 
 function addTodoToFirestore(todo) {
   todo.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-  return db.collection('todos').add(todo);
+  return userCollection('todos').add(todo);
 }
 
 function updateTodoInFirestore(id, data) {
-  return db.collection('todos').doc(id).update(data);
+  return userCollection('todos').doc(id).update(data);
 }
 
 function deleteTodoFromFirestore(id) {
-  return db.collection('todos').doc(id).delete();
+  return userCollection('todos').doc(id).delete();
+}
+
+/* ── Photo Validation ───────────────────────────────── */
+
+function isValidPhotoUrl(str) {
+  return typeof str === 'string' &&
+    (str.startsWith('data:image/') || str.startsWith('https://'));
 }
 
 /* ── localStorage Migration ─────────────────────────── */
@@ -154,6 +173,14 @@ function migrateLocalStorage() {
   } catch (e) {
     return;
   }
+
+  /* Validate data shape */
+  oldMemories = oldMemories.filter(function (m) {
+    return m && typeof m.title === 'string' && typeof m.lat === 'number';
+  });
+  oldTodos = oldTodos.filter(function (t) {
+    return t && typeof t.text === 'string';
+  });
 
   if (oldMemories.length === 0 && oldTodos.length === 0) {
     localStorage.setItem('meryem-migrated', 'true');

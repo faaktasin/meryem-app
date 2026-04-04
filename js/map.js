@@ -122,7 +122,7 @@ function addMarkerToMap(memory) {
 
 function showMemoryDetail(memory) {
   var detail = document.getElementById('detail-content');
-  var photoHtml = memory.photo
+  var photoHtml = (memory.photo && isValidPhotoUrl(memory.photo))
     ? '<img src="' + memory.photo + '" alt="' + escapeHtml(memory.title) + '">'
     : '';
 
@@ -206,6 +206,10 @@ function previewPhoto(file) {
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
       var dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      if (dataUrl.length > 700000) {
+        showToast('Fotoğraf çok büyük, daha küçük bir fotoğraf dene.');
+        return;
+      }
       var preview = document.getElementById('photo-preview');
       preview.src = dataUrl;
       preview.dataset.photo = dataUrl;
