@@ -66,7 +66,8 @@ function closeModal(id) {
 
 /* ── Toast Notification ─────────────────────────────── */
 
-function showToast(message) {
+function showToast(message, duration) {
+  var ms = duration || 2000;
   var existing = document.querySelector('.toast');
   if (existing) existing.remove();
 
@@ -79,7 +80,7 @@ function showToast(message) {
   setTimeout(function () {
     toast.classList.remove('show');
     setTimeout(function () { toast.remove(); }, 300);
-  }, 2000);
+  }, ms);
 }
 
 /* ── Service Worker ─────────────────────────────────── */

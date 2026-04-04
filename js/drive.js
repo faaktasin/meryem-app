@@ -56,7 +56,20 @@ function ensureGoogleAuth() {
       return;
     }
 
+    /* Timeout: if popup is blocked or user doesn't respond in 30s, reject */
+    var settled = false;
+    var timeout = setTimeout(function () {
+      if (!settled) {
+        settled = true;
+        reject(new Error('Google giris zaman asimi. Popup engellenmis olabilir.'));
+      }
+    }, 30000);
+
     driveState.tokenClient.callback = function (response) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+
       if (response.error) {
         reject(new Error('Google giris hatasi: ' + response.error));
         return;
@@ -65,7 +78,13 @@ function ensureGoogleAuth() {
       resolve(response.access_token);
     };
 
-    driveState.tokenClient.requestAccessToken({ prompt: 'consent' });
+    try {
+      driveState.tokenClient.requestAccessToken({ prompt: 'consent' });
+    } catch (err) {
+      settled = true;
+      clearTimeout(timeout);
+      reject(new Error('Google giris acilamadi: ' + err.message));
+    }
   });
 }
 

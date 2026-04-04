@@ -355,7 +355,7 @@ function uploadFromGallery(files) {
   var failed = 0;
   var galleryCard = document.querySelector('#gallery-view .card');
   galleryCard.classList.add('gallery-uploading');
-  showToast('Yükleniyor... 0/' + total);
+  showToast('Yükleniyor... 0/' + total, 60000);
 
   var chain = Promise.resolve();
 
@@ -364,7 +364,7 @@ function uploadFromGallery(files) {
       chain = chain.then(function () {
         return uploadSingleGalleryPhoto(file).then(function () {
           completed++;
-          showToast('Yükleniyor... ' + completed + '/' + total);
+          showToast('Yükleniyor... ' + completed + '/' + total, 60000);
         }).catch(function (err) {
           failed++;
           completed++;
@@ -377,11 +377,11 @@ function uploadFromGallery(files) {
   chain.then(function () {
     galleryCard.classList.remove('gallery-uploading');
     if (failed === 0) {
-      showToast(total + ' fotoğraf yüklendi!');
+      showToast(total + ' fotoğraf yüklendi!', 4000);
     } else if (failed === total) {
-      showToast('Yükleme başarısız. Google ile giriş gerekebilir.');
+      showToast('Yükleme başarısız oldu.', 4000);
     } else {
-      showToast((total - failed) + ' yüklendi, ' + failed + ' başarısız.');
+      showToast((total - failed) + ' yüklendi, ' + failed + ' başarısız.', 4000);
     }
   });
 }
