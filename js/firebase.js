@@ -37,14 +37,17 @@ function userCollection(name) {
 /* ── Auth State ─────────────────────────────────────── */
 
 auth.onAuthStateChanged(function (user) {
+  var splashScreen = document.getElementById('splash-screen');
   var authScreen = document.getElementById('auth-screen');
   var appContent = document.getElementById('app-content');
 
   if (user) {
+    if (splashScreen) splashScreen.style.display = 'none';
     authScreen.style.display = 'none';
     appContent.style.display = 'block';
     onAppReady();
   } else {
+    if (splashScreen) splashScreen.style.display = 'none';
     authScreen.style.display = 'flex';
     appContent.style.display = 'none';
   }

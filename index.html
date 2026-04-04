@@ -18,8 +18,15 @@
 </head>
 <body>
 
-  <!-- Auth Screen -->
-  <div id="auth-screen" class="auth-screen">
+  <!-- Loading Splash (visible while Firebase initializes) -->
+  <div id="splash-screen" class="splash-screen">
+    <svg class="splash-heart" viewBox="0 0 100 100" width="60" height="60">
+      <path fill="#e74c6f" d="M50 88.7L7.1 45.8C-4.6 34.1-2.3 15.5 12.1 8.2c10.6-5.4 22.5-2.2 29.9 6.8L50 24.3l8-9.3c7.4-9 19.3-12.2 29.9-6.8 14.4 7.3 16.7 25.9 5 37.6L50 88.7z"/>
+    </svg>
+  </div>
+
+  <!-- Auth Screen (hidden until Firebase confirms no session) -->
+  <div id="auth-screen" class="auth-screen" style="display:none">
     <div class="auth-card">
       <svg class="auth-heart" viewBox="0 0 100 100" width="60" height="60">
         <path fill="#e74c6f" d="M50 88.7L7.1 45.8C-4.6 34.1-2.3 15.5 12.1 8.2c10.6-5.4 22.5-2.2 29.9 6.8L50 24.3l8-9.3c7.4-9 19.3-12.2 29.9-6.8 14.4 7.3 16.7 25.9 5 37.6L50 88.7z"/>
