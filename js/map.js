@@ -1,6 +1,7 @@
 /**
  * Meryem App — Memory Map
- * Leaflet map with Firestore-synced memory pins, photo upload, and geocoder.
+ * Leaflet map with Firestore-synced memory pins, Google Drive photo storage,
+ * EXIF GPS gallery upload, and geocoder.
  */
 
 var memories = [];
@@ -75,9 +76,12 @@ function initMap() {
   document.getElementById('memory-photo').addEventListener('change', function (e) {
     previewPhoto(e.target.files[0]);
   });
+
+  /* Gallery upload */
+  initGalleryUpload();
 }
 
-/* ── Custom Heart Marker ────────────────────────────── */
+/* ── Custom Markers ────────────────────────────────── */
 
 var heartIcon = L.divIcon({
   className: 'heart-marker',
@@ -87,11 +91,21 @@ var heartIcon = L.divIcon({
   popupAnchor: [0, -32]
 });
 
+var cameraIcon = L.divIcon({
+  className: 'camera-marker',
+  html: '<svg viewBox="0 0 24 24" width="32" height="32"><path fill="#9c27b0" d="M12 12m-3.2 0a3.2 3.2 0 1 0 6.4 0 3.2 3.2 0 1 0-6.4 0"/><path fill="#9c27b0" d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>',
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -32]
+});
+
 /* ── Marker Sync (diff-based) ───────────────────────── */
 
 function syncMarkers(updatedMemories) {
   var newIds = {};
-  updatedMemories.forEach(function (m) { newIds[m.id] = true; });
+  updatedMemories.forEach(function (m) {
+    if (m.lat != null && m.lng != null) newIds[m.id] = true;
+  });
 
   /* Remove markers that no longer exist */
   Object.keys(markers).forEach(function (id) {
@@ -101,16 +115,17 @@ function syncMarkers(updatedMemories) {
     }
   });
 
-  /* Add markers that are new */
+  /* Add markers that are new (only if they have coordinates) */
   updatedMemories.forEach(function (m) {
-    if (!markers[m.id]) {
+    if (m.lat != null && m.lng != null && !markers[m.id]) {
       addMarkerToMap(m);
     }
   });
 }
 
 function addMarkerToMap(memory) {
-  var marker = L.marker([memory.lat, memory.lng], { icon: heartIcon }).addTo(window.appMap);
+  var icon = memory.source === 'gallery' ? cameraIcon : heartIcon;
+  var marker = L.marker([memory.lat, memory.lng], { icon: icon }).addTo(window.appMap);
 
   marker.on('click', function () {
     var current = memories.find(function (m) { return m.id === memory.id; });
@@ -123,9 +138,10 @@ function addMarkerToMap(memory) {
 function showMemoryDetail(memory) {
   var detail = document.getElementById('detail-content');
 
+  var photoSrc = getMemoryPhotoUrl(memory);
   var photoEl = '';
-  if (memory.photo && isValidPhotoUrl(memory.photo)) {
-    photoEl = '<img src="' + memory.photo + '" alt="' + escapeHtml(memory.title) + '">';
+  if (photoSrc) {
+    photoEl = '<img src="' + photoSrc + '" alt="' + escapeHtml(memory.title) + '">';
   }
 
   detail.innerHTML =
@@ -145,6 +161,62 @@ function showMemoryDetail(memory) {
   openModal('detail-modal');
 }
 
+/* ── Image Processing ──────────────────────────────── */
+
+/**
+ * Processes an image file: resizes and compresses.
+ * @param {File} file
+ * @param {number} maxWidth
+ * @param {number} quality - JPEG quality (0-1)
+ * @returns {Promise<{ dataUrl: string, blob: Blob }>}
+ */
+function processImage(file, maxWidth, quality) {
+  return new Promise(function (resolve) {
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var img = new Image();
+      img.onload = function () {
+        var canvas = document.createElement('canvas');
+        var scale = Math.min(1, maxWidth / img.width);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(function (blob) {
+          var dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve({ dataUrl: dataUrl, blob: blob });
+        }, 'image/jpeg', quality);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Creates a small thumbnail for Firestore storage.
+ * @param {File} file
+ * @returns {Promise<string>} base64 data URL (~10-20KB)
+ */
+function makeThumbnail(file) {
+  return processImage(file, 200, 0.5).then(function (result) {
+    return result.dataUrl;
+  });
+}
+
+/**
+ * Creates a full-quality image blob for Drive upload.
+ * @param {File} file
+ * @returns {Promise<Blob>}
+ */
+function makeFullImage(file) {
+  return processImage(file, 1600, 0.85).then(function (result) {
+    return result.blob;
+  });
+}
+
 /* ── CRUD Operations ────────────────────────────────── */
 
 function saveMemory() {
@@ -153,7 +225,8 @@ function saveMemory() {
   var note = document.getElementById('memory-note').value.trim();
   var lat = parseFloat(document.getElementById('memory-lat').value);
   var lng = parseFloat(document.getElementById('memory-lng').value);
-  var photoData = document.getElementById('photo-preview').dataset.photo || '';
+  var fileInput = document.getElementById('memory-photo');
+  var file = fileInput.files[0];
 
   if (!title) return;
 
@@ -170,10 +243,33 @@ function saveMemory() {
     note: note,
     lat: lat,
     lng: lng,
-    photo: photoData
+    source: 'map'
   };
 
-  addMemoryToFirestore(memory).then(function () {
+  var uploadPromise;
+
+  if (file) {
+    uploadPromise = uploadPhotoForMemory(file, memoryId).then(function (photoData) {
+      memory.thumbnail = photoData.thumbnail;
+      memory.driveFileId = photoData.driveFileId;
+      /* Keep photo field for backward compat with old rendering */
+      memory.photo = photoData.thumbnail;
+    }).catch(function (err) {
+      console.warn('Drive upload failed, falling back to base64:', err);
+      /* Fallback: use the preview data URL if Drive upload fails */
+      var photoData = document.getElementById('photo-preview').dataset.photo || '';
+      if (photoData) {
+        memory.photo = photoData;
+        memory.thumbnail = photoData;
+      }
+    });
+  } else {
+    uploadPromise = Promise.resolve();
+  }
+
+  uploadPromise.then(function () {
+    return addMemoryToFirestore(memory);
+  }).then(function () {
     closeModal('memory-modal');
     showToast('Anı kaydedildi!');
   }).catch(function (err) {
@@ -189,11 +285,127 @@ function saveMemory() {
   });
 }
 
+/**
+ * Uploads a photo to Drive and creates a thumbnail.
+ * @param {File} file
+ * @param {string} memoryId
+ * @returns {Promise<{ thumbnail: string, driveFileId: string }>}
+ */
+function uploadPhotoForMemory(file, memoryId) {
+  return ensureGoogleAuth().then(function () {
+    return Promise.all([
+      makeThumbnail(file),
+      makeFullImage(file)
+    ]);
+  }).then(function (results) {
+    var thumbnail = results[0];
+    var fullBlob = results[1];
+    var fileName = memoryId + '_' + Date.now() + '.jpg';
+
+    return uploadToDrive(fullBlob, fileName).then(function (driveFileId) {
+      return {
+        thumbnail: thumbnail,
+        driveFileId: driveFileId
+      };
+    });
+  });
+}
+
 function deleteMemory(id) {
   if (!confirm('Bu anıyı silmek istediğine emin misin?')) return;
 
+  /* Find memory to check for Drive file */
+  var mem = memories.find(function (m) { return m.id === id; });
+  if (mem && mem.driveFileId) {
+    deleteFromDrive(mem.driveFileId);
+  }
+
   deleteMemoryFromFirestore(id);
   closeModal('detail-modal');
+}
+
+/* ── Gallery Upload ────────────────────────────────── */
+
+function initGalleryUpload() {
+  var uploadBtn = document.getElementById('gallery-upload-btn');
+  var fileInput = document.getElementById('gallery-file-input');
+
+  if (!uploadBtn || !fileInput) return;
+
+  uploadBtn.addEventListener('click', function () {
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', function () {
+    if (fileInput.files.length > 0) {
+      uploadFromGallery(fileInput.files);
+      fileInput.value = '';
+    }
+  });
+}
+
+/**
+ * Uploads files from the gallery upload button.
+ * Reads EXIF GPS if available; saves to Drive + Firestore.
+ * @param {FileList} files
+ */
+function uploadFromGallery(files) {
+  var total = files.length;
+  var completed = 0;
+  var galleryCard = document.querySelector('#gallery-view .card');
+  galleryCard.classList.add('gallery-uploading');
+  showToast('Yükleniyor... 0/' + total);
+
+  var chain = Promise.resolve();
+
+  for (var i = 0; i < files.length; i++) {
+    (function (file) {
+      chain = chain.then(function () {
+        return uploadSingleGalleryPhoto(file).then(function () {
+          completed++;
+          showToast('Yükleniyor... ' + completed + '/' + total);
+        }).catch(function (err) {
+          completed++;
+          console.error('Gallery upload error:', err);
+          showToast('Hata: ' + file.name + ' yüklenemedi');
+        });
+      });
+    })(files[i]);
+  }
+
+  chain.then(function () {
+    galleryCard.classList.remove('gallery-uploading');
+    showToast(total + ' fotoğraf yüklendi!');
+  });
+}
+
+/**
+ * Uploads a single photo from gallery.
+ * @param {File} file
+ * @returns {Promise<void>}
+ */
+function uploadSingleGalleryPhoto(file) {
+  var memoryId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  var gpsPromise = readExifGps(file);
+
+  return gpsPromise.then(function (gps) {
+    return uploadPhotoForMemory(file, memoryId).then(function (photoData) {
+      var memory = {
+        id: memoryId,
+        title: file.name.replace(/\.[^.]+$/, ''),
+        date: new Date().toISOString().split('T')[0],
+        note: '',
+        lat: gps ? gps.lat : null,
+        lng: gps ? gps.lng : null,
+        source: 'gallery',
+        thumbnail: photoData.thumbnail,
+        driveFileId: photoData.driveFileId,
+        photo: photoData.thumbnail
+      };
+
+      return addMemoryToFirestore(memory);
+    });
+  });
 }
 
 /* ── Photo Handling ─────────────────────────────────── */
@@ -246,30 +458,106 @@ function resetMemoryForm() {
   document.getElementById('memory-date').value = new Date().toISOString().split('T')[0];
 }
 
+/* ── Photo URL Helper ──────────────────────────────── */
+
+/**
+ * Returns the best available photo URL for a memory.
+ * Prefers Drive full-quality, falls back to thumbnail/base64.
+ * @param {object} memory
+ * @returns {string|null}
+ */
+function getMemoryPhotoUrl(memory) {
+  if (memory.driveFileId) {
+    return getDriveImageUrl(memory.driveFileId);
+  }
+  if (memory.photo && isValidPhotoUrl(memory.photo)) {
+    return memory.photo;
+  }
+  if (memory.thumbnail && isValidPhotoUrl(memory.thumbnail)) {
+    return memory.thumbnail;
+  }
+  return null;
+}
+
+/**
+ * Returns thumbnail URL for gallery grid (small, fast).
+ * @param {object} memory
+ * @returns {string|null}
+ */
+function getMemoryThumbnailUrl(memory) {
+  /* For gallery grid, prefer local thumbnail for speed */
+  if (memory.thumbnail && isValidPhotoUrl(memory.thumbnail)) {
+    return memory.thumbnail;
+  }
+  if (memory.photo && isValidPhotoUrl(memory.photo)) {
+    return memory.photo;
+  }
+  if (memory.driveFileId) {
+    return getDriveImageUrl(memory.driveFileId);
+  }
+  return null;
+}
+
 /* ── Gallery ────────────────────────────────────────── */
 
 function renderGallery() {
   var grid = document.getElementById('gallery-grid');
+  var gridNomap = document.getElementById('gallery-grid-nomap');
+  var nomapSection = document.getElementById('gallery-nomap-section');
   if (!grid) return;
 
-  var withPhotos = memories.filter(function (m) {
-    return m.photo && isValidPhotoUrl(m.photo);
+  var withLocation = [];
+  var withoutLocation = [];
+
+  memories.forEach(function (m) {
+    var hasPhoto = getMemoryThumbnailUrl(m) != null;
+    if (!hasPhoto) return;
+
+    if (m.lat != null && m.lng != null) {
+      withLocation.push(m);
+    } else {
+      withoutLocation.push(m);
+    }
   });
 
-  if (withPhotos.length === 0) {
+  /* Render GPS-tagged photos */
+  if (withLocation.length === 0 && withoutLocation.length === 0) {
     grid.innerHTML = '<p class="gallery-empty">Henüz fotoğraflı anı eklenmedi</p>';
+    if (nomapSection) nomapSection.style.display = 'none';
     return;
   }
 
-  grid.innerHTML = withPhotos.map(function (m) {
+  if (withLocation.length === 0) {
+    grid.innerHTML = '';
+  } else {
+    grid.innerHTML = renderGalleryItems(withLocation);
+    attachGalleryClickHandlers(grid);
+  }
+
+  /* Render GPS-less photos */
+  if (gridNomap && nomapSection) {
+    if (withoutLocation.length === 0) {
+      nomapSection.style.display = 'none';
+    } else {
+      nomapSection.style.display = 'block';
+      gridNomap.innerHTML = renderGalleryItems(withoutLocation);
+      attachGalleryClickHandlers(gridNomap);
+    }
+  }
+}
+
+function renderGalleryItems(items) {
+  return items.map(function (m) {
+    var thumbUrl = getMemoryThumbnailUrl(m);
     return '<div class="gallery-item" data-gallery-id="' + escapeHtml(m.id) + '">' +
-      '<img src="' + m.photo + '" alt="' + escapeHtml(m.title) + '" loading="lazy">' +
+      '<img src="' + thumbUrl + '" alt="' + escapeHtml(m.title) + '" loading="lazy">' +
       '<div class="gallery-caption">' + escapeHtml(m.title) + '</div>' +
     '</div>';
   }).join('');
+}
 
-  /* Click to view detail */
-  grid.querySelectorAll('.gallery-item').forEach(function (item) {
+function attachGalleryClickHandlers(container) {
+  container.querySelectorAll('.gallery-item').forEach(function (item) {
     item.addEventListener('click', function () {
       var mem = memories.find(function (m) { return m.id === item.dataset.galleryId; });
       if (mem) showMemoryDetail(mem);

@@ -108,8 +108,18 @@
   <section id="gallery-view" class="view">
     <div class="daily-container">
       <div class="card">
-        <p class="gallery-label">Anılarımız</p>
-        <div class="gallery-grid" id="gallery-grid"></div>
+        <div class="gallery-header">
+          <p class="gallery-label">Anılarımız</p>
+          <button id="gallery-upload-btn" class="btn btn-primary btn-sm">+ Yükle</button>
+        </div>
+        <input type="file" id="gallery-file-input" accept="image/*" multiple hidden>
+        <div class="gallery-section">
+          <div class="gallery-grid" id="gallery-grid"></div>
+        </div>
+        <div class="gallery-section" id="gallery-nomap-section" style="display:none">
+          <p class="gallery-sublabel">Konumsuz Anılar</p>
+          <div class="gallery-grid" id="gallery-grid-nomap"></div>
+        </div>
       </div>
     </div>
   </section>
@@ -170,6 +180,10 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer onload="onGisLoaded()"></script>
+  <script src="https://apis.google.com/js/api.js" async defer onload="onGapiLoaded()"></script>
+  <script src="js/exif.js"></script>
+  <script src="js/drive.js"></script>
   <script src="js/data.js"></script>
   <script src="js/firebase.js"></script>
   <script src="js/map.js"></script>

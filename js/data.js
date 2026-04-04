@@ -12,6 +12,10 @@ const CONFIG = {
   storageKeys: {
     memories: 'meryem-memories',
     todos: 'meryem-todos'
+  },
+  google: {
+    clientId: '548770900516-76u61ct0rjs4oa6rpe7c418m3k5jqooh.apps.googleusercontent.com',
+    apiKey: 'AIzaSyCMJX7CIG5CaXHGQKylj2GnUfGgcaNPOV4'
   }
 };
 
