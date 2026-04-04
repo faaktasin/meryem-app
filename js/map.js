@@ -207,14 +207,13 @@ function makeThumbnail(file) {
 }
 
 /**
- * Creates a full-quality image blob for Drive upload.
+ * Returns the original file as a Blob for Drive upload.
+ * No resizing or compression — uploads at full quality.
  * @param {File} file
  * @returns {Promise<Blob>}
  */
 function makeFullImage(file) {
-  return processImage(file, 1600, 0.85).then(function (result) {
-    return result.blob;
-  });
+  return Promise.resolve(file);
 }
 
 /* ── CRUD Operations ────────────────────────────────── */
