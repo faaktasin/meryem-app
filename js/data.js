@@ -8,7 +8,7 @@ const CONFIG = {
   anniversaryDate: new Date('2026-12-31T00:00:00'),
   mapCenter: [39.9334, 32.8597], // Ankara default
   mapZoom: 6,
-  maxPhotoWidth: 800,
+  maxPhotoWidth: 600,
   storageKeys: {
     memories: 'meryem-memories',
     todos: 'meryem-todos'

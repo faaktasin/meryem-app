@@ -38,6 +38,7 @@ function initMap() {
   subscribeMemories(function (updatedMemories) {
     syncMarkers(updatedMemories);
     memories = updatedMemories;
+    renderGallery();
   });
 
   /* Click to add */
@@ -112,7 +113,6 @@ function addMarkerToMap(memory) {
   var marker = L.marker([memory.lat, memory.lng], { icon: heartIcon }).addTo(window.appMap);
 
   marker.on('click', function () {
-    /* Re-fetch from current memories array for latest data */
     var current = memories.find(function (m) { return m.id === memory.id; });
     showMemoryDetail(current || memory);
   });
@@ -122,18 +122,25 @@ function addMarkerToMap(memory) {
 
 function showMemoryDetail(memory) {
   var detail = document.getElementById('detail-content');
-  var photoHtml = (memory.photo && isValidPhotoUrl(memory.photo))
-    ? '<img src="' + memory.photo + '" alt="' + escapeHtml(memory.title) + '">'
-    : '';
+
+  var photoEl = '';
+  if (memory.photo && isValidPhotoUrl(memory.photo)) {
+    photoEl = '<img src="' + memory.photo + '" alt="' + escapeHtml(memory.title) + '">';
+  }
 
   detail.innerHTML =
     '<h3>' + escapeHtml(memory.title) + '</h3>' +
     '<p class="detail-date">' + formatDate(memory.date) + '</p>' +
-    photoHtml +
+    photoEl +
     '<p class="detail-note">' + escapeHtml(memory.note || '') + '</p>' +
     '<div class="detail-actions">' +
-      '<button class="btn btn-danger" onclick="deleteMemory(\'' + memory.id + '\')">Sil</button>' +
+      '<button class="btn btn-danger" data-delete-memory="' + escapeHtml(memory.id) + '">Sil</button>' +
     '</div>';
+
+  /* Event delegation for delete */
+  detail.querySelector('[data-delete-memory]').addEventListener('click', function () {
+    deleteMemory(this.dataset.deleteMemory);
+  });
 
   openModal('detail-modal');
 }
@@ -163,18 +170,19 @@ function saveMemory() {
     note: note,
     lat: lat,
     lng: lng,
-    photo: ''
+    photo: photoData
   };
 
-  memory.photo = photoData;
-
-  var savePromise = addMemoryToFirestore(memory);
-
-  savePromise.then(function () {
+  addMemoryToFirestore(memory).then(function () {
     closeModal('memory-modal');
     showToast('Anı kaydedildi!');
-  }).catch(function () {
-    showToast('Kaydetme hatası. Tekrar dene.');
+  }).catch(function (err) {
+    console.error('Firestore write error:', err);
+    if (err.message && err.message.indexOf('size') !== -1) {
+      showToast('Fotoğraf çok büyük. Daha küçük fotoğraf dene.');
+    } else {
+      showToast('Kaydetme hatası: ' + (err.message || 'Tekrar dene.'));
+    }
   }).then(function () {
     submitBtn.disabled = false;
     submitBtn.textContent = 'Kaydet';
@@ -198,18 +206,27 @@ function previewPhoto(file) {
     var img = new Image();
     img.onload = function () {
       var canvas = document.createElement('canvas');
-      var scale = Math.min(1, CONFIG.maxPhotoWidth / img.width);
+      var maxWidth = CONFIG.maxPhotoWidth;
+      var scale = Math.min(1, maxWidth / img.width);
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
 
       var ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      var dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      /* Try progressively lower quality to fit under 500KB */
+      var dataUrl;
+      var quality = 0.6;
+      do {
+        dataUrl = canvas.toDataURL('image/jpeg', quality);
+        quality -= 0.1;
+      } while (dataUrl.length > 500000 && quality > 0.2);
+
       if (dataUrl.length > 700000) {
         showToast('Fotoğraf çok büyük, daha küçük bir fotoğraf dene.');
         return;
       }
+
       var preview = document.getElementById('photo-preview');
       preview.src = dataUrl;
       preview.dataset.photo = dataUrl;
@@ -227,6 +244,37 @@ function resetMemoryForm() {
   preview.dataset.photo = '';
   preview.style.display = 'none';
   document.getElementById('memory-date').value = new Date().toISOString().split('T')[0];
+}
+
+/* ── Gallery ────────────────────────────────────────── */
+
+function renderGallery() {
+  var grid = document.getElementById('gallery-grid');
+  if (!grid) return;
+
+  var withPhotos = memories.filter(function (m) {
+    return m.photo && isValidPhotoUrl(m.photo);
+  });
+
+  if (withPhotos.length === 0) {
+    grid.innerHTML = '<p class="gallery-empty">Henüz fotoğraflı anı eklenmedi</p>';
+    return;
+  }
+
+  grid.innerHTML = withPhotos.map(function (m) {
+    return '<div class="gallery-item" data-gallery-id="' + escapeHtml(m.id) + '">' +
+      '<img src="' + m.photo + '" alt="' + escapeHtml(m.title) + '" loading="lazy">' +
+      '<div class="gallery-caption">' + escapeHtml(m.title) + '</div>' +
+    '</div>';
+  }).join('');
+
+  /* Click to view detail */
+  grid.querySelectorAll('.gallery-item').forEach(function (item) {
+    item.addEventListener('click', function () {
+      var mem = memories.find(function (m) { return m.id === item.dataset.galleryId; });
+      if (mem) showMemoryDetail(mem);
+    });
+  });
 }
 
 /* ── Utilities ──────────────────────────────────────── */
