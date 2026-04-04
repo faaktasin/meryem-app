@@ -3,7 +3,7 @@
  * Offline caching for PWA support. Firebase handles its own caching.
  */
 
-var CACHE_NAME = 'meryem-v2';
+var CACHE_NAME = 'meryem-v3';
 var ASSETS = [
   './',
   './index.html',
