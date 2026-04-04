@@ -346,11 +346,13 @@ function initGalleryUpload() {
 /**
  * Uploads files from the gallery upload button.
  * Reads EXIF GPS if available; saves to Drive + Firestore.
+ * Falls back to thumbnail-only if Drive is unavailable.
  * @param {FileList} files
  */
 function uploadFromGallery(files) {
   var total = files.length;
   var completed = 0;
+  var failed = 0;
   var galleryCard = document.querySelector('#gallery-view .card');
   galleryCard.classList.add('gallery-uploading');
   showToast('Yükleniyor... 0/' + total);
@@ -364,9 +366,9 @@ function uploadFromGallery(files) {
           completed++;
           showToast('Yükleniyor... ' + completed + '/' + total);
         }).catch(function (err) {
+          failed++;
           completed++;
           console.error('Gallery upload error:', err);
-          showToast('Hata: ' + file.name + ' yüklenemedi');
         });
       });
     })(files[i]);
@@ -374,34 +376,52 @@ function uploadFromGallery(files) {
 
   chain.then(function () {
     galleryCard.classList.remove('gallery-uploading');
-    showToast(total + ' fotoğraf yüklendi!');
+    if (failed === 0) {
+      showToast(total + ' fotoğraf yüklendi!');
+    } else if (failed === total) {
+      showToast('Yükleme başarısız. Google ile giriş gerekebilir.');
+    } else {
+      showToast((total - failed) + ' yüklendi, ' + failed + ' başarısız.');
+    }
   });
 }
 
 /**
  * Uploads a single photo from gallery.
+ * If Drive upload fails, saves with thumbnail only.
  * @param {File} file
  * @returns {Promise<void>}
  */
 function uploadSingleGalleryPhoto(file) {
   var memoryId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-  var gpsPromise = readExifGps(file);
 
-  return gpsPromise.then(function (gps) {
+  return Promise.all([
+    readExifGps(file),
+    makeThumbnail(file)
+  ]).then(function (results) {
+    var gps = results[0];
+    var thumbnail = results[1];
+
+    var memory = {
+      id: memoryId,
+      title: file.name.replace(/\.[^.]+$/, ''),
+      date: new Date().toISOString().split('T')[0],
+      note: '',
+      lat: gps ? gps.lat : null,
+      lng: gps ? gps.lng : null,
+      source: 'gallery',
+      thumbnail: thumbnail,
+      photo: thumbnail
+    };
+
+    /* Try Drive upload, but save to Firestore either way */
     return uploadPhotoForMemory(file, memoryId).then(function (photoData) {
-      var memory = {
-        id: memoryId,
-        title: file.name.replace(/\.[^.]+$/, ''),
-        date: new Date().toISOString().split('T')[0],
-        note: '',
-        lat: gps ? gps.lat : null,
-        lng: gps ? gps.lng : null,
-        source: 'gallery',
-        thumbnail: photoData.thumbnail,
-        driveFileId: photoData.driveFileId,
-        photo: photoData.thumbnail
-      };
-
+      memory.thumbnail = photoData.thumbnail;
+      memory.driveFileId = photoData.driveFileId;
+      memory.photo = photoData.thumbnail;
+    }).catch(function (err) {
+      console.warn('Drive upload failed, saving with thumbnail only:', err);
+    }).then(function () {
       return addMemoryToFirestore(memory);
     });
   });

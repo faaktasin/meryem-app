@@ -853,12 +853,17 @@ body {
 
 .gallery-header .gallery-label {
   margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .btn-sm {
   padding: 6px 14px;
   font-size: 0.8rem;
   border-radius: 20px;
+}
+
+.gallery-section + .gallery-section {
+  margin-top: 8px;
 }
 
 .gallery-sublabel {
