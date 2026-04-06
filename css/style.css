@@ -359,6 +359,7 @@ body {
   max-width: 480px;
   margin: 0 auto;
   padding: 16px;
+  padding-top: 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
