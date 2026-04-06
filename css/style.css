@@ -361,12 +361,14 @@ body {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 16px;
+  padding-bottom: 32px;
 }
 
 .dates-col {
   display: flex;
   flex-direction: column;
+  gap: 16px;
 }
 
 @media (min-width: 700px) {
