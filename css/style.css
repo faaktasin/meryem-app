@@ -353,6 +353,35 @@ body {
 }
 
 /* Countdown Card */
+/* ── Dates View Grid ────────────────────────────────── */
+
+.dates-container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.dates-col {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 700px) {
+  .dates-container {
+    max-width: 900px;
+    flex-direction: row;
+    gap: 24px;
+    padding: 24px;
+  }
+
+  .dates-col {
+    flex: 1;
+  }
+}
+
 .countdown-card {
   text-align: center;
 }
