@@ -61,6 +61,10 @@
         <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
         Günlük
       </button>
+      <button class="tab-btn" data-tab="dates-view">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
+        Özel Günler
+      </button>
       <button class="tab-btn" data-tab="gallery-view">
         <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M22 16V4c0-1.1-.9-2-2-2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2zm-11-4l2.03 2.71L16 11l4 5H8l3-4zM2 6v14c0 1.1.9 2 2 2h14v-2H4V6H2z"/></svg>
         Galeri
@@ -85,6 +89,23 @@
         </button>
       </div>
 
+      <!-- To-Do List -->
+      <div class="card todo-card">
+        <p class="todo-label">Birlikte Yapacaklarımız</p>
+        <form class="todo-form" id="todo-form">
+          <input type="text" id="todo-input" placeholder="Yeni plan ekle..." autocomplete="off" maxlength="120">
+          <button type="submit" class="btn btn-primary">+</button>
+        </form>
+        <div class="todo-list" id="todo-list"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Dates View -->
+  <section id="dates-view" class="view">
+    <div class="daily-container">
+
       <!-- First Meet Counter -->
       <div class="card countdown-card">
         <p class="countdown-label">İlk Buluşmamızdan Beri</p>
@@ -97,14 +118,16 @@
         <div class="countdown" id="countdown-love"></div>
       </div>
 
-      <!-- To-Do List -->
-      <div class="card todo-card">
-        <p class="todo-label">Birlikte Yapacaklarımız</p>
-        <form class="todo-form" id="todo-form">
-          <input type="text" id="todo-input" placeholder="Yeni plan ekle..." autocomplete="off" maxlength="120">
-          <button type="submit" class="btn btn-primary">+</button>
-        </form>
-        <div class="todo-list" id="todo-list"></div>
+      <!-- Her Birthday -->
+      <div class="card countdown-card">
+        <p class="countdown-label">Meryem'in Doğum Gününe Kalan</p>
+        <div class="countdown" id="countdown-her-bday"></div>
+      </div>
+
+      <!-- His Birthday -->
+      <div class="card countdown-card">
+        <p class="countdown-label">Furkan'ın Doğum Gününe Kalan</p>
+        <div class="countdown" id="countdown-his-bday"></div>
       </div>
 
     </div>

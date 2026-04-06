@@ -59,9 +59,23 @@ function renderElapsed(el, elapsed) {
     '<div class="countdown-unit"><span class="countdown-num">' + pad(elapsed.seconds) + '</span><span class="countdown-unit-label">saniye</span></div>';
 }
 
+function renderBirthdayCountdown(el, cd) {
+  if (cd.today) {
+    el.innerHTML = '<span class="countdown-celebration">Mutlu Yillar! &#127874;</span>';
+    return;
+  }
+  el.innerHTML =
+    '<div class="countdown-unit"><span class="countdown-num">' + cd.days + '</span><span class="countdown-unit-label">gün</span></div>' +
+    '<div class="countdown-unit"><span class="countdown-num">' + pad(cd.hours) + '</span><span class="countdown-unit-label">saat</span></div>' +
+    '<div class="countdown-unit"><span class="countdown-num">' + pad(cd.minutes) + '</span><span class="countdown-unit-label">dakika</span></div>' +
+    '<div class="countdown-unit"><span class="countdown-num">' + pad(cd.seconds) + '</span><span class="countdown-unit-label">saniye</span></div>';
+}
+
 function updateCountdowns() {
   renderElapsed(document.getElementById('countdown-meet'), getElapsed(CONFIG.firstMeetDate));
   renderElapsed(document.getElementById('countdown-love'), getElapsed(CONFIG.loveDate));
+  renderBirthdayCountdown(document.getElementById('countdown-her-bday'), getNextBirthdayCountdown(CONFIG.herBirthday.month, CONFIG.herBirthday.day));
+  renderBirthdayCountdown(document.getElementById('countdown-his-bday'), getNextBirthdayCountdown(CONFIG.hisBirthday.month, CONFIG.hisBirthday.day));
 }
 
 function pad(n) {

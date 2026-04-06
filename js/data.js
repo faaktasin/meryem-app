@@ -7,6 +7,8 @@ const CONFIG = {
   name: 'Meryem',
   firstMeetDate: new Date('2026-03-10T00:00:00'),
   loveDate: new Date('2026-01-17T00:00:00'),
+  herBirthday: { month: 10, day: 4 },   // October 4
+  hisBirthday: { month: 5, day: 26 },   // May 26
   mapCenter: [39.9334, 32.8597], // Ankara default
   mapZoom: 6,
   maxPhotoWidth: 600,
@@ -172,5 +174,24 @@ function getElapsed(sinceDate) {
     hours: Math.floor((diff % 86400000) / 3600000),
     minutes: Math.floor((diff % 3600000) / 60000),
     seconds: Math.floor((diff % 60000) / 1000)
+  };
+}
+
+function getNextBirthdayCountdown(month, day) {
+  var now = new Date();
+  var thisYear = new Date(now.getFullYear(), month - 1, day);
+  var target = now < thisYear ? thisYear : new Date(now.getFullYear() + 1, month - 1, day);
+  var diff = target - now;
+
+  if (diff <= 0) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, today: true };
+  }
+
+  return {
+    days: Math.floor(diff / 86400000),
+    hours: Math.floor((diff % 86400000) / 3600000),
+    minutes: Math.floor((diff % 3600000) / 60000),
+    seconds: Math.floor((diff % 60000) / 1000),
+    today: false
   };
 }
