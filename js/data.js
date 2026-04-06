@@ -5,7 +5,8 @@
 
 const CONFIG = {
   name: 'Meryem',
-  anniversaryDate: new Date('2026-12-31T00:00:00'),
+  firstMeetDate: new Date('2026-03-10T00:00:00'),
+  loveDate: new Date('2026-01-17T00:00:00'),
   mapCenter: [39.9334, 32.8597], // Ankara default
   mapZoom: 6,
   maxPhotoWidth: 600,
@@ -158,19 +159,18 @@ function getRandomMessage(currentMessage) {
  * Calculates time remaining until the anniversary.
  * @returns {{ days: number, hours: number, minutes: number, seconds: number, passed: boolean }}
  */
-function getCountdown() {
-  const now = new Date();
-  const diff = CONFIG.anniversaryDate - now;
+function getElapsed(sinceDate) {
+  var now = new Date();
+  var diff = now - sinceDate;
 
-  if (diff <= 0) {
-    return { days: 0, hours: 0, minutes: 0, seconds: 0, passed: true };
+  if (diff < 0) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0 };
   }
 
   return {
     days: Math.floor(diff / 86400000),
     hours: Math.floor((diff % 86400000) / 3600000),
     minutes: Math.floor((diff % 3600000) / 60000),
-    seconds: Math.floor((diff % 60000) / 1000),
-    passed: false
+    seconds: Math.floor((diff % 60000) / 1000)
   };
 }

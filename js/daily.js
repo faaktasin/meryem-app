@@ -9,9 +9,9 @@ function initDaily() {
   /* Daily message */
   document.getElementById('daily-message').textContent = getDailyMessage();
 
-  /* Countdown */
-  updateCountdown();
-  window._countdownInterval = setInterval(updateCountdown, 1000);
+  /* Countdowns */
+  updateCountdowns();
+  window._countdownInterval = setInterval(updateCountdowns, 1000);
 
   /* Shuffle button */
   document.getElementById('shuffle-btn').addEventListener('click', function () {
@@ -51,20 +51,17 @@ function initDaily() {
 
 /* ── Countdown ──────────────────────────────────────── */
 
-function updateCountdown() {
-  var cd = getCountdown();
-  var el = document.getElementById('countdown');
-
-  if (cd.passed) {
-    el.innerHTML = '<span class="countdown-celebration">Mutlu Yıldönümü! &#10084;</span>';
-    return;
-  }
-
+function renderElapsed(el, elapsed) {
   el.innerHTML =
-    '<div class="countdown-unit"><span class="countdown-num">' + cd.days + '</span><span class="countdown-unit-label">gün</span></div>' +
-    '<div class="countdown-unit"><span class="countdown-num">' + pad(cd.hours) + '</span><span class="countdown-unit-label">saat</span></div>' +
-    '<div class="countdown-unit"><span class="countdown-num">' + pad(cd.minutes) + '</span><span class="countdown-unit-label">dakika</span></div>' +
-    '<div class="countdown-unit"><span class="countdown-num">' + pad(cd.seconds) + '</span><span class="countdown-unit-label">saniye</span></div>';
+    '<div class="countdown-unit"><span class="countdown-num">' + elapsed.days + '</span><span class="countdown-unit-label">gün</span></div>' +
+    '<div class="countdown-unit"><span class="countdown-num">' + pad(elapsed.hours) + '</span><span class="countdown-unit-label">saat</span></div>' +
+    '<div class="countdown-unit"><span class="countdown-num">' + pad(elapsed.minutes) + '</span><span class="countdown-unit-label">dakika</span></div>' +
+    '<div class="countdown-unit"><span class="countdown-num">' + pad(elapsed.seconds) + '</span><span class="countdown-unit-label">saniye</span></div>';
+}
+
+function updateCountdowns() {
+  renderElapsed(document.getElementById('countdown-meet'), getElapsed(CONFIG.firstMeetDate));
+  renderElapsed(document.getElementById('countdown-love'), getElapsed(CONFIG.loveDate));
 }
 
 function pad(n) {
