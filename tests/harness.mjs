@@ -541,6 +541,14 @@ async function ownServer() {
   return _server;
 }
 
+/** Closes the shared http server openApp() started, so a script that is done can exit. */
+export async function closeServer() {
+  if (!_server) return;
+  const s = _server;
+  _server = null;
+  await s.close();
+}
+
 /**
  * Opens the app in `page`, fully configured for a deterministic test:
  *   opts.now         ISO local datetime string; injects a Date offset (never freezes) so

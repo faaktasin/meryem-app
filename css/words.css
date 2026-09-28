@@ -1,1 +1,468 @@
-/* Meryem App — Sözler (Words) view styling. Placeholder: owned by the Words feature agent. */
+/**
+ * Meryem App — Sözler (Words) view styling
+ * Prefix: wz-. Reuses tokens from css/style.css (--ink, --rose-strong, --radius, ...) and the
+ * shared .card component so this view reads as part of the same app, not a bolt-on.
+ * z-index: the letter reader sits at 3000 — above the modal (2000), below gate/birthday (4000),
+ * per the ladder documented at the top of css/style.css.
+ */
+
+.wz-wrap {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 32px;
+}
+
+.wz-section-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+}
+
+.wz-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wz-section-head .wz-section-title {
+  margin-bottom: 0;
+}
+
+.wz-fav-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.wz-fav-toggle-input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--rose-strong);
+  cursor: pointer;
+}
+
+/* ── Quote/line deck ─────────────────────────────────── */
+
+.wz-deck {
+  touch-action: pan-y;
+  position: relative;
+}
+
+.wz-card {
+  position: relative;
+  width: 100%;
+  background: linear-gradient(135deg, var(--paper), var(--blush));
+  border: 1px solid var(--rose-100);
+  border-radius: var(--radius-sm);
+  padding: 26px 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 190px;
+  transition: opacity 0.2s ease;
+}
+
+.wz-card-text {
+  font-family: var(--font-script);
+  font-size: 1.25rem;
+  color: var(--ink);
+  line-height: 1.55;
+  white-space: pre-line;
+  text-align: center;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wz-card--quote .wz-card-text {
+  font-size: 1.1rem;
+}
+
+.wz-card-meta {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.wz-fav-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 3px 8px var(--shadow-soft);
+  transition: color 0.2s, transform 0.15s;
+}
+
+.wz-fav-btn:active {
+  transform: scale(0.9);
+}
+
+.wz-fav-btn--active {
+  color: var(--rose-strong);
+}
+
+.wz-deck-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 14px;
+}
+
+.wz-nav-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: var(--blush);
+  color: var(--rose-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.wz-nav-btn:active {
+  transform: scale(0.9);
+}
+
+.wz-deck-pos {
+  font-family: var(--font-num);
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  min-width: 54px;
+  text-align: center;
+}
+
+.wz-deck-empty {
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  padding: 20px 10px;
+}
+
+/* ── Jar of reasons ──────────────────────────────────── */
+
+.wz-jar-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.wz-jar-bear {
+  position: absolute;
+  top: -8px;
+  right: 8%;
+  pointer-events: none;
+}
+
+.wz-jar-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: transform 0.15s;
+}
+
+.wz-jar-btn:active {
+  transform: scale(0.95);
+}
+
+.wz-jar-counter {
+  font-family: var(--font-num);
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.wz-jar-reshuffle {
+  font-size: 0.8rem;
+  color: var(--berry);
+  text-align: center;
+}
+
+.wz-jar-note {
+  margin-top: 2px;
+  background: var(--blush);
+  border: 1px solid var(--rose-100);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  max-width: 320px;
+}
+
+.wz-jar-note-text {
+  font-family: var(--font-script);
+  font-size: 1.15rem;
+  color: var(--ink);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.wz-note-fly {
+  position: absolute;
+  top: 34%;
+  left: 50%;
+  font-size: 26px;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.5) rotate(-12deg);
+  opacity: 0;
+  animation: wzNoteFly 0.6s ease-out forwards;
+}
+
+@keyframes wzNoteFly {
+  0% { transform: translate(-50%, -50%) scale(0.4) rotate(-16deg); opacity: 0; }
+  18% { opacity: 1; }
+  100% { transform: translate(-50%, 180%) scale(1) rotate(8deg); opacity: 0; }
+}
+
+/* ── Letters grid ────────────────────────────────────── */
+
+.wz-letters-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+@media (min-width: 480px) {
+  .wz-letters-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.wz-envelope {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 8px 14px;
+  border: 1px solid var(--rose-100);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(160deg, var(--paper), var(--blush));
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.15s;
+}
+
+.wz-envelope:active {
+  transform: scale(0.96);
+}
+
+.wz-envelope--locked {
+  border-style: dashed;
+}
+
+.wz-envelope-emoji {
+  font-size: 1.6rem;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--rose-strong);
+  box-shadow: 0 4px 10px var(--shadow);
+}
+
+.wz-envelope--opened .wz-envelope-emoji {
+  background: var(--berry);
+}
+
+.wz-envelope--locked .wz-envelope-emoji {
+  background: var(--ink-soft);
+}
+
+.wz-envelope-title {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.25;
+}
+
+.wz-envelope-status {
+  font-size: 0.66rem;
+  color: var(--ink-soft);
+  min-height: 1em;
+}
+
+/* ── Full-screen letter reader (its own overlay, appended to body) ──────────────────── */
+
+.wz-letter-reader {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.wz-letter-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(74, 44, 54, 0.5);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.wz-letter-sheet {
+  position: relative;
+  width: min(360px, 90vw);
+  max-height: 86dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.wz-letter-close {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 3;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--paper);
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px var(--shadow);
+  cursor: pointer;
+}
+
+.wz-letter-envelope {
+  position: relative;
+  height: 100px;
+  perspective: 600px;
+}
+
+.wz-letter-pocket {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 28px;
+  bottom: 0;
+  z-index: 1;
+  background: linear-gradient(160deg, var(--rose-100), var(--peach));
+  border: 2px solid var(--bear-stroke);
+  border-top: none;
+  border-radius: 0 0 18px 18px;
+}
+
+.wz-letter-flap {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  right: 0;
+  height: 64px;
+  z-index: 2;
+  background: linear-gradient(160deg, var(--rose), var(--rose-strong));
+  clip-path: polygon(0 0, 50% 88%, 100% 0);
+  border: 2px solid var(--bear-stroke);
+  transform-origin: top center;
+  transform: rotateX(0deg);
+  transition: transform 0.5s ease;
+}
+
+.wz-letter-flap--open {
+  transform: rotateX(150deg);
+}
+
+.wz-letter-paper {
+  position: relative;
+  z-index: 4;
+  margin-top: -26px;
+  background: var(--paper);
+  border-radius: var(--radius);
+  border: 1px solid var(--rose-100);
+  box-shadow: 0 12px 30px var(--shadow);
+  padding: 22px 20px 26px;
+  transform: translateY(34px);
+  opacity: 0;
+  transition: transform 0.45s ease, opacity 0.45s ease;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.wz-letter-paper--up {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.wz-letter-emoji {
+  font-size: 1.6rem;
+  text-align: center;
+}
+
+.wz-letter-title {
+  font-family: var(--font-script);
+  font-size: 1.5rem;
+  color: var(--rose-strong);
+  text-align: center;
+  margin: 4px 0 14px;
+}
+
+.wz-letter-body p {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--ink);
+  margin-bottom: 12px;
+  white-space: pre-line;
+}
+
+.wz-letter-body p:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Focus visibility ────────────────────────────────── */
+
+.wz-fav-btn:focus-visible,
+.wz-nav-btn:focus-visible,
+.wz-jar-btn:focus-visible,
+.wz-envelope:focus-visible,
+.wz-letter-close:focus-visible,
+.wz-fav-toggle-input:focus-visible {
+  outline: 2px solid var(--rose-strong);
+  outline-offset: 2px;
+}
+
+/* ── Reduced motion — own block, additive to the global one in css/style.css ─────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .wz-note-fly {
+    animation: none;
+  }
+
+  .wz-letter-flap,
+  .wz-letter-paper,
+  .wz-card {
+    transition: none;
+  }
+}

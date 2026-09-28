@@ -1,1 +1,91 @@
-/* Meryem App — Tarihler (Dates) view styling. Placeholder: owned by the Dates feature agent. */
+/**
+ * Meryem App — Tarihler (Dates) view styling
+ * Builds on the shared .card / .countdown-* foundation already defined in css/style.css (the
+ * countdown number grid, the celebration text style); this file adds only what that foundation
+ * doesn't cover — bear placement, the gift-themed birthday card, the "today" states, and the
+ * next-milestone line under each since-counter. Every class here is prefixed `dts-`.
+ *
+ * No keyframe animation lives in this file. The one motion touch this package adds — a heart
+ * burst the moment her birthday card is actually on screen — is fxHeartBurst() from js/fx.js,
+ * which already checks prefersReducedMotion() internally (a single static heart instead of a
+ * burst), so there is nothing here that needs its own reduced-motion override.
+ */
+
+.dts-bear-slot {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.dts-bear-slot--small {
+  margin-bottom: 2px;
+}
+
+/* Her birthday card gets the same warm gradient + a soft gift corner, the one card in this view
+   that is always meant to look a little more special than the other three. */
+.dts-card-gift {
+  background: linear-gradient(135deg, var(--paper), var(--blush));
+  position: relative;
+  overflow: hidden;
+}
+
+.dts-card-gift::after {
+  content: '🎁';
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  font-size: 1.3rem;
+  line-height: 1;
+  opacity: 0.55;
+}
+
+/* ── Celebration (her birthday itself) ──────────────────────────────── */
+
+.dts-celebration {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.dts-celebration-title {
+  font-family: var(--font-script);
+  font-size: 1.5rem;
+  font-weight: 700;
+  /* --rose-strong (the usual heading pink) only clears 4.5:1 against --paper; this title sits on
+     .dts-card-gift's --paper→--blush gradient, and against the --blush end it drops to ~4.0:1 —
+     below the contrast floor over roughly the right/bottom half of the card (review finding,
+     2026-09-28: measured 4.17-4.50 across the title's real rect, gradient-accurate). --berry is
+     the same rose family, just darker (H 336° vs 338°, same ~55% saturation), and clears 4.5:1
+     with margin at BOTH gradient stops (5.79:1 on --blush, 6.87:1 on --paper) — see the
+     "gradient-aware" contrast check below, which measures both stops directly instead of relying
+     on readable()'s ancestor-walk (documented blind spot: it cannot see a gradient). */
+  color: var(--berry);
+  line-height: 1.25;
+}
+
+.dts-celebration-sub {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  max-width: 260px;
+}
+
+/* ── His birthday, "today" state ────────────────────────────────────── */
+
+.dts-today-line {
+  font-family: var(--font-script);
+  font-size: 1.15rem;
+  color: var(--rose-strong);
+  text-align: center;
+}
+
+/* ── Next-milestone line under the two since-counters ───────────────── */
+
+.dts-milestone {
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  text-align: center;
+}

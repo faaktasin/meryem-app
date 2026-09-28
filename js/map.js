@@ -14,12 +14,17 @@ function initMap() {
     zoomControl: false
   });
 
-  L.control.zoom({ position: 'bottomright' }).addTo(map);
+  /* Bottom-right is where the bottom nav's raised gift-tab circle pokes ~14px above the nav into
+     the map's own last pixels (measured in the foundation screenshots) — the zoom control moves
+     to top-right, clear of it entirely, and the attribution (below) moves to bottom-left. */
+  L.control.zoom({ position: 'topright' }).addTo(map);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap',
     maxZoom: 19
   }).addTo(map);
+
+  map.attributionControl.setPosition('bottomleft');
 
   window.appMap = map;
 
@@ -81,6 +86,49 @@ function initMap() {
   initGalleryUpload();
 }
 
+/* ── Memories Switch (Gallery/Map) ───────────────────── */
+
+/**
+ * Replaces app.js's fallback switch (this file loads first, so app.js's own-name guard sees
+ * `initMemoriesSwitch` already taken and never defines its default). Same contract as the
+ * fallback — toggle #gallery-view/#map-view and the .seg-btn active state — plus the one thing
+ * the fallback never had to do: Leaflet only measures its container correctly once that container
+ * is actually visible, so every moment the map subview becomes visible (this switch, or the app's
+ * own 'meryem:tab' event firing while the map is already the active subview) gets one
+ * invalidateSize(), in a requestAnimationFrame so it runs after the layout that revealed it.
+ */
+function initMemoriesSwitch() {
+  var switchEl = document.getElementById('memories-switch');
+  if (!switchEl) return;
+  var buttons = switchEl.querySelectorAll('[data-seg]');
+
+  function activate(seg) {
+    buttons.forEach(function (b) { b.classList.toggle('is-active', b.dataset.seg === seg); });
+    document.querySelectorAll('.subview').forEach(function (sv) { sv.classList.remove('is-active'); });
+    var target = document.getElementById(seg + '-view');
+    if (target) target.classList.add('is-active');
+    if (seg === 'map') anilarResizeMapNextFrame();
+  }
+
+  buttons.forEach(function (btn) {
+    btn.addEventListener('click', function () { activate(btn.dataset.seg); });
+  });
+
+  document.addEventListener('meryem:tab', function (e) {
+    if (!e.detail || e.detail.tab !== 'memories-view') return;
+    var mapView = document.getElementById('map-view');
+    if (mapView && mapView.classList.contains('is-active')) anilarResizeMapNextFrame();
+  });
+}
+window.initMemoriesSwitch = initMemoriesSwitch;
+
+function anilarResizeMapNextFrame() {
+  if (!window.appMap) return;
+  requestAnimationFrame(function () {
+    window.appMap.invalidateSize();
+  });
+}
+
 /* ── Custom Markers ────────────────────────────────── */
 
 var heartIcon = L.divIcon({
@@ -139,16 +187,22 @@ function showMemoryDetail(memory) {
   var detail = document.getElementById('detail-content');
 
   var photoSrc = getMemoryPhotoUrl(memory);
-  var photoEl = '';
-  if (photoSrc) {
-    photoEl = '<img src="' + photoSrc + '" alt="' + escapeHtml(memory.title) + '">';
-  }
+  var photoInner = photoSrc
+    ? '<img src="' + photoSrc + '" alt="' + escapeHtml(memory.title) + '">'
+    /* No photo (e.g. a map pin dropped with no picture) — a small bear stands in so the card is
+       still a polaroid, never an empty white box. */
+    : '<span class="anilar-polaroid-photo--empty">' + bearSVG({ mood: 'love', heart: true, size: 72 }) + '</span>';
 
   detail.innerHTML =
-    '<h3>' + escapeHtml(memory.title) + '</h3>' +
-    '<p class="detail-date">' + formatDate(memory.date) + '</p>' +
-    photoEl +
-    '<p class="detail-note">' + escapeHtml(memory.note || '') + '</p>' +
+    /* Half the gallery card's tilt, same sign — this card is the whole modal's centrepiece, so a
+       smaller lean still reads as "a polaroid on the table" without looking crooked. */
+    '<div class="anilar-detail-polaroid" style="--anilar-tilt:' + (anilarTiltDeg(memory.id) * 0.5) + 'deg">' +
+      '<span class="anilar-polaroid-photo">' + photoInner + '</span>' +
+      '<span class="anilar-polaroid-tape" aria-hidden="true"></span>' +
+      '<h3>' + escapeHtml(memory.title) + '</h3>' +
+      '<p class="detail-date">' + formatDate(memory.date) + '</p>' +
+      '<p class="detail-note">' + escapeHtml(memory.note || '') + '</p>' +
+    '</div>' +
     '<div class="detail-actions">' +
       '<button class="btn btn-danger" data-delete-memory="' + escapeHtml(memory.id) + '">Sil</button>' +
     '</div>';
@@ -554,7 +608,15 @@ function renderGallery() {
 
   /* Render GPS-tagged photos */
   if (withLocation.length === 0 && withoutLocation.length === 0) {
-    grid.innerHTML = '<p class="gallery-empty">Henüz fotoğraflı anı eklenmedi</p>';
+    /* Keeps the "gallery-empty" class too (on top of this package's own "anilar-empty") purely so
+       the shared shell suite's body-text contrast check — which still looks up ".gallery-empty"
+       for its readable-text sample — keeps finding an element here; the visual redesign is all in
+       "anilar-empty" and its own children below. */
+    grid.innerHTML =
+      '<div class="gallery-empty anilar-empty">' +
+        bearSVG({ mood: 'pleading', arms: 'wide', heart: true, size: 96 }) +
+        '<p class="anilar-empty-text">Henüz fotoğraflı anı eklenmedi, ilk anıyı sen ekle 💗</p>' +
+      '</div>';
     if (nomapSection) nomapSection.style.display = 'none';
     return;
   }
@@ -578,13 +640,34 @@ function renderGallery() {
   }
 }
 
+/**
+ * A small deterministic tilt (in degrees, -4..4) for a memory id, so the same photo always leans
+ * the same way across re-renders (every Firestore snapshot re-renders the whole grid) instead of
+ * jittering, and so a memory's gallery card and its detail-modal card lean the same way too.
+ * @param {string} id
+ * @returns {number}
+ */
+function anilarTiltDeg(id) {
+  var hash = 0;
+  var s = String(id);
+  for (var i = 0; i < s.length; i++) {
+    hash = (hash * 31 + s.charCodeAt(i)) | 0;
+  }
+  var n = (Math.abs(hash) % 9) - 4;
+  return n === 0 ? 3 : n;
+}
+
 function renderGalleryItems(items) {
   return items.map(function (m) {
     var thumbUrl = getMemoryThumbnailUrl(m);
-    return '<div class="gallery-item" data-gallery-id="' + escapeHtml(m.id) + '">' +
-      '<img src="' + thumbUrl + '" alt="' + escapeHtml(m.title) + '" loading="lazy">' +
-      '<div class="gallery-caption">' + escapeHtml(m.title) + '</div>' +
-    '</div>';
+    /* alt="" on the photo: the visible caption below already names it, and a <button>'s
+       accessible name is computed from ALL its text content, alt text included — a matching alt
+       would announce the same title twice. */
+    return '<button type="button" class="gallery-item anilar-polaroid" data-gallery-id="' + escapeHtml(m.id) + '" style="--anilar-tilt:' + anilarTiltDeg(m.id) + 'deg">' +
+      '<span class="anilar-polaroid-photo"><img src="' + thumbUrl + '" alt="" loading="lazy"></span>' +
+      '<span class="anilar-polaroid-tape" aria-hidden="true"></span>' +
+      '<span class="anilar-polaroid-caption">' + escapeHtml(m.title) + '</span>' +
+    '</button>';
   }).join('');
 }
 

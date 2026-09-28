@@ -218,13 +218,19 @@ function getElapsed(sinceDate) {
 
 function getNextBirthdayCountdown(month, day) {
   var now = appNow();
+
+  /* Compare CALENDAR DATES first, not a midnight instant — a plain `now < midnight-of-birthday`
+     check made the whole day AFTER midnight read as "already passed", so the countdown fell all
+     the way through to next year's birthday (~364 days) instead of staying at {today:true} for
+     the rest of the day. */
+  var isToday = now.getMonth() === (month - 1) && now.getDate() === day;
+  if (isToday) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, today: true };
+  }
+
   var thisYear = new Date(now.getFullYear(), month - 1, day);
   var target = now < thisYear ? thisYear : new Date(now.getFullYear() + 1, month - 1, day);
   var diff = target - now;
-
-  if (diff <= 0) {
-    return { days: 0, hours: 0, minutes: 0, seconds: 0, today: true };
-  }
 
   return {
     days: Math.floor(diff / 86400000),

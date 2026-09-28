@@ -1,1 +1,190 @@
-/* Meryem App — Bugün (Today) view styling. Placeholder: owned by the Today feature agent. */
+/**
+ * Meryem App — Bugün (Today) view styling
+ * Owned by the Today feature package. `bgn-` prefixes every class this package's own markup
+ * introduces (js/daily.js). Frozen elements from index.html / css/style.css — .message-card,
+ * .todo-card, .checkmark, #daily-message, #todo-list — are restyled here with extra rules scoped
+ * under #today-view, never by editing style.css itself.
+ */
+
+/* ── Greeting ──────────────────────────────────────────────────────────── */
+
+#today-view #today-greeting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+#today-view .bgn-greeting-bear {
+  filter: drop-shadow(0 6px 14px var(--shadow-soft));
+}
+
+#today-view .bgn-greeting-text {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.35;
+  /* Long lines split evenly instead of leaving the closing emoji alone on line two. */
+  text-wrap: balance;
+}
+
+/* ── Daily message card — restyled as a little love-note envelope ───────── */
+
+#today-view .message-card {
+  position: relative;
+  padding-top: 44px;
+  overflow: hidden;
+}
+
+#today-view .message-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 46px;
+  background: var(--blush);
+  opacity: .6;
+  clip-path: polygon(0 0, 100% 0, 50% 78%);
+}
+
+#today-view .message-card::after {
+  content: '💗';
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 17px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(74, 44, 54, .18));
+}
+
+/* ── "Days together" pill + milestone line ───────────────────────────────
+   Solid rose-strong background with paper (white) text — the token pairing the app's own
+   accessibility note calls out as the one that carries white text at 4.5:1+, same as .btn-primary
+   and .seg-btn.is-active. A gradient behind rose-strong text (tried first) measured under 4.5:1
+   against its own painted background even though it read as passing against body cream — the
+   contrast helper only ever sees background-color, never a gradient, so it silently missed a real
+   shortfall. Solid + white text removes the blind spot instead of relying on it. */
+
+#today-view .bgn-together-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  background: var(--rose-strong);
+  color: var(--paper);
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  box-shadow: 0 4px 14px var(--shadow);
+}
+
+#today-view .bgn-together-heart {
+  color: var(--paper);
+  flex-shrink: 0;
+  animation: bgnPillPulse 1.8s ease-in-out infinite;
+}
+
+#today-view .bgn-together-days {
+  font-family: var(--font-num);
+  font-size: 1.05em;
+}
+
+#today-view .bgn-milestone {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+@keyframes bgnPillPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+}
+
+/* ── To-do card: heart-shaped checkboxes ──────────────────────────────────
+   .checkmark keeps its frozen box model (22x22, next to the label) but is masked into a heart
+   instead of a plain circle. The mask sits on ::before (not the element itself) so the frozen
+   ::after tick (style.css) keeps painting on top, unclipped — masking an element also masks its
+   own children/pseudos, and the tiny tick would get cut by the heart's narrow lower point if it
+   shared the same masked box. */
+
+#today-view .checkmark {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+#today-view .checkmark::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--rose-100);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  transition: background .2s, transform .2s;
+}
+
+#today-view .todo-check input:checked + .checkmark {
+  background: transparent;
+  border-color: transparent;
+}
+
+#today-view .todo-check input:checked + .checkmark::before {
+  background: var(--rose-strong);
+  transform: scale(1.12);
+}
+
+/* ── To-do checkbox: keyboard focus ring ──────────────────────────────────
+   The real <input type="checkbox"> is visually hidden (style.css: opacity 0, 0x0) in favour of
+   the painted .checkmark sibling, so an outline on the input itself would be invisible too — the
+   ring is drawn on the sibling's masked ::before instead, keyed off the input's :focus-visible. */
+
+#today-view .todo-check input:focus-visible + .checkmark::before {
+  outline: 2px solid var(--rose-strong);
+  outline-offset: 3px;
+}
+
+/* ── To-do empty state: a sweet bear ──────────────────────────────────────
+   .todo-empty itself is kept exactly (class + wording) — the app shell's own test reads
+   text/contrast off that class directly, so it stays the single source of that empty-state text;
+   the bear is added alongside it, never instead of it. */
+
+#today-view .bgn-todo-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0 4px;
+}
+
+#today-view .bgn-todo-empty-bear {
+  animation: bgnEmptyBob 3.2s ease-in-out infinite;
+}
+
+#today-view .bgn-todo-empty .todo-empty {
+  padding: 0;
+}
+
+@keyframes bgnEmptyBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────
+   Own block per this package's animations, additive to (never fighting) the global reduced-
+   motion rule in css/style.css, which already collapses every animation-duration to .01ms. */
+
+@media (prefers-reduced-motion: reduce) {
+  #today-view .bgn-together-heart,
+  #today-view .bgn-todo-empty-bear {
+    animation: none;
+  }
+}

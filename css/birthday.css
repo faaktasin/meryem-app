@@ -1,1 +1,710 @@
-/* Meryem App — Birthday surprise overlay styling. Placeholder: owned by the Birthday feature agent. */
+/**
+ * Meryem App — Birthday surprise (Sürpriz) styling
+ * Covers #birthday-root's two tab states (locked gift + countdown / unlocked ready card), the
+ * .nav-btn--gift glow, and every scene inside #birthday-overlay. All classes are bday-prefixed.
+ * Colours/radii/shadows/fonts come from the shared tokens in css/style.css (:root) — never
+ * redefined here, only consumed via var(...).
+ */
+
+/* ── Nav glow (targets the frozen .nav-btn--gift from css/style.css) ───── */
+
+.nav-btn--gift.is-glowing::before {
+  animation: bdayGiftGlow 1.8s ease-in-out infinite;
+}
+
+@keyframes bdayGiftGlow {
+  0%, 100% { box-shadow: 0 6px 16px var(--shadow), 0 0 0 4px var(--cream); }
+  50% { box-shadow: 0 6px 22px var(--rose-strong), 0 0 0 5px var(--cream); }
+}
+
+/* ── Locked state ─────────────────────────────────────────────────────── */
+
+#birthday-root {
+  /* Vertically centers the (always short — never scrolls) locked/unlocked card in the tab's
+     available height instead of leaving it pinned to the top with bare ground below. */
+  min-height: calc(100dvh - var(--header-h) - var(--nav-h));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.bday-view {
+  display: flex;
+  justify-content: center;
+  padding: 8px 16px 32px;
+}
+
+.bday-lock-scene {
+  max-width: 420px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+}
+
+.bday-guard {
+  position: relative;
+  border: none;
+  background: none;
+  padding: 0;
+  margin-bottom: 4px;
+  cursor: pointer;
+  filter: drop-shadow(0 10px 22px var(--shadow));
+  transition: transform 0.15s;
+}
+
+.bday-guard:active {
+  transform: scale(0.96);
+}
+
+.bday-guard-bear {
+  position: absolute;
+  bottom: -14px;
+  right: -22px;
+  filter: drop-shadow(0 4px 10px var(--shadow-soft));
+}
+
+.bday-shake {
+  animation: bdayShake 0.5s ease;
+}
+
+@keyframes bdayShake {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-6deg); }
+  40% { transform: rotate(5deg); }
+  60% { transform: rotate(-4deg); }
+  80% { transform: rotate(3deg); }
+}
+
+.bday-lock-title {
+  font-family: var(--font-script);
+  font-size: 1.7rem;
+  color: var(--rose-strong);
+  margin-top: 6px;
+}
+
+.bday-lock-subtitle {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+}
+
+.bday-countdown {
+  margin-top: 8px;
+}
+
+.bday-tease {
+  min-height: 1.4em;
+  color: var(--berry);
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-top: 10px;
+}
+
+/* ── Unlocked ready card ─────────────────────────────────────────────── */
+
+.bday-ready-card {
+  max-width: 380px;
+  width: 100%;
+  margin: 24px auto 0;
+  background: linear-gradient(160deg, var(--paper), var(--blush));
+  border: 1px solid var(--rose-100);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 30px var(--shadow);
+  padding: 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.bday-ready-title {
+  font-family: var(--font-script);
+  font-size: 1.9rem;
+  color: var(--rose-strong);
+}
+
+.bday-ready-subtitle {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+}
+
+.bday-open-btn {
+  font-size: 1rem;
+  padding: 13px 28px;
+}
+
+/* ── Overlay shell ────────────────────────────────────────────────────── */
+
+.bday-close-btn {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: 12px;
+  z-index: 10;
+  background: rgba(255, 253, 251, 0.85);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.bday-scene-stage {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+}
+
+.bday-scene {
+  width: 100%;
+  max-width: 440px;
+  /* Auto on every side, not just left/right: as a flex item of .bday-scene-stage this both
+     centres it horizontally (as 0 auto already did) AND vertically when the scene is short
+     enough to fit — auto margins collapse to 0 with nothing to spare, so a tall scene (the
+     letter, once typed out) still starts flush at the top and scrolls normally instead of
+     having its top clipped by centering. */
+  margin: auto;
+  padding: 48px 6px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.bday-scene-subtitle {
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+}
+
+.bday-tap-hint {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+
+.bday-continue-btn {
+  margin-top: 8px;
+}
+
+/* ── Scene: title ─────────────────────────────────────────────────────── */
+
+.bday-scene--title {
+  position: relative;
+  min-height: 60vh;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.bday-bg-balloons {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.bday-bg-balloon {
+  position: absolute;
+  bottom: -80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0.6;
+  animation: bdayBalloonFloat 11s ease-in infinite;
+}
+
+.bday-bg-balloon-body {
+  width: 26px;
+  height: 32px;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  box-shadow: inset -4px -5px 0 rgba(0, 0, 0, 0.06);
+}
+
+.bday-bg-balloon-knot {
+  width: 4px;
+  height: 4px;
+  filter: brightness(0.85);
+  border-radius: 0 0 50% 50%;
+  margin-top: -1px;
+}
+
+.bday-bg-balloon-string {
+  width: 1px;
+  height: 18px;
+  background: var(--ink-soft);
+  opacity: 0.4;
+}
+
+@keyframes bdayBalloonFloat {
+  0% { transform: translateY(0) rotate(-4deg); opacity: 0; }
+  10% { opacity: 0.6; }
+  50% { transform: translateY(-45vh) rotate(4deg); }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(-90vh) rotate(-4deg); opacity: 0; }
+}
+
+.bday-hat-bears {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  position: relative;
+}
+
+.bday-title-script {
+  font-family: var(--font-script);
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--rose-strong);
+  line-height: 1.2;
+  min-height: 2.4em;
+  position: relative;
+}
+
+/* ── Scene: cake ──────────────────────────────────────────────────────── */
+
+.bday-cake {
+  position: relative;
+  width: 240px;
+  margin: 20px auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bday-cake-candles {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: -6px;
+  z-index: 2;
+}
+
+.bday-candle {
+  border: none;
+  background: none;
+  padding: 6px 4px 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Widened from 26px — the always-available tap-to-blow fallback is the app's primary birthday
+     interaction, and 26px sat well below comfortable touch-target sizing. Kept narrow enough
+     (5 × 34px + 4 × 10px gap = 210px) that the row still sits inside the 240px cake below it. */
+  width: 34px;
+}
+
+.bday-flame {
+  width: 10px;
+  height: 16px;
+  border-radius: 50% 50% 50% 50% / 65% 65% 35% 35%;
+  background: radial-gradient(circle at 50% 30%, #FFF4C2, #FFB74D 70%, #E8703A 100%);
+  opacity: 0;
+  transform: scaleY(0.2);
+  transform-origin: bottom center;
+  transition: opacity 0.25s, transform 0.25s;
+  box-shadow: 0 0 10px rgba(255, 183, 77, 0.7);
+}
+
+.bday-candle.is-lit .bday-flame {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.bday-candle.is-out .bday-flame {
+  opacity: 0;
+  transform: scaleY(0.2);
+}
+
+.bday-wick {
+  width: 6px;
+  height: 22px;
+  background: repeating-linear-gradient(180deg, var(--peach), var(--peach) 4px, var(--rose) 4px, var(--rose) 8px);
+  border-radius: 3px;
+  border: 1.5px solid var(--berry);
+}
+
+.bday-cake-layer {
+  width: 100%;
+  border: 2px solid var(--berry);
+  border-top: none;
+  position: relative;
+}
+
+.bday-cake-layer--top {
+  width: 55%;
+  height: 46px;
+  background: linear-gradient(180deg, #FFF1E7 0%, #FFD8C2 100%);
+  border-radius: 6px 6px 0 0;
+  border-top: 2px solid var(--berry);
+}
+
+.bday-cake-layer--top::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: -4%;
+  width: 108%;
+  height: 12px;
+  background: var(--paper);
+  border-radius: 50%;
+  border: 2px solid var(--berry);
+}
+
+.bday-cake-layer--mid {
+  width: 80%;
+  height: 40px;
+  background: linear-gradient(180deg, var(--rose) 0%, var(--rose-strong) 100%);
+}
+
+.bday-cake-layer--mid::after {
+  content: '';
+  position: absolute;
+  inset: 6px 10px auto;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.bday-cake-layer--base {
+  width: 100%;
+  height: 44px;
+  background: linear-gradient(180deg, var(--lavender) 0%, #CBB8F2 100%);
+  border-radius: 0 0 8px 8px;
+}
+
+.bday-cake-plate {
+  width: 118%;
+  height: 10px;
+  background: var(--ink-soft);
+  opacity: 0.25;
+  border-radius: 50%;
+  margin-top: -4px;
+}
+
+.bday-wish-text {
+  font-family: var(--font-script);
+  font-size: 1.4rem;
+  color: var(--rose-strong);
+}
+
+.bday-blow-ui,
+.bday-after-blow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.bday-mic-denied {
+  color: var(--berry);
+  font-size: 0.82rem;
+}
+
+.bday-after-blow-text {
+  font-size: 1rem;
+  color: var(--ink);
+  max-width: 320px;
+}
+
+.bday-mute-btn {
+  border: 1px solid var(--rose-100);
+  background: var(--paper);
+  border-radius: var(--radius-pill);
+  width: 44px;
+  height: 44px;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+/* ── Scene: balloons ──────────────────────────────────────────────────── */
+
+.bday-balloon-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px 8px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.bday-balloon-slot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 108px;
+}
+
+/* A popped balloon's slot: spans the full grid row instead of staying in its 4-column cell (~79px
+   wide), which forced a 40-50 character wish to wrap into 8-10 cramped, ribbon-like lines. */
+.bday-balloon-slot--revealed {
+  grid-column: 1 / -1;
+  align-items: center;
+  min-height: 0;
+}
+
+.bday-balloon {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.15s;
+}
+
+.bday-balloon:hover {
+  transform: translateY(-4px);
+}
+
+.bday-balloon-body {
+  width: 40px;
+  height: 50px;
+  background: var(--bday-balloon-color, var(--rose));
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  box-shadow: inset -6px -8px 0 rgba(0, 0, 0, 0.06), 0 4px 10px var(--shadow-soft);
+}
+
+.bday-balloon-knot {
+  width: 6px;
+  height: 6px;
+  background: var(--bday-balloon-color, var(--rose));
+  filter: brightness(0.85);
+  border-radius: 0 0 50% 50%;
+  margin-top: -1px;
+}
+
+.bday-balloon-string {
+  width: 1.5px;
+  height: 26px;
+  background: var(--ink-soft);
+  opacity: 0.5;
+}
+
+.bday-balloon.is-popped {
+  pointer-events: none;
+}
+
+.bday-balloon-wish {
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+  background: var(--paper);
+  border: 1px solid var(--rose-100);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--ink);
+  text-align: center;
+  box-shadow: 0 4px 12px var(--shadow-soft);
+  animation: bdayPopIn 0.3s ease;
+}
+
+@keyframes bdayPopIn {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.bday-balloon-counter {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+/* ── Scene: gift + letter ─────────────────────────────────────────────── */
+
+.bday-gift-open-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.bday-gift-open-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  filter: drop-shadow(0 10px 22px var(--shadow));
+  transition: transform 0.15s;
+}
+
+.bday-gift-open-btn:active {
+  transform: scale(0.96);
+}
+
+.bday-gift-lid {
+  transform-box: fill-box;
+  transform-origin: 25% 70%;
+  transition: transform 0.5s ease, opacity 0.4s ease;
+}
+
+.bday-gift-open-btn.is-open .bday-gift-lid {
+  transform: translate(-30px, -60px) rotate(-40deg);
+  opacity: 0;
+}
+
+.bday-letter {
+  max-width: 380px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bday-letter-greeting {
+  font-family: var(--font-script);
+  font-size: 1.3rem;
+  color: var(--rose-strong);
+  margin-bottom: 4px;
+}
+
+.bday-letter-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.bday-letter-p {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--ink);
+  min-height: 1.6em;
+  white-space: pre-wrap;
+}
+
+.bday-letter-signature {
+  font-family: var(--font-script);
+  font-size: 1.4rem;
+  color: var(--rose-strong);
+  text-align: right;
+  margin-top: 14px;
+}
+
+/* ── Scene: slideshow ─────────────────────────────────────────────────── */
+
+.bday-polaroid-stack {
+  position: relative;
+  width: 240px;
+  height: 280px;
+  margin: 8px auto 0;
+}
+
+.bday-polaroid {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  background: var(--paper);
+  border: 1px solid var(--rose-100);
+  border-radius: 4px;
+  box-shadow: 0 10px 24px var(--shadow);
+  padding: 12px 12px 40px;
+  opacity: 0;
+  transform: rotate(var(--bday-tilt, 0deg)) scale(0.95);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.bday-polaroid.is-active {
+  opacity: 1;
+  transform: rotate(var(--bday-tilt, 0deg)) scale(1);
+  z-index: 1;
+}
+
+.bday-polaroid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bday-polaroid figcaption {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  right: 12px;
+  font-family: var(--font-script);
+  font-size: 1rem;
+  color: var(--ink);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Scene: end ───────────────────────────────────────────────────────── */
+
+.bday-scene--end {
+  justify-content: center;
+  min-height: 55vh;
+}
+
+.bday-end-title {
+  font-family: var(--font-script);
+  font-size: 1.9rem;
+  color: var(--rose-strong);
+}
+
+/* ── Smoke puff (candle blow-out) ─────────────────────────────────────── */
+
+.bday-smoke-layer {
+  position: fixed;
+  z-index: 4500;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.bday-smoke-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(122, 83, 96, 0.35);
+  animation: bdaySmokeRise 0.65s ease-out forwards;
+}
+
+@keyframes bdaySmokeRise {
+  0% { transform: translate(0, 0) scale(0.6); opacity: 0.7; }
+  100% { transform: translate(var(--bday-smoke-dx, 0), -30px) scale(1.4); opacity: 0; }
+}
+
+/* ── Focus visibility ─────────────────────────────────────────────────── */
+
+.bday-guard:focus-visible,
+.bday-open-btn:focus-visible,
+.bday-close-btn:focus-visible,
+.bday-candle:focus-visible,
+.bday-mic-btn:focus-visible,
+.bday-mute-btn:focus-visible,
+.bday-balloon:focus-visible,
+.bday-gift-open-btn:focus-visible,
+.bday-continue-btn:focus-visible,
+.bday-end-btn:focus-visible {
+  outline: 3px solid var(--rose-strong);
+  outline-offset: 3px;
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-btn--gift.is-glowing::before {
+    animation: none;
+    box-shadow: 0 6px 20px var(--rose-strong), 0 0 0 4px var(--cream);
+  }
+
+  .bday-bg-balloon {
+    animation: none;
+    opacity: 0;
+  }
+
+  .bday-shake {
+    animation: none;
+  }
+
+  .bday-polaroid {
+    transition: none;
+  }
+
+  .bday-balloon-wish {
+    animation: none;
+  }
+}

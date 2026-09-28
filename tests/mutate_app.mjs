@@ -12,6 +12,7 @@
  *
  *   node tests/mutate_app.mjs                every mutation
  *   node tests/mutate_app.mjs --only shell   by owning module (or an id prefix)
+ *   node tests/mutate_app.mjs shell          the same, as test_app.mjs takes it
  * Exit 0 only when every mutation is caught.
  */
 import { spawn } from "node:child_process";
@@ -23,7 +24,8 @@ import { REAL_ROOT, TESTS_DIR, TMP_DIR, sleep } from "./harness.mjs";
 const CONCURRENCY = 2;
 const CHECKS = join(TESTS_DIR, "checks");
 const onlyAt = process.argv.indexOf("--only");
-const only = onlyAt >= 0 ? process.argv[onlyAt + 1] : null;
+const positional = process.argv.slice(2).find((a) => !a.startsWith("-"));
+const only = onlyAt >= 0 ? process.argv[onlyAt + 1] : positional || null;
 
 const all = [];
 for (const file of readdirSync(CHECKS).filter((f) => f.endsWith(".mjs"))) {

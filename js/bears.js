@@ -101,15 +101,16 @@ function hugSVG(opts) {
     '<stop offset="100%" stop-color="var(--bear-fur)"/>' +
     '</radialGradient></defs>';
 
-  // Draw order matters for a believable hug: both bodies first, then BOTH inner arms on top of
-  // both bodies (so the embrace actually crosses and reads, instead of one arm burying itself
-  // behind the other figure's head), then the heart on top of everything, clear of both heads.
-  svg += _bearHugFigure(id, 92, -8);
-  svg += _bearHugFigure(id, 168, 8);
-  svg += _bearHugArm(id, 92, -8, 'left');
-  svg += _bearHugArm(id, 168, 8, 'right');
+  // Two bears side by side, heads tilted in towards each other. Draw order: both bodies first,
+  // then both inner arms on top of both bodies, each reaching across to rest on the OTHER bear's
+  // shoulder/back at chest height — clear of both faces, which sit well above (see _bearHugArm).
+  // The heart floats last, over the gap where the tilted heads meet.
+  svg += _bearHugFigure(id, 85, 8);
+  svg += _bearHugFigure(id, 175, -8);
+  svg += _bearHugArm(id, 85, 8, 'left');
+  svg += _bearHugArm(id, 175, -8, 'right');
 
-  svg += '<g transform="translate(130,4) scale(0.8)"><path class="kawaii-bear-heart" ' +
+  svg += '<g transform="translate(130,-4) scale(0.8)"><path class="kawaii-bear-heart" ' +
     'd="M0 8 C-10 -4 -26 4 -26 18 C-26 34 0 52 0 52 C0 52 26 34 26 18 C26 4 10 -4 0 8 Z" ' +
     'fill="var(--rose)" stroke="var(--berry)" stroke-width="2"/></g>';
 
@@ -262,15 +263,27 @@ function _bearHugFigure(id, cx, tilt) {
 }
 
 /**
- * One figure's inner arm, reaching up and over onto the other bear's shoulder. Drawn as its own
- * top-level group (never nested inside _bearHugFigure's own <g>) so BOTH arms can be layered on
- * top of BOTH bodies — the only way the embrace actually crosses instead of one arm burying
- * itself behind the other figure's head.
+ * One figure's inner arm, reaching from its own shoulder across to rest on the OTHER bear's
+ * shoulder/back. Drawn as its own top-level group (never nested inside _bearHugFigure's own <g>)
+ * so BOTH arms can be layered on top of BOTH bodies. sx/sy/ex/ey are LOCAL to this figure's own
+ * transform (translate(cx,96) rotate(tilt)), so "does the hand clear the OTHER figure's face"
+ * cannot be read off these numbers directly — the other head lives in a different rotated frame.
+ * Checked by actually transforming both figures' geometry into one shared (world) frame — same
+ * translate+rotate math the two <g>s carry — rather than eyeballing local y:
+ *   own shoulder (sx,sy)=(30,36):  67.1 units from this figure's OWN head centre (local, since a
+ *     rotation preserves distance) — clear of the r=58 head circle by ~9.
+ *   hand (ex,ey)=(68,40):          93.4 units from its OWN head — clear; and ~77.0 units (world)
+ *     from the FAR figure's head centre — clear of that r=58 head circle by ~19, while landing
+ *     inside the far figure's own body ellipse footprint, i.e. on its back/shoulder, not floating
+ *     past it. The previous ey=70 put that same far-head distance at ~106.6 — well outside the
+ *     body ellipse, reading as two tubes crossing at belly/hip height (2026-09-28 review). ey=-6
+ *     (the older bug) put it at ~33 — inside the head circle, grazing the chin. Guarded by
+ *     tests/checks/gate.mjs's hug geometry check (own/far-head distance bounds), not just a sign.
  */
 function _bearHugArm(id, cx, tilt, side) {
   var dir = side === "left" ? 1 : -1;
-  var sx = dir * 26, sy = 20;
-  var ex = dir * 60, ey = -6;
+  var sx = dir * 30, sy = 36;
+  var ex = dir * 68, ey = 40;
   var out = '<g transform="translate(' + cx + ',96) rotate(' + tilt + ')">';
   out += '<line x1="' + sx + '" y1="' + sy + '" x2="' + ex + '" y2="' + ey + '" stroke="var(--bear-stroke)" stroke-width="18" stroke-linecap="round"/>';
   out += '<line x1="' + sx + '" y1="' + sy + '" x2="' + ex + '" y2="' + ey + '" stroke="url(#' + id + '-fur)" stroke-width="14" stroke-linecap="round"/>';

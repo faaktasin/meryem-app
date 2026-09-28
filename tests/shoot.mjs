@@ -7,7 +7,7 @@
 import { mkdirSync, readdirSync } from "node:fs";
 import { basename, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { TESTS_DIR, launch, openApp } from "./harness.mjs";
+import { TESTS_DIR, closeServer, launch, openApp } from "./harness.mjs";
 
 const outDir = process.argv[2];
 if (!outDir) {
@@ -39,4 +39,7 @@ try {
   }
 } finally {
   await close();
+  await closeServer();
 }
+/* Same backstop as test_app.mjs: never hang after the work is done. */
+setTimeout(() => process.exit(), 3000).unref();

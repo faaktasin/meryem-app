@@ -1,1 +1,272 @@
-/* Meryem App — Anılar (Memories: gallery + map) view styling. Placeholder: owned by the Memories feature agent. */
+/**
+ * Meryem App — Anılar (Memories: gallery + map) view styling.
+ * Owned by the Memories feature package: the segmented switch, the map's own controls, the
+ * polaroid gallery + its empty state, and the memory detail modal. Every class this file
+ * introduces is prefixed `anilar-`; the other selectors below are the shared foundation's own
+ * (`.seg-control`, `.map-hint`, `.gallery-*`, `#detail-content …`, Leaflet's `.leaflet-*`) —
+ * index.html and map's HTML shell cannot be edited, so every presentation fix this package owns
+ * lands here as a deliberate, documented override of one of those.
+ */
+
+/* ── Segmented control — compact centred pill ────────────────────────────
+   #memories-switch carries BOTH the id (style.css: display:flex, a full-width centring row) and
+   the .seg-control class (style.css: the pill's own background/padding/radius) on the very same
+   element. The id selector's specificity always wins over the plain class, so its `display:flex`
+   plus a flex box's default block-level width stretched the "pill" to the full row width —
+   measured in the foundation screenshots as a full-bleed bar with barely-rounded corners instead
+   of a pill. The compound selector below beats both ancestor rules on specificity (id + class)
+   and makes the one element behave like an intrinsically-sized, centred pill again. */
+#memories-switch.seg-control {
+  display: flex;
+  width: fit-content;
+  height: auto;
+  margin: 14px auto 10px;
+}
+
+/* ── Map hint — one line, never two ──────────────────────────────────────
+   A `position:fixed` box with only `left:50%` set (no `right`) computes its auto/shrink-to-fit
+   width against the space remaining to the viewport's RIGHT edge, not the whole viewport —
+   `transform:translateX(-50%)` only shifts the already-computed box afterwards, it never revisits
+   that width math. At 390px that remaining space is ~195px, less than the hint's own ~230px of
+   text, so it wrapped to two lines. Forcing the line to stay whole raises the minimum content
+   width (and so the computed box width) back up past that ceiling to the text's real width. */
+.map-hint {
+  white-space: nowrap;
+}
+
+/* ── Leaflet controls — kept clear of the raised gift button, themed soft ─
+   The nav's raised gift-tab circle sits over the right-hand fifth of the screen and pokes ~14px
+   above the bottom nav into the map's own last pixels — exactly where Leaflet's default
+   bottom-right zoom + attribution used to live. map.js moves the zoom control to top-right and the
+   attribution to bottom-left (both plain Leaflet position options); the rules below just soften
+   their default white-and-grey chrome to match the app's palette — anilar.css loads after
+   leaflet.css, so a same-specificity rule already wins without needing !important. */
+.leaflet-control-zoom {
+  border: none;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: 0 3px 10px var(--shadow);
+}
+
+.leaflet-control-zoom a {
+  background: var(--paper);
+  color: var(--rose-strong);
+}
+
+.leaflet-control-zoom a:hover {
+  background: var(--blush);
+}
+
+/* Leaflet hugs the attribution flush to the container's own bottom edge with no gap (unlike the
+   10px margin a normal control gets) — measured with a real screenshot as bleeding a few pixels
+   into the bottom nav's translucent strip. Lifting the whole bottom-left corner group clears it,
+   whichever exact box-model quirk causes the overhang. */
+.leaflet-bottom.leaflet-left {
+  bottom: 10px;
+}
+
+.leaflet-control-attribution {
+  background: rgba(255, 253, 251, 0.85);
+  color: var(--ink-soft);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+}
+
+.leaflet-control-attribution a {
+  color: var(--rose-strong);
+}
+
+/* ── Polaroid gallery ─────────────────────────────────────────────────── */
+
+.gallery-grid {
+  gap: 20px 14px;
+  padding: 8px 4px 12px;
+}
+
+.gallery-item.anilar-polaroid {
+  /* Reset the plain <div> chrome style.css wrote for the old click target — this is now a real
+     <button>, and it needs a completely different shape (a paper frame, not a cropped square). */
+  all: unset;
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  aspect-ratio: auto;
+  cursor: pointer;
+  overflow: visible;
+  background: var(--paper);
+  border-radius: 3px;
+  padding: 8px 8px 0;
+  box-shadow: 0 6px 16px var(--shadow-soft);
+  transform: rotate(var(--anilar-tilt, -2deg));
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gallery-item.anilar-polaroid:hover {
+  transform: rotate(0deg) translateY(-4px) scale(1.04);
+  box-shadow: 0 12px 26px var(--shadow);
+  z-index: 2;
+}
+
+.gallery-item.anilar-polaroid:active {
+  transform: rotate(0deg) translateY(-1px) scale(0.99);
+}
+
+.gallery-item.anilar-polaroid:focus-visible {
+  outline: 3px solid var(--rose-strong);
+  outline-offset: 3px;
+  transform: rotate(0deg) translateY(-4px) scale(1.04);
+  z-index: 2;
+}
+
+.anilar-polaroid-photo {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--blush);
+}
+
+.anilar-polaroid-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.anilar-polaroid-photo--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.anilar-polaroid-tape {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-3deg);
+  width: 46px;
+  height: 18px;
+  background: linear-gradient(180deg, rgba(255, 216, 194, 0.92), rgba(255, 209, 220, 0.78));
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 2px 4px rgba(74, 44, 54, 0.14);
+  pointer-events: none;
+}
+
+.anilar-polaroid-caption {
+  display: block;
+  font-family: var(--font-script);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: center;
+  padding: 8px 4px 12px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A sweet bear in place of the plain empty-state paragraph — spans the whole grid, same as the
+   .gallery-empty text it replaces. */
+.anilar-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 12px 20px;
+}
+
+.anilar-empty-text {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  text-align: center;
+  max-width: 260px;
+}
+
+/* "Konumsuz Anılar" — a soft centred divider instead of the plain left-aligned rule, to match the
+   scrapbook feel of the polaroids above it. */
+.gallery-sublabel {
+  border-top: none;
+  position: relative;
+  text-align: center;
+}
+
+.gallery-sublabel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 64px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--rose-100);
+}
+
+/* ── Memory detail modal — a polaroid too ────────────────────────────────
+   #detail-content's own rules (h3 / .detail-date / .detail-note / img — all in the frozen
+   style.css) still apply through this wrapper by plain descendant matching; only the photo's own
+   sizing needs an id-qualified selector to outrank style.css's `#detail-content img`. */
+
+#detail-content .anilar-detail-polaroid {
+  background: var(--paper);
+  border-radius: 3px;
+  padding: 16px 16px 4px;
+  margin: 4px auto 18px;
+  max-width: 320px;
+  box-shadow: 0 10px 26px var(--shadow-soft);
+  position: relative;
+  transform: rotate(var(--anilar-tilt, -1.5deg));
+}
+
+#detail-content .anilar-detail-polaroid .anilar-polaroid-tape {
+  top: -11px;
+}
+
+#detail-content .anilar-detail-polaroid .anilar-polaroid-photo {
+  aspect-ratio: 4 / 3;
+}
+
+#detail-content .anilar-detail-polaroid .anilar-polaroid-photo img {
+  margin-bottom: 0;
+  border-radius: 2px;
+}
+
+#detail-content .anilar-detail-polaroid h3 {
+  margin-top: 14px;
+  text-align: center;
+}
+
+#detail-content .anilar-detail-polaroid .detail-date {
+  text-align: center;
+  margin-bottom: 0;
+}
+
+#detail-content .anilar-detail-polaroid .detail-note {
+  margin-bottom: 4px;
+}
+
+#detail-content .detail-actions {
+  padding: 0 4px;
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────
+   The global rule in style.css already collapses every transition/animation duration to ~0 under
+   reduced motion (its universal selector + !important covers this file's hover transitions too),
+   so this block is this package's own explicit, narrower opt-out of the one movement effect it
+   adds (the hover/focus lift) — never fighting that global rule, just restating its intent here. */
+@media (prefers-reduced-motion: reduce) {
+  .gallery-item.anilar-polaroid,
+  .gallery-item.anilar-polaroid:hover,
+  .gallery-item.anilar-polaroid:active,
+  .gallery-item.anilar-polaroid:focus-visible {
+    transition: none;
+  }
+}

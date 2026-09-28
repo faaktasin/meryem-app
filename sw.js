@@ -3,18 +3,39 @@
  * Network-first strategy: always fetches latest, falls back to cache offline.
  */
 
-var CACHE_NAME = 'meryem-v7';
+var CACHE_NAME = 'meryem-v8';
 var ASSETS = [
   './',
   './index.html',
+  './manifest.json',
+  './css/anilar.css',
+  './css/bears.css',
+  './css/birthday.css',
+  './css/bugun.css',
+  './css/dates.css',
+  './css/gate.css',
   './css/style.css',
+  './css/words.css',
   './js/app.js',
-  './js/data.js',
-  './js/firebase.js',
-  './js/map.js',
+  './js/bears.js',
+  './js/birthday.js',
+  './js/content.js',
   './js/daily.js',
+  './js/data.js',
+  './js/dates.js',
+  './js/drive.js',
+  './js/exif.js',
+  './js/firebase.js',
+  './js/fx.js',
+  './js/gate.js',
+  './js/map.js',
+  './js/time.js',
+  './js/words.js',
   './img/heart.svg',
-  './manifest.json'
+  './img/icon-180.png',
+  './img/icon-192.png',
+  './img/icon-512.png',
+  './img/icon-maskable-512.png'
 ];
 
 self.addEventListener('install', function (event) {

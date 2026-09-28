@@ -10,7 +10,7 @@ var CONTENT = {
     morning: [
       'Günaydın güzelim ☀️',
       'Günaydın hayatım, güne gülümseyerek başla',
-      'Uyandın mı canım? Ayı seni bekliyordu 🐻',
+      'Uyandın mı canım? Ayıcık seni bekliyordu 🐻',
       'Günaydın Meryem, bugün de güzel bir gün olsun',
       'Gözlerini aç, güneş de sensin zaten'
     ],
@@ -98,6 +98,12 @@ var CONTENT = {
   },
 
   words: {
+    /* Small messages on the Sözler tab, in Furkan's voice. */
+    ui: {
+      favEmpty: 'Henüz favori sözün yok. Kalbe dokun, favorilere ekle 💗',   // favourites filter is on but empty
+      jarHint: 'Kavanoza dokun, sana bir not çıksın 💌',                  // under the jar, before/while drawing
+      jarReshuffled: 'Hepsini okudun! Kavanoz yeniden karışıyor 🔄'        // after all reasons were drawn
+    },
     quotes: [
       {
         text: 'Seni düşünmek güzel şey, ümitli şey,\ndünyanın en güzel sesinden\nen güzel şarkıyı dinlemek gibi bir şey.',
@@ -321,7 +327,18 @@ var CONTENT = {
     ]
   },
 
+  dates: {
+    hisToday: 'Bugün benim doğum günüm 🎉 Bir sarılma borcun var!'          // his card, on 26 May
+  },
+
   birthday: {
+    /* The 🎁 tab card once the surprise is unlocked (Furkan speaking to her). */
+    ready: {
+      title: 'Sürprizin hazır! 🎉',
+      firstTime: 'Dokun, doğum günü sürprizin başlasın 🎁',                   // before she has opened it this year
+      again: 'Ne zaman istersen yeniden aç, her seferinde aynı heyecanla 💗'   // after she has opened it
+    },
+    balloonsPrompt: 'Bir balon seç, içinden bir dilek çıksın 🎈',            // above the balloons scene
     locked: {
       title: 'Burada bir sürpriz var 🎁',
       subtitle: "Ama 4 Ekim'e kadar kilitli. Ayıcık nöbette 🐻",
