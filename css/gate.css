@@ -20,15 +20,36 @@
   gap: 24px;
   /* The stage content is deliberately centred (keeps the buttons in comfortable thumb reach on a
      tall phone) rather than stretched edge to edge, which left the top/bottom margins reading as
-     plain empty gradient (2026-09-28 review: "sparse", not lush). A faint tiled heart texture
-     fills that space on every step without moving or resizing anything real — background-image
-     is invisible to window.__app.readable()'s contrast maths (it reads backgroundColor only), so
-     this cannot affect the measured text-contrast checks. Static, not animated, so it needs no
-     reduced-motion guard. */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cpath d='M32 54C10 40 4 24 14 14C20 8 30 10 32 18C34 10 44 8 50 14C60 24 54 40 32 54Z' fill='%23F06A8F' opacity='0.14'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-position: center;
-  background-size: 88px 88px;
+     plain empty gradient (2026-09-28 review: "sparse", not lush). The tiled heart texture that
+     fills that space now lives on its own full-bleed .gate-bg-pattern layer below, not on this
+     centred/padded box — this box sits inside #gate-overlay's own 20px side padding, so a
+     background-image painted here would stop dead ~20px short of each screen edge. */
+}
+
+/* Full-bleed tiled heart texture behind the gate's content, over the overlay's own blush
+   gradient. Deliberately its own element (not .gate-shell, which is inset by #gate-overlay's own
+   side padding — see the comment above): position:absolute + inset:0 on a fixed-position ancestor
+   sizes it to the OVERLAY's padding box, i.e. the full viewport, ignoring that padding entirely —
+   the earlier attempt painted this on .gate-shell instead and read as a hard vertical seam ~20px
+   in from each edge (2026-09-28 review). Two identical layers, the second offset by half a tile
+   in both axes, weave the hearts into staggered/offset rows (a brick pattern) rather than a rigid
+   grid. z-index:-1 keeps it a negative-stack child of #gate-overlay (a stacking context, being
+   position:fixed) — behind the overlay's own gradient background AND behind .gate-shell (a plain,
+   non-positioned in-flow child, always painted above negative-stack siblings) without touching
+   .gate-shell's own stacking. background-image is invisible to window.__app.readable()'s contrast
+   maths (it reads backgroundColor only), so this cannot affect the measured text-contrast checks.
+   Static, not animated, so it needs no reduced-motion guard. */
+.gate-bg-pattern {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cpath transform='translate(4 4) scale(1.5)' fill='%23F06A8F' opacity='0.16' d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cpath transform='translate(4 4) scale(1.5)' fill='%23F06A8F' opacity='0.16' d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E");
+  background-repeat: repeat, repeat;
+  background-size: 44px 44px, 44px 44px;
+  background-position: 0 0, 22px 22px;
 }
 
 /* ── Progress hearts ─────────────────────────────────── */

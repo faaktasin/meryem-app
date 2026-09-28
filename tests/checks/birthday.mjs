@@ -33,6 +33,26 @@ async function waitUntilOverlayOpen(page, timeoutMs = 3000) {
   return opened;
 }
 
+/**
+ * Reads the boxes of the top tier and all 5 candles and reports, per candle, whether its own box
+ * sits horizontally inside the tier's span and its bottom edge lands within 6px (vertically) of
+ * the tier's own top surface — the defect this guards against: candles floating beside the tier
+ * rather than standing on it.
+ */
+async function candleTierFit(page) {
+  const raw = await page.eval(() => {
+    const tier = document.querySelector(".bday-cake-layer--top").getBoundingClientRect();
+    const candles = Array.prototype.map.call(document.querySelectorAll(".bday-candle"), (el) => {
+      const r = el.getBoundingClientRect();
+      return { left: r.left, right: r.right, bottom: r.bottom };
+    });
+    return { tier: { left: tier.left, right: tier.right, top: tier.top }, candles };
+  });
+  const fits = raw.candles.map((c) =>
+    c.left >= raw.tier.left - 0.5 && c.right <= raw.tier.right + 0.5 && Math.abs(c.bottom - raw.tier.top) <= 6);
+  return { ok: raw.candles.length === 5 && fits.every(Boolean), raw, fits };
+}
+
 /** Waits for all 5 candles to be lit (the staged reveal), then taps each in order. */
 async function blowAllCandlesByTap(page) {
   await wait(page, 2200); // 5 * 420ms stagger, plus margin
@@ -110,6 +130,19 @@ export async function run({ page, check }) {
     detail: JSON.stringify({ beforeFlip, afterFlip }),
   }));
 
+  // Freshly unlocked (never opened this year) — the ready card reads CONTENT.birthday.ready's
+  // title and firstTime, not the hardcoded literals it used to carry.
+  const readyFirstTime = await page.eval(() => ({
+    titleText: document.querySelector(".bday-ready-title").textContent,
+    subtitleText: document.querySelector(".bday-ready-subtitle").textContent,
+    expectedTitle: CONTENT.birthday.ready.title,
+    expectedSubtitle: CONTENT.birthday.ready.firstTime,
+  }));
+  await check("birthday: the unlocked ready card (not opened yet this year) reads CONTENT.birthday.ready.title/.firstTime", () => ({
+    ok: readyFirstTime.titleText === readyFirstTime.expectedTitle && readyFirstTime.subtitleText === readyFirstTime.expectedSubtitle,
+    detail: JSON.stringify(readyFirstTime),
+  }));
+
   // 3. Gate already played this year -> auto-opens once; the next open (same year) does not.
   await openApp(page, { now: "2026-10-04T00:01:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
   const opened1 = await waitUntilOverlayOpen(page);
@@ -124,6 +157,16 @@ export async function run({ page, check }) {
   await check("birthday: reopening the same year does not auto-open again", () => ({
     ok: opened2 === false,
     detail: String(opened2),
+  }));
+
+  // Already opened this year — the ready card's subtitle switches to CONTENT.birthday.ready.again.
+  const readyAgain = await page.eval(() => ({
+    subtitleText: document.querySelector(".bday-ready-subtitle").textContent,
+    expectedSubtitle: CONTENT.birthday.ready.again,
+  }));
+  await check("birthday: the unlocked ready card (already opened this year) reads CONTENT.birthday.ready.again", () => ({
+    ok: readyAgain.subtitleText === readyAgain.expectedSubtitle,
+    detail: JSON.stringify(readyAgain),
   }));
 
   // 4. A due gate defers the birthday auto-open entirely (the gate owns opening it). The real
@@ -229,7 +272,17 @@ export async function run({ page, check }) {
     ok: candleBox.width >= 32,
     detail: String(candleBox.width),
   }));
+  const fitLit = await candleTierFit(page);
+  await check("birthday: all 5 lit candles stand on the top tier's surface, inside its width", () => ({
+    ok: fitLit.ok,
+    detail: JSON.stringify(fitLit.raw),
+  }));
   await blowAllCandlesByTap(page);
+  const fitBlownOut = await candleTierFit(page);
+  await check("birthday: all 5 candles still stand on the top tier's surface after blowing them out", () => ({
+    ok: fitBlownOut.ok,
+    detail: JSON.stringify(fitBlownOut.raw),
+  }));
   const denyResult = await page.eval(() => ({
     afterBlowVisible: document.getElementById("bday-after-blow").hidden === false,
     confettiCanvas: !!document.querySelector(".fx-confetti-canvas"),
@@ -263,6 +316,14 @@ export async function run({ page, check }) {
   // 8. Balloons -> gift/letter -> slideshow-skipped -> end, continuing from the deny run above.
   await page.tap("#bday-scene1-continue");
   await wait(page, 150);
+  const balloonsPromptResult = await page.eval(() => ({
+    promptText: document.querySelector(".bday-scene--balloons .bday-scene-subtitle").textContent,
+    expectedPrompt: CONTENT.birthday.balloonsPrompt,
+  }));
+  await check("birthday: the balloons scene prompt reads CONTENT.birthday.balloonsPrompt", () => ({
+    ok: balloonsPromptResult.promptText === balloonsPromptResult.expectedPrompt,
+    detail: JSON.stringify(balloonsPromptResult),
+  }));
   for (let i = 0; i < 8; i++) {
     await page.tap(`.bday-balloon[data-balloon="${i}"]`);
     await wait(page, 40);
@@ -527,6 +588,27 @@ export const mutants = [
     find: "width: 34px;",
     replace: "width: 26px;",
     expect: "birthday: candle tap targets are at least 32px wide (up from the original 26px)",
+  },
+  {
+    id: "birthday-candle-top-tier-fit",
+    file: "css/birthday.css",
+    find: "width: 226px;",
+    replace: "width: 140px;",
+    expect: "birthday: all 5 lit candles stand on the top tier's surface, inside its width",
+  },
+  {
+    id: "birthday-ready-card-content-literal",
+    file: "js/birthday.js",
+    find: "var readySubtitle = (seen ? ready.again : ready.firstTime) || (seen",
+    replace: "var readySubtitle = (seen",
+    expect: "birthday: the unlocked ready card (not opened yet this year) reads CONTENT.birthday.ready.title/.firstTime",
+  },
+  {
+    id: "birthday-balloons-prompt-content-literal",
+    file: "js/birthday.js",
+    find: "'<p class=\"bday-scene-subtitle\">' + bdayEsc(balloonsPrompt) + '</p>' +",
+    replace: "'<p class=\"bday-scene-subtitle\">Birini seç, bir dilek çıksın 🎈</p>' +",
+    expect: "birthday: the balloons scene prompt reads CONTENT.birthday.balloonsPrompt",
   },
   {
     id: "birthday-overlay-inert-appcontent",

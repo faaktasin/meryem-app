@@ -105,8 +105,8 @@ function hugSVG(opts) {
   // then both inner arms on top of both bodies, each reaching across to rest on the OTHER bear's
   // shoulder/back at chest height — clear of both faces, which sit well above (see _bearHugArm).
   // The heart floats last, over the gap where the tilted heads meet.
-  svg += _bearHugFigure(id, 85, 8);
-  svg += _bearHugFigure(id, 175, -8);
+  svg += _bearHugFigure(id, 85, 8, 1);
+  svg += _bearHugFigure(id, 175, -8, -1);
   svg += _bearHugArm(id, 85, 8, 'left');
   svg += _bearHugArm(id, 175, -8, 'right');
 
@@ -243,9 +243,26 @@ function _bearMouth(kind) {
   return '<path d="M90 116 Q100 122 110 116" fill="none" stroke="var(--bear-stroke)" stroke-width="2.8" stroke-linecap="round"/>';
 }
 
-function _bearHugFigure(id, cx, tilt) {
+/**
+ * How far (local units) each figure's whole head — ears, head circle, muzzle, blush, eyes, mouth,
+ * nose, all drawn as one sub-group below — is pushed away from the other bear, on top of the 8°
+ * tilt that already leans it inward. Real people cheek-hugging turn their heads sideways to meet,
+ * which shifts the head off the body's own centre line exactly like this. Without it the two
+ * r=58 head circles (centres 90 apart on cx alone, pulled to ~83 apart by the inward tilt) overlap
+ * by ~28% of a head's width — the right bear's head burying half of the left bear's face
+ * (2026-09-28 review). At this offset they land ~107 apart: heads still touch near the cheek, eyes
+ * clear of the other head's circle by a comfortable margin, and the near arm (drawn separately by
+ * _bearHugArm, unaffected by this — it stays anchored to the BODY, not the head) still lands on
+ * the far shoulder inside tests/checks/gate.mjs's existing bounds. Tuned and verified against both
+ * checks by simulating this exact translate+rotate math — not eyeballed.
+ */
+var HUG_HEAD_OUTSET = 12;
+
+function _bearHugFigure(id, cx, tilt, dir) {
+  var headDx = -dir * HUG_HEAD_OUTSET;
   var out = '<g transform="translate(' + cx + ',96) rotate(' + tilt + ')">';
   out += '<ellipse cx="0" cy="46" rx="46" ry="38" fill="url(#' + id + '-fur)" stroke="var(--bear-stroke)" stroke-width="3"/>';
+  out += '<g transform="translate(' + headDx + ',0)">';
   out += '<circle cx="-32" cy="-38" r="22" fill="url(#' + id + '-fur)" stroke="var(--bear-stroke)" stroke-width="3"/>';
   out += '<circle cx="-32" cy="-38" r="10" fill="var(--bear-light)"/>';
   out += '<circle cx="32" cy="-38" r="22" fill="url(#' + id + '-fur)" stroke="var(--bear-stroke)" stroke-width="3"/>';
@@ -259,31 +276,40 @@ function _bearHugFigure(id, cx, tilt) {
   out += '<path d="M-10 -4 Q0 4 10 -4" fill="none" stroke="var(--bear-stroke)" stroke-width="2.6" stroke-linecap="round"/>';
   out += '<ellipse cx="0" cy="-6" rx="5.5" ry="4" fill="var(--bear-stroke)"/>';
   out += '</g>';
+  out += '</g>';
   return out;
 }
 
 /**
- * One figure's inner arm, reaching from its own shoulder across to rest on the OTHER bear's
- * shoulder/back. Drawn as its own top-level group (never nested inside _bearHugFigure's own <g>)
- * so BOTH arms can be layered on top of BOTH bodies. sx/sy/ex/ey are LOCAL to this figure's own
- * transform (translate(cx,96) rotate(tilt)), so "does the hand clear the OTHER figure's face"
- * cannot be read off these numbers directly — the other head lives in a different rotated frame.
- * Checked by actually transforming both figures' geometry into one shared (world) frame — same
- * translate+rotate math the two <g>s carry — rather than eyeballing local y:
- *   own shoulder (sx,sy)=(30,36):  67.1 units from this figure's OWN head centre (local, since a
- *     rotation preserves distance) — clear of the r=58 head circle by ~9.
- *   hand (ex,ey)=(68,40):          93.4 units from its OWN head — clear; and ~77.0 units (world)
- *     from the FAR figure's head centre — clear of that r=58 head circle by ~19, while landing
- *     inside the far figure's own body ellipse footprint, i.e. on its back/shoulder, not floating
- *     past it. The previous ey=70 put that same far-head distance at ~106.6 — well outside the
- *     body ellipse, reading as two tubes crossing at belly/hip height (2026-09-28 review). ey=-6
- *     (the older bug) put it at ~33 — inside the head circle, grazing the chin. Guarded by
- *     tests/checks/gate.mjs's hug geometry check (own/far-head distance bounds), not just a sign.
+ * One figure's inner arm, reaching from its own shoulder across and UP to rest on the OTHER
+ * bear's shoulder/back. Drawn as its own top-level group (never nested inside _bearHugFigure's
+ * own <g>, and never inside its head sub-group either — the arm stays anchored to the BODY,
+ * unaffected by HUG_HEAD_OUTSET) so BOTH arms can be layered on top of BOTH bodies. sx/sy is
+ * noticeably LOWER than ex/ey (own shoulder near belly height, hand near the far figure's actual
+ * shoulder) so the two dir-mirrored arms draw as a real diagonal cross behind both backs, not the
+ * old near-flat, near-identical bar the two used to trace right on top of each other, reading as
+ * one short bar across both bellies (2026-09-28 review) — sy=36/ey=40 was only a 4-unit rise.
+ * sx/sy/ex/ey are LOCAL to this figure's own transform (translate(cx,96) rotate(tilt)), so "does
+ * the hand clear the OTHER figure's face" cannot be read off these numbers directly — the other
+ * head lives in a different rotated frame, offset from this figure's own by both the tilt AND
+ * HUG_HEAD_OUTSET. Checked by actually transforming both figures' geometry into one shared
+ * (world) frame — same translate+rotate math the two <g>s carry, own head-outset included —
+ * rather than eyeballing local y:
+ *   own shoulder (sx,sy)=(30,48) and hand (ex,ey)=(62,28): both clear of this figure's OWN head
+ *     circle (local distance, rotation-preserved) with comfortable margin.
+ *   hand (ex,ey)=(62,28): lands inside the FAR figure's head-circle bounds with margin on both
+ *     sides — clear of the face, and still inside the far figure's own body-ellipse footprint,
+ *     i.e. on its back/shoulder, not floating past it. ey=70 puts that far-head distance well
+ *     outside the body ellipse, reading as a tube crossing at belly/hip height (the older
+ *     belly-overshoot bug). ey=-6 puts it inside the head circle, grazing the chin (the older
+ *     face-height bug). Guarded by tests/checks/gate.mjs's hug geometry check (own/far-head
+ *     distance bounds), not just a sign — tuned alongside HUG_HEAD_OUTSET by simulating this same
+ *     transform math, not eyeballed.
  */
 function _bearHugArm(id, cx, tilt, side) {
   var dir = side === "left" ? 1 : -1;
-  var sx = dir * 30, sy = 36;
-  var ex = dir * 68, ey = 40;
+  var sx = dir * 30, sy = 48;
+  var ex = dir * 62, ey = 28;
   var out = '<g transform="translate(' + cx + ',96) rotate(' + tilt + ')">';
   out += '<line x1="' + sx + '" y1="' + sy + '" x2="' + ex + '" y2="' + ey + '" stroke="var(--bear-stroke)" stroke-width="18" stroke-linecap="round"/>';
   out += '<line x1="' + sx + '" y1="' + sy + '" x2="' + ex + '" y2="' + ey + '" stroke="url(#' + id + '-fur)" stroke-width="14" stroke-linecap="round"/>';

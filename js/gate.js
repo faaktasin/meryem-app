@@ -149,6 +149,7 @@
     if (appContent) appContent.setAttribute('inert', '');
 
     overlay.innerHTML =
+      '<div class="gate-bg-pattern" aria-hidden="true"></div>' +
       '<div class="gate-shell">' +
         '<div class="gate-progress" id="gate-progress" aria-hidden="true"></div>' +
         '<div class="gate-stage" id="gate-stage"></div>' +

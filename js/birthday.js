@@ -188,14 +188,20 @@
 
   function renderUnlocked(root) {
     var seen = storageGet('meryem-birthday-seen-year') === String(birthdayYear());
+    /* CONTENT is the single source for this romantic copy; a fallback default covers the case
+       CONTENT.birthday.ready is somehow missing (CONTENT is a read-only global this package
+       never edits — the fallback is the only safety net if its shape ever changes). */
+    var ready = (CONTENT.birthday && CONTENT.birthday.ready) || {};
+    var readyTitle = ready.title || 'Sürprizin hazır! 🎉';
+    var readySubtitle = (seen ? ready.again : ready.firstTime) || (seen
+      ? 'İstersen tekrar aç, seninle her seferinde konuşmak isterim 💗'
+      : 'Dokun ve doğum günü sürprizini gör');
     root.innerHTML =
       '<div class="bday-view bday-view--unlocked">' +
         '<div class="bday-ready-card">' +
           '<div class="bday-ready-bear">' + bearSVG({ mood: 'love', hat: true, heart: true, arms: 'up', size: 120 }) + '</div>' +
-          '<h2 class="bday-ready-title">Sürprizin hazır! 🎉</h2>' +
-          '<p class="bday-ready-subtitle">' + (seen
-            ? 'İstersen tekrar aç, seninle her seferinde konuşmak isterim 💗'
-            : 'Dokun ve doğum günü sürprizini gör') + '</p>' +
+          '<h2 class="bday-ready-title">' + bdayEsc(readyTitle) + '</h2>' +
+          '<p class="bday-ready-subtitle">' + bdayEsc(readySubtitle) + '</p>' +
           '<button type="button" class="btn btn-primary bday-open-btn" id="bday-open-btn">🎁 Sürprizi Aç</button>' +
         '</div>' +
       '</div>';
@@ -561,6 +567,7 @@
 
   function renderSceneBalloons(stage) {
     var wishes = CONTENT.birthday.balloons;
+    var balloonsPrompt = (CONTENT.birthday && CONTENT.birthday.balloonsPrompt) || 'Birini seç, bir dilek çıksın 🎈';
     var items = wishes.map(function (w, i) {
       return '<div class="bday-balloon-slot" data-slot="' + i + '">' +
         '<button type="button" class="bday-balloon" data-balloon="' + i +
@@ -573,7 +580,7 @@
 
     stage.innerHTML =
       '<div class="bday-scene bday-scene--balloons">' +
-        '<p class="bday-scene-subtitle">Birini seç, bir dilek çıksın 🎈</p>' +
+        '<p class="bday-scene-subtitle">' + bdayEsc(balloonsPrompt) + '</p>' +
         '<div class="bday-balloon-grid" id="bday-balloon-grid">' + items + '</div>' +
         '<p class="bday-balloon-counter" id="bday-balloon-counter">0 / ' + wishes.length + ' patlatıldı</p>' +
         '<button type="button" class="btn btn-primary bday-continue-btn" id="bday-scene2-continue">Devam 💕</button>' +

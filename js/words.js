@@ -17,16 +17,25 @@
   var JAR_KEY = 'meryem-jar-drawn';
   var LETTERS_KEY = 'meryem-letters-opened';
 
-  /* Message-like defaults CONTENT does not carry — listed in the delivery report. */
+  /* Fallback text, used only if CONTENT.words.ui is ever missing a key — CONTENT.words.ui
+     (favEmpty / jarHint / jarReshuffled) is the source of truth these three shadow. */
   var DEFAULT_FAV_EMPTY = 'Henüz favori sözün yok. Kalbe dokun, favorilere ekle 💗';
+  var DEFAULT_JAR_HINT = 'Kavanoza dokun, sana bir not çıksın 💌';
   var DEFAULT_JAR_RESHUFFLED = 'Hepsini okudun! Kavanoz yeniden karışıyor 🔄';
 
-  /* A cute jar illustration — our own inline SVG, no external art. */
+  /* A cute jar illustration — our own inline SVG, no external art. Draw order: cap, lid, a ribbon
+     bow sitting on the cap, the glass body, five folded love-notes tucked inside (fuller than a
+     bare handful), then the heart popping out of the neck on top of everything. */
   var JAR_SVG =
     '<svg class="wz-jar-svg" viewBox="0 0 140 160" width="118" height="135" ' +
     'xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
     '<rect x="46" y="6" width="48" height="12" rx="5" fill="var(--berry)" stroke="var(--bear-stroke)" stroke-width="2"/>' +
     '<rect x="38" y="16" width="64" height="16" rx="6" fill="var(--rose-strong)" stroke="var(--bear-stroke)" stroke-width="2"/>' +
+    '<path d="M70 12 L55 3 Q50 1 53 7 L63 14 Z" fill="var(--peach)" stroke="var(--bear-stroke)" ' +
+    'stroke-width="1.6" stroke-linejoin="round"/>' +
+    '<path d="M70 12 L85 3 Q90 1 87 7 L77 14 Z" fill="var(--peach)" stroke="var(--bear-stroke)" ' +
+    'stroke-width="1.6" stroke-linejoin="round"/>' +
+    '<circle cx="70" cy="12" r="4.5" fill="var(--rose)" stroke="var(--bear-stroke)" stroke-width="1.6"/>' +
     '<path d="M32 32 L28 140 Q28 152 40 152 L100 152 Q112 152 112 140 L108 32 Z" ' +
     'fill="rgba(255,255,255,0.55)" stroke="var(--bear-stroke)" stroke-width="3"/>' +
     '<rect x="52" y="72" width="20" height="26" rx="3" fill="var(--peach)" stroke="var(--bear-stroke)" ' +
@@ -35,6 +44,10 @@
     'stroke-width="1.5" transform="rotate(10 76 105)"/>' +
     '<rect x="46" y="106" width="20" height="26" rx="3" fill="var(--rose-100)" stroke="var(--bear-stroke)" ' +
     'stroke-width="1.5" transform="rotate(-4 56 119)"/>' +
+    '<rect x="32" y="98" width="18" height="24" rx="3" fill="var(--rose)" stroke="var(--bear-stroke)" ' +
+    'stroke-width="1.5" transform="rotate(8 41 110)"/>' +
+    '<rect x="90" y="110" width="18" height="24" rx="3" fill="var(--blush)" stroke="var(--bear-stroke)" ' +
+    'stroke-width="1.5" transform="rotate(-9 99 122)"/>' +
     '<path d="M70 44 C64 36 52 40 52 50 C52 60 70 72 70 72 C70 72 88 60 88 50 C88 40 76 36 70 44 Z" ' +
     'fill="var(--rose)" stroke="var(--berry)" stroke-width="2"/>' +
     '</svg>';
@@ -135,7 +148,7 @@
       cardEl.hidden = true;
       if (controls) controls.hidden = true;
       emptyEl.hidden = false;
-      emptyEl.textContent = DEFAULT_FAV_EMPTY;
+      emptyEl.textContent = (CONTENT.words.ui && CONTENT.words.ui.favEmpty) || DEFAULT_FAV_EMPTY;
       return;
     }
     cardEl.hidden = false;
@@ -221,8 +234,10 @@
     document.getElementById('wz-next-btn').addEventListener('click', nextCard);
     document.getElementById('wz-prev-btn').addEventListener('click', prevCard);
     document.getElementById('wz-fav-btn').addEventListener('click', toggleFavorite);
-    document.getElementById('wz-fav-toggle').addEventListener('change', function (e) {
-      setFavOnly(e.target.checked);
+    document.getElementById('wz-fav-toggle').addEventListener('click', function () {
+      var next = !favOnly;
+      this.setAttribute('aria-pressed', next ? 'true' : 'false');
+      setFavOnly(next);
     });
   }
 
@@ -244,7 +259,9 @@
   function showJarResult(index, count, total, reshuffled) {
     var reshuffleEl = document.getElementById('wz-jar-reshuffle');
     reshuffleEl.hidden = !reshuffled;
-    reshuffleEl.textContent = reshuffled ? DEFAULT_JAR_RESHUFFLED : '';
+    reshuffleEl.textContent = reshuffled
+      ? ((CONTENT.words.ui && CONTENT.words.ui.jarReshuffled) || DEFAULT_JAR_RESHUFFLED)
+      : '';
 
     /* Decorative flourish only — never runs under reduced motion (this guard, not the global
        CSS collapse, is what a mutation test can prove: the element must not exist at all). */
@@ -450,10 +467,12 @@
       '<section class="wz-section wz-quotes card">' +
         '<div class="wz-section-head">' +
           '<p class="wz-section-title">Güzel Sözler</p>' +
-          '<label class="wz-fav-filter">' +
-            '<input type="checkbox" id="wz-fav-toggle" class="wz-fav-toggle-input">' +
+          '<button type="button" class="wz-fav-toggle" id="wz-fav-toggle" aria-pressed="false">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">' +
+            '<path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>' +
+            '</svg>' +
             '<span>Favorilerim</span>' +
-          '</label>' +
+          '</button>' +
         '</div>' +
         '<div class="wz-deck" id="wz-deck">' +
           '<article class="wz-card" id="wz-card">' +
@@ -481,8 +500,11 @@
       '<section class="wz-section wz-jar card">' +
         '<p class="wz-section-title">Seni Sevme Nedenlerim</p>' +
         '<div class="wz-jar-wrap" id="wz-jar-wrap">' +
-          '<span class="wz-jar-bear" data-bear data-bear-mood="love" data-bear-arms="wide" data-bear-heart="true" data-bear-size="56" aria-hidden="true"></span>' +
-          '<button type="button" class="wz-jar-btn" id="wz-jar-btn" aria-label="Kavanozdan bir neden çek">' + JAR_SVG + '</button>' +
+          '<div class="wz-jar-group" id="wz-jar-group">' +
+            '<span class="wz-jar-bear" data-bear data-bear-mood="love" data-bear-arms="wide" data-bear-heart="true" data-bear-size="50" aria-hidden="true"></span>' +
+            '<button type="button" class="wz-jar-btn" id="wz-jar-btn" aria-label="Kavanozdan bir neden çek">' + JAR_SVG + '</button>' +
+          '</div>' +
+          '<p class="wz-jar-hint" id="wz-jar-hint"></p>' +
           '<p class="wz-jar-counter" id="wz-jar-counter"></p>' +
           '<p class="wz-jar-reshuffle" id="wz-jar-reshuffle" hidden></p>' +
           '<div class="wz-jar-note" id="wz-jar-note" hidden>' +
@@ -519,6 +541,8 @@
     renderDeck();
 
     renderLettersGrid();
+
+    document.getElementById('wz-jar-hint').textContent = (CONTENT.words.ui && CONTENT.words.ui.jarHint) || DEFAULT_JAR_HINT;
 
     var initialDrawn = readList(JAR_KEY);
     document.getElementById('wz-jar-counter').textContent = initialDrawn.length + ' / ' + CONTENT.words.reasons.length;

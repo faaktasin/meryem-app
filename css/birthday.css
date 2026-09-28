@@ -265,7 +265,14 @@
 
 .bday-cake {
   position: relative;
-  width: 240px;
+  /* Widened from 240px: the top tier has to be wide enough to hold five real, non-overlapping
+     34px candle boxes with room to spare (below) — overlapping candle boxes to squeeze them
+     into a narrower tier was tried and rejected, because two adjacent 34px boxes sharing pixels
+     means a tap aimed at one candle's own centre can land on its overlapping neighbour instead
+     (whichever paints on top wins the hit-test) — proven by blowAllCandlesByTap() then leaving
+     candles lit that were "tapped". Every tap must land on the candle it targets, so the tiers
+     grew instead. */
+  width: 300px;
   margin: 20px auto 0;
   display: flex;
   flex-direction: column;
@@ -274,10 +281,10 @@
 
 .bday-cake-candles {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   justify-content: center;
   margin-bottom: -6px;
-  z-index: 2;
+  z-index: 5;
 }
 
 .bday-candle {
@@ -289,8 +296,9 @@
   flex-direction: column;
   align-items: center;
   /* Widened from 26px — the always-available tap-to-blow fallback is the app's primary birthday
-     interaction, and 26px sat well below comfortable touch-target sizing. Kept narrow enough
-     (5 × 34px + 4 × 10px gap = 210px) that the row still sits inside the 240px cake below it. */
+     interaction, and 26px sat well below comfortable touch-target sizing. 5 × 34px + 4 × 8px gap
+     = 202px, 12px inside the top tier's 226px width (below) on each side — real, separate boxes,
+     not overlapping ones (see .bday-cake's own comment for why that matters). */
   width: 34px;
 }
 
@@ -332,11 +340,20 @@
 }
 
 .bday-cake-layer--top {
-  width: 55%;
+  /* A fixed px width, not a %, so the candle-fit math above (226px) is exact rather than
+     riding on whatever the cake's own width happens to be. */
+  width: 226px;
   height: 46px;
-  background: linear-gradient(180deg, #FFF1E7 0%, #FFD8C2 100%);
+  background:
+    radial-gradient(circle at 18% 65%, var(--rose) 0 2.6px, transparent 2.8px),
+    radial-gradient(circle at 38% 38%, var(--lavender) 0 2.6px, transparent 2.8px),
+    radial-gradient(circle at 58% 68%, var(--rose-strong) 0 2.6px, transparent 2.8px),
+    radial-gradient(circle at 78% 40%, var(--rose-100) 0 2.6px, transparent 2.8px),
+    radial-gradient(circle at 92% 64%, var(--rose) 0 2.6px, transparent 2.8px),
+    linear-gradient(180deg, #FFF1E7 0%, #FFD8C2 100%);
   border-radius: 6px 6px 0 0;
   border-top: 2px solid var(--berry);
+  z-index: 3;
 }
 
 .bday-cake-layer--top::before {
@@ -351,10 +368,43 @@
   border: 2px solid var(--berry);
 }
 
+.bday-cake-layer--top::after {
+  /* Frosting drip, spilling from the top tier's bottom edge onto the mid tier below it. */
+  content: '';
+  position: absolute;
+  left: -3%;
+  right: -3%;
+  bottom: -14px;
+  height: 20px;
+  background: var(--paper);
+  clip-path: polygon(0% 0%, 100% 0%, 100% 30%, 88% 85%, 76% 35%, 64% 90%, 52% 30%, 40% 95%, 28% 30%, 16% 88%, 4% 30%, 0% 55%);
+}
+
 .bday-cake-layer--mid {
-  width: 80%;
+  /* Fixed px too (260px, between the 226px top tier and the 300px base) — the same reasoning
+     as the top tier's own width above. */
+  width: 260px;
   height: 40px;
-  background: linear-gradient(180deg, var(--rose) 0%, var(--rose-strong) 100%);
+  background:
+    radial-gradient(circle at 14% 60%, var(--paper) 0 2.4px, transparent 2.6px),
+    radial-gradient(circle at 32% 28%, var(--lavender) 0 2.4px, transparent 2.6px),
+    radial-gradient(circle at 50% 62%, var(--peach) 0 2.4px, transparent 2.6px),
+    radial-gradient(circle at 68% 30%, var(--paper) 0 2.4px, transparent 2.6px),
+    radial-gradient(circle at 86% 60%, var(--lavender) 0 2.4px, transparent 2.6px),
+    linear-gradient(180deg, var(--rose) 0%, var(--rose-strong) 100%);
+  z-index: 2;
+}
+
+.bday-cake-layer--mid::before {
+  /* Frosting drip, onto the base tier below it. */
+  content: '';
+  position: absolute;
+  left: -2%;
+  right: -2%;
+  bottom: -13px;
+  height: 18px;
+  background: var(--paper);
+  clip-path: polygon(0% 0%, 100% 0%, 100% 30%, 85% 85%, 70% 35%, 55% 90%, 40% 30%, 25% 88%, 10% 30%, 0% 55%);
 }
 
 .bday-cake-layer--mid::after {
@@ -369,17 +419,67 @@
 .bday-cake-layer--base {
   width: 100%;
   height: 44px;
-  background: linear-gradient(180deg, var(--lavender) 0%, #CBB8F2 100%);
+  background:
+    radial-gradient(circle at 10% 55%, var(--rose) 0 2.6px, transparent 2.8px),
+    radial-gradient(circle at 26% 24%, var(--paper) 0 2.6px, transparent 2.8px),
+    radial-gradient(circle at 44% 58%, var(--peach) 0 2.6px, transparent 2.8px),
+    radial-gradient(circle at 62% 26%, var(--rose-100) 0 2.6px, transparent 2.8px),
+    radial-gradient(circle at 80% 56%, var(--paper) 0 2.6px, transparent 2.8px),
+    radial-gradient(circle at 94% 28%, var(--rose) 0 2.6px, transparent 2.8px),
+    linear-gradient(180deg, var(--lavender) 0%, #CBB8F2 100%);
   border-radius: 0 0 8px 8px;
+  z-index: 1;
+}
+
+.bday-cake-layer--base::before {
+  /* Frosting drip, onto the plate below it. */
+  content: '';
+  position: absolute;
+  left: -1%;
+  right: -1%;
+  bottom: -10px;
+  height: 14px;
+  background: var(--paper);
+  clip-path: polygon(0% 0%, 100% 0%, 100% 25%, 83% 80%, 66% 30%, 50% 85%, 34% 30%, 17% 78%, 0% 30%);
+}
+
+.bday-cake-layer--base::after {
+  /* A tiny glossy cherry/pearl, tucked onto the base tier's face. */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--blush), var(--rose-strong) 55%, var(--berry) 100%);
+  box-shadow: 0 2px 4px rgba(158, 47, 91, 0.35);
+  transform: translateX(-50%);
 }
 
 .bday-cake-plate {
-  width: 118%;
-  height: 10px;
-  background: var(--ink-soft);
-  opacity: 0.25;
+  position: relative;
+  width: 112%;
+  height: 12px;
+  background: linear-gradient(180deg, var(--paper) 0%, var(--rose-100) 55%, var(--ink-soft) 100%);
+  opacity: 0.9;
   border-radius: 50%;
   margin-top: -4px;
+  box-shadow: 0 6px 14px var(--shadow-soft);
+}
+
+.bday-cake-plate::after {
+  /* A short pedestal foot, so the plate reads as a stand rather than a floating disc. */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 20%;
+  height: 16px;
+  background: linear-gradient(180deg, var(--rose-100), var(--paper));
+  clip-path: polygon(22% 0%, 78% 0%, 100% 100%, 0% 100%);
+  transform: translateX(-50%);
+  box-shadow: 0 4px 10px var(--shadow-soft);
 }
 
 .bday-wish-text {

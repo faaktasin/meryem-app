@@ -66,6 +66,28 @@ export async function run({ page, check }) {
     return { ok: overflow === "hidden", detail: overflow };
   });
 
+  // 2b. The tiled-heart background layer reads full-bleed (edge to edge, ignoring #gate-overlay's
+  //     own side padding) with a small tile — read back from the live computed style/geometry
+  //     (Constitution 2.6), not asserted from the source. A prior version painted the pattern on
+  //     the padded, centred .gate-shell instead, which cut it off in a hard line ~20px in from
+  //     each screen edge (2026-09-28 review).
+  const bgPattern = await page.eval(() => {
+    const el = document.querySelector("#gate-overlay .gate-bg-pattern");
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    const tiles = cs.backgroundSize.split(",").map((layer) => layer.trim().split(/\s+/).map(parseFloat));
+    return {
+      left: r.left, right: r.right, vw: document.documentElement.clientWidth,
+      layerCount: tiles.length, maxTilePx: Math.max.apply(null, tiles.flat()),
+    };
+  });
+  await check("gate: the heart-pattern layer is full-bleed with a small tile", () => ({
+    ok: !!bgPattern && bgPattern.left === 0 && bgPattern.right === bgPattern.vw
+      && bgPattern.layerCount >= 2 && bgPattern.maxTilePx > 0 && bgPattern.maxTilePx <= 48,
+    detail: JSON.stringify(bgPattern),
+  }));
+
   // 3. Opener question is showing — drive 25 real No taps, sampling growth/shrink/label/mood,
   //    and (from the 4th press) the no-overlap / stays-in-viewport guarantee.
   const yesSizes = [];
@@ -365,8 +387,23 @@ export async function run({ page, check }) {
         handClearOfFarRatio: dist(end, heads[farIdx].center) / heads[farIdx].r,
       });
     }
+    // Eyes: each _bearEyeArc() draws a <path stroke-width="3.4">, the only paths at that width in
+    // the whole hug SVG (the mouths are 2.6, the heart 2) — 4 total, 2 per bear. Own/far is decided
+    // the same way as for the arms: whichever head centre a given eye sits closer to (world frame).
+    const eyePaths = Array.prototype.slice.call(svg.querySelectorAll('path[stroke-width="3.4"]'));
+    const eyeFarClearRatios = eyePaths.map((p) => {
+      const bb = p.getBBox();
+      const c = toUser(p, bb.x + bb.width / 2, bb.y + bb.height / 2);
+      const farIdx = dist(c, heads[0].center) < dist(c, heads[1].center) ? 1 : 0;
+      return dist(c, heads[farIdx].center) / heads[farIdx].r;
+    });
+    // How much the two head circles overlap, as a fraction of their combined width (2r each, equal
+    // radii here) — 0 is exactly tangent (touching, no overlap), 1 would be fully coincident.
+    const headOverlapRatio = heads.length === 2
+      ? Math.max(0, heads[0].r + heads[1].r - dist(heads[0].center, heads[1].center)) / (heads[0].r + heads[1].r)
+      : null;
     document.body.removeChild(holder);
-    return { headCount: heads.length, lineCount: lines.length, arms };
+    return { headCount: heads.length, lineCount: lines.length, arms, eyeCount: eyePaths.length, eyeFarClearRatios, headOverlapRatio };
   });
   // Ratios of distance-to-centre over the (measured) head radius: 1.0 is exactly on the rim.
   // MIN clears the face outright; MAX is where the old ey=70 bug landed (~1.84, belly/hip) — the
@@ -377,6 +414,16 @@ export async function run({ page, check }) {
       && hugGeom.arms.every((a) => a.startClearOfOwnRatio > MIN_RATIO && a.handClearOfOwnRatio > MIN_RATIO
         && a.handClearOfFarRatio > MIN_RATIO && a.handClearOfFarRatio < MAX_RATIO),
     detail: JSON.stringify(hugGeom),
+  }));
+
+  // Heads may touch at the cheek (the old bug buried the right bear's head over about half of the
+  // left bear's face, ~28% of a head's width) but each bear's eyes must clear the OTHER bear's
+  // head circle outright — read back the same way as the arms, not eyeballed.
+  const HEAD_OVERLAP_MAX = 0.12, EYE_CLEAR_MIN_RATIO = 1.1;
+  await check("gate: hugSVG's heads clear each other's face, touching at most lightly at the cheek", () => ({
+    ok: hugGeom.headOverlapRatio !== null && hugGeom.headOverlapRatio <= HEAD_OVERLAP_MAX
+      && hugGeom.eyeCount === 4 && hugGeom.eyeFarClearRatios.every((r) => r > EYE_CLEAR_MIN_RATIO),
+    detail: JSON.stringify({ headOverlapRatio: hugGeom.headOverlapRatio, eyeCount: hugGeom.eyeCount, eyeFarClearRatios: hugGeom.eyeFarClearRatios }),
   }));
 
   // 10. Contrast (window.__app.readable(), installed by harness.mjs on every goto)
@@ -431,6 +478,32 @@ export const mutants = [
     expect: "gate: completing the gate stores the flag and un-hides the replay button",
   },
   {
+    // Reintroduces the original bug: the pattern back on the padded, centred .gate-shell instead
+    // of its own full-bleed layer — cut off ~20px in from each edge, not left:0.
+    id: "gate-bg-pattern-inset",
+    file: "css/gate.css",
+    find: "  position: absolute;\n  inset: 0;\n  z-index: -1;",
+    replace: "  position: static;\n  z-index: -1;",
+    expect: "gate: the heart-pattern layer is full-bleed with a small tile",
+  },
+  {
+    // Reintroduces the original bug's other half: big (~120px-class) hearts instead of a small tile.
+    id: "gate-bg-pattern-large-tile",
+    file: "css/gate.css",
+    find: "background-size: 44px 44px, 44px 44px;",
+    replace: "background-size: 96px 96px, 96px 96px;",
+    expect: "gate: the heart-pattern layer is full-bleed with a small tile",
+  },
+  {
+    // Reintroduces the original bug: no head-outset, so the two r=58 head circles overlap by ~28%
+    // of a head's width — the right bear's head burying half of the left bear's face.
+    id: "gate-hug-head-overlap",
+    file: "js/bears.js",
+    find: "var HUG_HEAD_OUTSET = 12;",
+    replace: "var HUG_HEAD_OUTSET = 0;",
+    expect: "gate: hugSVG's heads clear each other's face, touching at most lightly at the cheek",
+  },
+  {
     id: "gate-meter-monotonic",
     file: "js/gate.js",
     find: "if (v <= _state.meterValue) return; /* only goes up — a lower attempt is silently ignored */",
@@ -442,8 +515,8 @@ export const mutants = [
     // circle's own radius from the far bear's head centre).
     id: "gate-hug-arm-face-height",
     file: "js/bears.js",
-    find: "var ex = dir * 68, ey = 40;",
-    replace: "var ex = dir * 68, ey = -6;",
+    find: "var ex = dir * 62, ey = 28;",
+    replace: "var ex = dir * 62, ey = -6;",
     expect: "gate: hugSVG's arms rest at shoulder height, clear of both faces",
   },
   {
@@ -452,8 +525,8 @@ export const mutants = [
     // catches this; the old y1>0 && y2>0 mutant guard could not — Constitution 2.5).
     id: "gate-hug-arm-belly-overshoot",
     file: "js/bears.js",
-    find: "var ex = dir * 68, ey = 40;",
-    replace: "var ex = dir * 68, ey = 70;",
+    find: "var ex = dir * 62, ey = 28;",
+    replace: "var ex = dir * 62, ey = 70;",
     expect: "gate: hugSVG's arms rest at shoulder height, clear of both faces",
   },
   {

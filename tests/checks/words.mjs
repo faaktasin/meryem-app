@@ -263,15 +263,21 @@ export async function run({ page, check }) {
     cardText: window.__app.readable(document.querySelector(".wz-card-text")),
     cardMeta: window.__app.readable(document.querySelector(".wz-card-meta")) || 5,
     deckPos: window.__app.readable(document.querySelector("#wz-deck-pos")),
+    jarHint: window.__app.readable(document.querySelector("#wz-jar-hint")),
     jarCounter: window.__app.readable(document.querySelector("#wz-jar-counter")),
     envelopeTitle: window.__app.readable(document.querySelector(".wz-envelope-title")),
+    favToggle: window.__app.readable(document.querySelector("#wz-fav-toggle span")),
+  }));
+  await tap(page, "#wz-fav-toggle"); // pressed state: rose-strong fill, white text
+  const contrastToggle = await page.eval(() => ({
+    favTogglePressed: window.__app.readable(document.querySelector("#wz-fav-toggle span")),
   }));
   await tap(page, '.wz-envelope[data-letter-id="proud"]');
   const contrastLetter = await page.eval(() => ({
     title: window.__app.readable(document.querySelector(".wz-letter-title")),
     body: window.__app.readable(document.querySelector(".wz-letter-body p")),
   }));
-  const contrastAll = { ...contrastMain, ...contrastLetter };
+  const contrastAll = { ...contrastMain, ...contrastToggle, ...contrastLetter };
   const contrastFailures = Object.entries(contrastAll).filter(([, v]) => v < 4.5);
   await check("words: body text in Sözler reaches 4.5:1 contrast", () => ({
     ok: contrastFailures.length === 0,
@@ -326,6 +332,70 @@ export async function run({ page, check }) {
     ok: !previewDump["meryem-fav-quotes"] && !previewDump["meryem-jar-drawn"] && !previewDump["meryem-letters-opened"],
     detail: JSON.stringify(previewDump),
   }));
+
+  // 11. Seni Sevme Nedenlerim: the jar and its bear read as one centred group, with a hint under
+  // it that tells her to tap (2026-09-28 polish — the bear used to float off to the right on its
+  // own, unbalancing the card, and nothing told her the jar was tappable).
+  await openApp(page, { signedIn: true });
+  await gotoWords(page);
+  const groupBox = await page.box("#wz-jar-group");
+  const jarCardBox = await page.box(".wz-jar");
+  const groupCenter = groupBox.x + groupBox.width / 2;
+  const jarCardCenter = jarCardBox.x + jarCardBox.width / 2;
+  const hintText = await page.text("#wz-jar-hint");
+  const expectedHint = await page.eval(() => CONTENT.words.ui.jarHint);
+
+  await check("words: the jar+bear group is centred in the card and the jar hint is shown", () => ({
+    ok: Math.abs(groupCenter - jarCardCenter) <= 10 && hintText === expectedHint,
+    detail: JSON.stringify({ groupCenter, jarCardCenter, diff: Math.abs(groupCenter - jarCardCenter), hintText, expectedHint }),
+  }));
+
+  // 12. favEmpty/jarReshuffled read live from CONTENT.words.ui, not a hardcoded copy of it — the
+  // two texts are identical today, so only swapping CONTENT's live value in-page can tell "reads
+  // CONTENT" apart from "reads its own frozen fallback string".
+  await openApp(page, { signedIn: true });
+  await gotoWords(page);
+  await page.eval(() => { CONTENT.words.ui.favEmpty = "TEST-FAV-EMPTY-SENTINEL"; });
+  await tap(page, "#wz-fav-toggle");
+  await page.eval(() => new Promise((r) => setTimeout(r, 60)));
+  const sentinelEmptyText = await page.text("#wz-deck-empty");
+
+  await openApp(page, { signedIn: true, reducedMotion: true });
+  await gotoWords(page);
+  await page.eval(() => { CONTENT.words.ui.jarReshuffled = "TEST-JAR-RESHUFFLED-SENTINEL"; });
+  const reasonsTotalForSentinel = await page.eval(() => CONTENT.words.reasons.length);
+  for (let i = 0; i < reasonsTotalForSentinel + 1; i++) {
+    await tap(page, "#wz-jar-btn");
+  }
+  const sentinelReshuffleText = await page.text("#wz-jar-reshuffle");
+
+  await check("words: favEmpty and jarReshuffled text come from CONTENT.words.ui, not a hardcoded copy", () => ({
+    ok: sentinelEmptyText === "TEST-FAV-EMPTY-SENTINEL" && sentinelReshuffleText === "TEST-JAR-RESHUFFLED-SENTINEL",
+    detail: JSON.stringify({ sentinelEmptyText, sentinelReshuffleText }),
+  }));
+
+  // 13. the favourites filter is a pill <button aria-pressed>, not a raw checkbox, and it still
+  // drives the same filter as before.
+  await openApp(page, { signedIn: true });
+  await gotoWords(page);
+  const toggleBefore = await page.eval(() => {
+    var btn = document.getElementById("wz-fav-toggle");
+    return { tag: btn.tagName, pressed: btn.getAttribute("aria-pressed") };
+  });
+  await tap(page, "#wz-fav-btn"); // favourite the current card so the filter has exactly one to show
+  await tap(page, "#wz-fav-toggle");
+  await page.eval(() => new Promise((r) => setTimeout(r, 60)));
+  const toggleAfterOn = await page.eval(() => document.getElementById("wz-fav-toggle").getAttribute("aria-pressed"));
+  const filteredPosOn = await page.text("#wz-deck-pos");
+  await tap(page, "#wz-fav-toggle");
+  await page.eval(() => new Promise((r) => setTimeout(r, 60)));
+  const toggleAfterOff = await page.eval(() => document.getElementById("wz-fav-toggle").getAttribute("aria-pressed"));
+
+  await check("words: the favourites toggle is a pill button whose aria-pressed flips with the filter", () => ({
+    ok: toggleBefore.tag === "BUTTON" && toggleBefore.pressed === "false"
+      && toggleAfterOn === "true" && filteredPosOn === "1 / 1" && toggleAfterOff === "false",
+    detail: JSON.stringify({ toggleBefore, toggleAfterOn, filteredPosOn, toggleAfterOff }),
+  }));
 }
 
 export const mutants = [
@@ -377,6 +447,27 @@ export const mutants = [
     find: "  function writeList(key, arr) {\n    if (isPreviewMode()) {",
     replace: "  function writeList(key, arr) {\n    if (false) {",
     expect: "words: preview mode never persists favourites/jar/letters for real",
+  },
+  {
+    id: "words-jar-group-centering",
+    file: "css/words.css",
+    find: "  align-items: flex-end;\n  align-self: center;\n}",
+    replace: "  align-items: flex-end;\n  align-self: flex-start;\n}",
+    expect: "words: the jar+bear group is centred in the card and the jar hint is shown",
+  },
+  {
+    id: "words-fav-empty-ignores-content",
+    file: "js/words.js",
+    find: "emptyEl.textContent = (CONTENT.words.ui && CONTENT.words.ui.favEmpty) || DEFAULT_FAV_EMPTY;",
+    replace: "emptyEl.textContent = DEFAULT_FAV_EMPTY;",
+    expect: "words: favEmpty and jarReshuffled text come from CONTENT.words.ui, not a hardcoded copy",
+  },
+  {
+    id: "words-fav-toggle-aria-pressed",
+    file: "js/words.js",
+    find: "      var next = !favOnly;\n      this.setAttribute('aria-pressed', next ? 'true' : 'false');\n      setFavOnly(next);",
+    replace: "      var next = !favOnly;\n      setFavOnly(next);",
+    expect: "words: the favourites toggle is a pill button whose aria-pressed flips with the filter",
   },
 ];
 

@@ -35,21 +35,36 @@
   margin-bottom: 0;
 }
 
-.wz-fav-filter {
-  display: flex;
+.wz-fav-toggle {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.78rem;
-  color: var(--ink-soft);
-  cursor: pointer;
   flex-shrink: 0;
+  border: 1px solid var(--rose-100);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 7px 14px 7px 10px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.1s;
 }
 
-.wz-fav-toggle-input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--rose-strong);
-  cursor: pointer;
+.wz-fav-toggle svg {
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.wz-fav-toggle:active {
+  transform: scale(0.96);
+}
+
+.wz-fav-toggle[aria-pressed="true"] {
+  background: var(--rose-strong);
+  border-color: var(--rose-strong);
+  color: var(--paper);
 }
 
 /* ── Quote/line deck ─────────────────────────────────── */
@@ -174,14 +189,27 @@
   padding-top: 4px;
 }
 
+/* One centred group: the bear stands beside the jar, slightly overlapping it so it reads as
+   leaning against it, both bottom-aligned. align-self: center (not inherited from the column
+   parent) makes the whole pair — not just the jar alone — the thing that gets centred. */
+.wz-jar-group {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-end;
+  align-self: center;
+}
+
 .wz-jar-bear {
-  position: absolute;
-  top: -8px;
-  right: 8%;
+  position: relative;
+  z-index: 1;
+  margin-right: -10px;
   pointer-events: none;
+  transform: rotate(-6deg);
 }
 
 .wz-jar-btn {
+  position: relative;
+  z-index: 2;
   border: none;
   background: transparent;
   padding: 0;
@@ -192,6 +220,12 @@
 
 .wz-jar-btn:active {
   transform: scale(0.95);
+}
+
+.wz-jar-hint {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  text-align: center;
 }
 
 .wz-jar-counter {
@@ -448,7 +482,7 @@
 .wz-jar-btn:focus-visible,
 .wz-envelope:focus-visible,
 .wz-letter-close:focus-visible,
-.wz-fav-toggle-input:focus-visible {
+.wz-fav-toggle:focus-visible {
   outline: 2px solid var(--rose-strong);
   outline-offset: 2px;
 }
