@@ -194,14 +194,26 @@
   position: relative;
   min-height: 60vh;
   justify-content: center;
+}
+
+/* m14: a fixed, full-viewport layer instead of an absolute one confined to .bday-scene--title's
+   own (clipped) box — the old overflow:hidden box cut the balloons off mid-screen instead of
+   letting them rise from the real bottom of the viewport. Sits at z-index:0 under the scene's own
+   content, which is lifted to z-index:1 below (a position:fixed element always opens its own
+   stacking context, so without that it would paint OVER plain in-flow content, not under it). */
+.bday-bg-balloons {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
   overflow: hidden;
 }
 
-.bday-bg-balloons {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
+.bday-hat-bears,
+.bday-scene--title .bday-title-script,
+.bday-scene--title .bday-continue-btn {
+  position: relative;
+  z-index: 1;
 }
 
 .bday-bg-balloon {
@@ -681,6 +693,16 @@
   margin-top: 14px;
 }
 
+/* m15: .bday-letter is a plain block (text-align:left, for the paragraphs), not a flex container,
+   so align-self would have no target to align within — a <button> is inline-block by default and
+   simply inherits that left text-align. Centring it as a block with auto side margins matches
+   every other scene's .bday-continue-btn without touching the paragraph/signature layout. */
+.bday-letter .bday-continue-btn {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* ── Scene: slideshow ─────────────────────────────────────────────────── */
 
 .bday-polaroid-stack {
@@ -715,6 +737,11 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  /* M19: a blush placeholder shows while the full 1600px Drive image loads on mobile data;
+     js/birthday.js sets the actual background-image (the memory's own thumbnail) inline per img,
+     which — as an element's own inline style — overrides this shorthand's implied
+     background-image:none without needing !important. */
+  background: var(--blush) center / cover no-repeat;
 }
 
 .bday-polaroid figcaption {
@@ -765,6 +792,22 @@
 @keyframes bdaySmokeRise {
   0% { transform: translate(0, 0) scale(0.6); opacity: 0.7; }
   100% { transform: translate(var(--bday-smoke-dx, 0), -30px) scale(1.4); opacity: 0; }
+}
+
+/* ── Touch targets (m4) ───────────────────────────────────────────────── */
+
+/* Game-like, rapidly-tapped controls (5 candles, 8 balloons, the gift) — no iOS text-selection
+   callout, no accidental text selection, and touch-action:manipulation so a burst of quick taps
+   never triggers the double-tap-to-zoom gesture. .gate-btn/.gate-meter-heart are css/gate.css's
+   own (a different package). */
+.bday-candle,
+.bday-balloon,
+.bday-gift-open-btn,
+.bday-guard {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 /* ── Focus visibility ─────────────────────────────────────────────────── */

@@ -173,7 +173,15 @@ function syncMarkers(updatedMemories) {
 
 function addMarkerToMap(memory) {
   var icon = memory.source === 'gallery' ? cameraIcon : heartIcon;
-  var marker = L.marker([memory.lat, memory.lng], { icon: icon }).addTo(window.appMap);
+  var name = memory.title || 'Anı';
+  /* m6: `title` (a universal HTML attribute, reflected by Leaflet's own `icon.title = ...`) gives
+     a native tooltip/fallback accessible name; `alt` is passed too for a real <img> icon, but a
+     divIcon's icon element is a plain <div> — `alt` is only a reflected IDL property on
+     img/area/input, so setting it on a div is a silent no-op with no real accessible-name effect.
+     aria-label on the rendered element is what actually guarantees one for a div-based marker. */
+  var marker = L.marker([memory.lat, memory.lng], { icon: icon, alt: name, title: name }).addTo(window.appMap);
+  var markerEl = marker.getElement();
+  if (markerEl) markerEl.setAttribute('aria-label', name);
 
   marker.on('click', function () {
     var current = memories.find(function (m) { return m.id === memory.id; });
@@ -188,7 +196,7 @@ function showMemoryDetail(memory) {
 
   var photoSrc = getMemoryPhotoUrl(memory);
   var photoInner = photoSrc
-    ? '<img src="' + photoSrc + '" alt="' + escapeHtml(memory.title) + '">'
+    ? '<img src="' + escapeHtml(photoSrc) + '" alt="' + escapeHtml(memory.title) + '">'
     /* No photo (e.g. a map pin dropped with no picture) — a small bear stands in so the card is
        still a polaroid, never an empty white box. */
     : '<span class="anilar-polaroid-photo--empty">' + bearSVG({ mood: 'love', heart: true, size: 72 }) + '</span>';
@@ -472,7 +480,9 @@ function uploadSingleGalleryPhoto(file) {
 
     var memory = {
       id: memoryId,
-      title: file.name.replace(/\.[^.]+$/, ''),
+      /* M7: a camera default file name ("IMG_4821", "image") carries no story — stored as an
+         empty title so the romantic slideshow/gallery never captions a photo with it. */
+      title: galleryUploadTitle(file.name),
       date: new Date().toISOString().split('T')[0],
       note: '',
       lat: gps ? gps.lat : null,
@@ -663,10 +673,14 @@ function renderGalleryItems(items) {
     /* alt="" on the photo: the visible caption below already names it, and a <button>'s
        accessible name is computed from ALL its text content, alt text included — a matching alt
        would announce the same title twice. */
+    /* M7: no title, or a title that still looks like a camera default (an older upload, or one
+       from outside this app's own gallery-upload path) — no caption span at all, rather than
+       showing "IMG_4821" under the photo. */
+    var showCaption = !!m.title && !isCameraFilenameTitle(m.title);
     return '<button type="button" class="gallery-item anilar-polaroid" data-gallery-id="' + escapeHtml(m.id) + '" style="--anilar-tilt:' + anilarTiltDeg(m.id) + 'deg">' +
-      '<span class="anilar-polaroid-photo"><img src="' + thumbUrl + '" alt="" loading="lazy"></span>' +
+      '<span class="anilar-polaroid-photo"><img src="' + escapeHtml(thumbUrl) + '" alt="" loading="lazy"></span>' +
       '<span class="anilar-polaroid-tape" aria-hidden="true"></span>' +
-      '<span class="anilar-polaroid-caption">' + escapeHtml(m.title) + '</span>' +
+      (showCaption ? '<span class="anilar-polaroid-caption">' + escapeHtml(m.title) + '</span>' : '') +
     '</button>';
   }).join('');
 }
@@ -682,10 +696,43 @@ function attachGalleryClickHandlers(container) {
 
 /* ── Utilities ──────────────────────────────────────── */
 
+/**
+ * m1: a plain replace-based escaper, used both for HTML text-node content and for values placed
+ * inside a double-quoted attribute (src=, alt=, data-*=, ...). The previous implementation went
+ * through textContent/innerHTML, which escapes &, < and > but NOT the quote character (verified:
+ * a headless-browser round-trip of `a"b` comes back unchanged) — safe for a text node, but not for
+ * an attribute value it delimits, which is exactly how this function is used at several call
+ * sites in this file (memory.title in alt="...", memory.id in data-gallery-id="...", and now
+ * photoSrc/thumbUrl in src="..." below). js/birthday.js's bdayEsc() delegates to this same
+ * function when present, so the fix also strengthens its own attribute uses.
+ */
 function escapeHtml(text) {
-  var div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  var s = text == null ? '' : String(text);
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/* M7: camera default file names ("IMG_1234", "DSC00012", "photo", "PXL_20260101_120000", …) carry
+   no story of their own — never worth captioning a memory with. Widened from the literal
+   `[\s_-]*\d*` (a single separator run then a single digit run) to `[\s_\d-]*` because a real
+   Pixel filename interleaves several underscore+digit groups (e.g. "PXL_20260101_120000"), which
+   the narrower form would not have matched despite pxl being in its own prefix list. A plain
+   top-level function — this file loads as a classic script, so it is already reachable the same
+   way escapeHtml/formatDate/etc. are (as window.<name>) — directly testable without driving the
+   whole upload chain through Drive auth, which the test harness deliberately never resolves. */
+var CAMERA_FILENAME_RE = /^(img|dsc|dscn|pxl|image|photo|foto)[\s_\d-]*$/i;
+
+function isCameraFilenameTitle(title) {
+  return CAMERA_FILENAME_RE.test(String(title || ''));
+}
+
+function galleryUploadTitle(fileName) {
+  var raw = String(fileName || '').replace(/\.[^.]+$/, '');
+  return isCameraFilenameTitle(raw) ? '' : raw;
 }
 
 function formatDate(dateStr) {

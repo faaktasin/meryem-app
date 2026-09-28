@@ -341,9 +341,200 @@ export async function run({ page, check, root }) {
     ok: previewOff === false && previewOn.preview === true && previewOn.month === 9 && previewOn.date === 4,
     detail: JSON.stringify({ previewOff, previewOn }),
   }));
+
+  // ── judge-verdict fixes (shell-memories group) ──────────────────────────
+  // Appended after the pre-existing checks above rather than interleaved, so none of the
+  // existing checks (in particular "no console errors or exceptions") read state these new
+  // fixtures might disturb.
+
+  // 11. M4: form inputs render at >=16px so iOS Safari does not zoom the page on focus — login,
+  // to-do, the memory modal and the map geocoder all share this contract.
+  await openApp(page, { signedIn: true });
+  await page.eval(() => new Promise((r) => setTimeout(r, 250)));
+  const inputFontSizes = await page.eval(() => {
+    function fs(sel) {
+      var el = document.querySelector(sel);
+      return el ? parseFloat(getComputedStyle(el).fontSize) : null;
+    }
+    return {
+      login: fs(".auth-form input"),
+      todo: fs(".todo-form input"),
+      memoryTitle: fs("#memory-title"),
+      memoryNote: fs("#memory-note"),
+      geocoder: fs(".leaflet-control-geocoder-form input"),
+    };
+  });
+  await check("shell: form inputs (login, to-do, memory modal, geocoder) render at >=16px so iOS Safari does not zoom on focus (M4)", () => {
+    const bad = Object.entries(inputFontSizes).filter(([, v]) => !(v >= 16)).map(([k, v]) => `${k}=${v}`);
+    return { ok: bad.length === 0, detail: bad.length ? bad.join(", ") : JSON.stringify(inputFontSizes) };
+  });
+
+  // 12. m2: .overlay, .modal-overlay and .modal all contain overscroll instead of chaining a
+  // scroll/bounce through to whatever sits behind them.
+  const overscroll = await page.eval(() => {
+    function ob(sel) {
+      var el = document.querySelector(sel);
+      return el ? getComputedStyle(el).overscrollBehaviorY : null;
+    }
+    return { overlay: ob(".overlay"), modalOverlay: ob(".modal-overlay"), modal: ob(".modal") };
+  });
+  await check("shell: .overlay, .modal-overlay and .modal set overscroll-behavior: contain (m2)", () => ({
+    ok: overscroll.overlay === "contain" && overscroll.modalOverlay === "contain" && overscroll.modal === "contain",
+    detail: JSON.stringify(overscroll),
+  }));
+
+  // 13. m3: .modal-overlay carries -webkit-backdrop-filter alongside backdrop-filter, since Safari
+  // before 18 ignores the unprefixed property.
+  const styleCssSrc = readFileSync(join(root, "css", "style.css"), "utf8");
+  const modalOverlayBlock = (styleCssSrc.match(/\.modal-overlay\s*\{[^}]*\}/) || [""])[0];
+  await check("shell: .modal-overlay carries -webkit-backdrop-filter alongside backdrop-filter (m3)", () => ({
+    ok: /backdrop-filter:\s*blur\(4px\)/.test(modalOverlayBlock) && /-webkit-backdrop-filter:\s*blur\(4px\)/.test(modalOverlayBlock),
+    detail: modalOverlayBlock || "no .modal-overlay rule found",
+  }));
+
+  // 14. m7: #memory-modal / #detail-modal declare role=dialog aria-modal=true.
+  const modalDialogAttrs = await page.eval(() => {
+    var m1 = document.getElementById("memory-modal");
+    var m2 = document.getElementById("detail-modal");
+    return {
+      memoryRole: m1.getAttribute("role"), memoryAriaModal: m1.getAttribute("aria-modal"),
+      detailRole: m2.getAttribute("role"), detailAriaModal: m2.getAttribute("aria-modal"),
+    };
+  });
+  await check("shell: #memory-modal and #detail-modal declare role=dialog aria-modal=true (m7)", () => ({
+    ok: modalDialogAttrs.memoryRole === "dialog" && modalDialogAttrs.memoryAriaModal === "true"
+      && modalDialogAttrs.detailRole === "dialog" && modalDialogAttrs.detailAriaModal === "true",
+    detail: JSON.stringify(modalDialogAttrs),
+  }));
+
+  // 15. m7: openModal() inerts the app BEHIND the dialog (never the dialog itself, which is a DOM
+  // child of #app-content, unlike js/gate.js and js/birthday.js's own overlays) and moves focus in.
+  const openModalState = await page.eval(() => {
+    var trigger = document.getElementById("shuffle-btn"); // visible on the default Bugün tab
+    trigger.focus();
+    var focusedTriggerBefore = document.activeElement === trigger;
+    openModal("memory-modal");
+    return {
+      focusedTriggerBefore: focusedTriggerBefore,
+      navInert: document.querySelector(".bottom-nav").hasAttribute("inert"),
+      todayViewInert: document.getElementById("today-view").hasAttribute("inert"),
+      modalItselfInert: document.getElementById("memory-modal").hasAttribute("inert"),
+      focusedIsCloseBtn: document.activeElement === document.querySelector("#memory-modal .modal-close"),
+    };
+  });
+  await check("shell: openModal() inerts the app behind the dialog (not the dialog itself) and moves focus onto its close button (m7)", () => ({
+    ok: openModalState.focusedTriggerBefore === true && openModalState.navInert === true
+      && openModalState.todayViewInert === true && openModalState.modalItselfInert === false
+      && openModalState.focusedIsCloseBtn === true,
+    detail: JSON.stringify(openModalState),
+  }));
+
+  // 16. m7: Escape closes the open modal, clears the inert siblings, and restores focus to the
+  // element that opened it.
+  const escapeState = await page.eval(() => {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    return {
+      modalOpen: document.getElementById("memory-modal").classList.contains("open"),
+      navInert: document.querySelector(".bottom-nav").hasAttribute("inert"),
+      focusReturned: document.activeElement === document.getElementById("shuffle-btn"),
+    };
+  });
+  await check("shell: Escape closes the open modal, clears inert from the app, and restores focus (m7)", () => ({
+    ok: escapeState.modalOpen === false && escapeState.navInert === false && escapeState.focusReturned === true,
+    detail: JSON.stringify(escapeState),
+  }));
+
+  // 17. m8: toast notifications carry role=status aria-live=polite so VoiceOver announces them.
+  const toastAttrs = await page.eval(() => {
+    return new Promise((resolve) => {
+      showToast("Test mesajı");
+      setTimeout(function () {
+        var t = document.querySelector(".toast");
+        resolve({ role: t ? t.getAttribute("role") : null, live: t ? t.getAttribute("aria-live") : null });
+      }, 20);
+    });
+  });
+  await check("shell: toast notifications carry role=status aria-live=polite (m8)", () => ({
+    ok: toastAttrs.role === "status" && toastAttrs.live === "polite",
+    detail: JSON.stringify(toastAttrs),
+  }));
+
+  // 18. m13: js/drive.js error strings use real Turkish characters, not ASCII stand-ins (console-
+  // only strings — verified by source text, since they never reach the screen).
+  const driveJsSrc = readFileSync(join(root, "js", "drive.js"), "utf8");
+  const expectedDriveStrings = [
+    "Google API henüz yüklenmedi. Sayfayı yenile.",
+    "Google giriş zaman aşımı. Popup engellenmiş olabilir.",
+    "Google giriş hatası: ",
+    "Google giriş açılamadı: ",
+    "Drive upload hatası: ",
+    "Drive silme hatası:",
+  ];
+  const missingDriveStrings = expectedDriveStrings.filter((s) => driveJsSrc.indexOf(s) === -1);
+  const staleAsciiDrive = ["henuz", "yuklenmedi", "Sayfayi", "asimi", "acilamadi", "hatasi"].filter((s) => driveJsSrc.indexOf(s) !== -1);
+  await check("shell: js/drive.js error strings use real Turkish characters, not ASCII stand-ins (m13)", () => ({
+    ok: missingDriveStrings.length === 0 && staleAsciiDrive.length === 0,
+    detail: missingDriveStrings.length ? `missing: ${missingDriveStrings.join(" | ")}` : (staleAsciiDrive.length ? `stale ascii: ${staleAsciiDrive.join(", ")}` : "ok"),
+  }));
 }
 
 export const mutants = [
+  {
+    id: "shell-input-font-size-todo",
+    file: "css/style.css",
+    find: "  /* 16px, not 0.9rem (=14.4px) — same iOS zoom-on-focus guard as .auth-form input (M4). */\n  font-size: 16px;\n  background: var(--cream);",
+    replace: "  font-size: 0.9rem;\n  background: var(--cream);",
+    expect: "shell: form inputs (login, to-do, memory modal, geocoder) render at >=16px so iOS Safari does not zoom on focus (M4)",
+  },
+  {
+    id: "shell-overscroll-modal",
+    file: "css/style.css",
+    find: "  overflow-y: auto;\n  /* m2: .modal is the element that actually scrolls (overflow-y:auto above) — this is what stops\n     a scroll at its top/bottom from chaining into whatever sits behind the opaque overlay on\n     Safari 16+, the part .modal-overlay's own overscroll-behavior (a non-scrolling element) cannot\n     cover by itself. */\n  overscroll-behavior: contain;\n  padding: 24px;",
+    replace: "  overflow-y: auto;\n  padding: 24px;",
+    expect: "shell: .overlay, .modal-overlay and .modal set overscroll-behavior: contain (m2)",
+  },
+  {
+    id: "shell-webkit-backdrop-filter",
+    file: "css/style.css",
+    find: "  /* Safari before 18 ignores unprefixed backdrop-filter (m3) — without this the Anı modals get a\n     flat backdrop, unlike the header/nav which already carry both. */\n  -webkit-backdrop-filter: blur(4px);\n",
+    replace: "",
+    expect: "shell: .modal-overlay carries -webkit-backdrop-filter alongside backdrop-filter (m3)",
+  },
+  {
+    id: "shell-modal-dialog-role",
+    file: "index.html",
+    find: '<div class="modal-overlay" id="memory-modal" role="dialog" aria-modal="true" aria-label="Yeni Anı">',
+    replace: '<div class="modal-overlay" id="memory-modal">',
+    expect: "shell: #memory-modal and #detail-modal declare role=dialog aria-modal=true (m7)",
+  },
+  {
+    id: "shell-modal-inert-siblings",
+    file: "js/app.js",
+    find: "  var appContent = document.getElementById('app-content');\n  if (appContent) {\n    Array.prototype.forEach.call(appContent.children, function (child) {\n      if (child !== modal) child.setAttribute('inert', '');\n    });\n  }\n\n  var closeBtn",
+    replace: "  var closeBtn",
+    expect: "shell: openModal() inerts the app behind the dialog (not the dialog itself) and moves focus onto its close button (m7)",
+  },
+  {
+    id: "shell-modal-escape",
+    file: "js/app.js",
+    find: "function _modalKeydown(e) {\n  if (e.key === 'Escape' && _modalOpenId) closeModal(_modalOpenId);\n}",
+    replace: "function _modalKeydown(e) {}",
+    expect: "shell: Escape closes the open modal, clears inert from the app, and restores focus (m7)",
+  },
+  {
+    id: "shell-toast-aria-live",
+    file: "js/app.js",
+    find: "  toast.setAttribute('role', 'status');\n  toast.setAttribute('aria-live', 'polite');\n  toast.textContent = message;",
+    replace: "  toast.textContent = message;",
+    expect: "shell: toast notifications carry role=status aria-live=polite (m8)",
+  },
+  {
+    id: "shell-drive-turkish-chars",
+    file: "js/drive.js",
+    find: "reject(new Error('Google giriş zaman aşımı. Popup engellenmiş olabilir.'));",
+    replace: "reject(new Error('Google giris zaman asimi. Popup engellenmis olabilir.'));",
+    expect: "shell: js/drive.js error strings use real Turkish characters, not ASCII stand-ins (m13)",
+  },
   {
     id: "shell-header-nav-padding",
     file: "css/style.css",

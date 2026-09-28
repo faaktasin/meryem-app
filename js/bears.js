@@ -263,10 +263,17 @@ function _bearHugFigure(id, cx, tilt, dir) {
   var out = '<g transform="translate(' + cx + ',96) rotate(' + tilt + ')">';
   out += '<ellipse cx="0" cy="46" rx="46" ry="38" fill="url(#' + id + '-fur)" stroke="var(--bear-stroke)" stroke-width="3"/>';
   out += '<g transform="translate(' + headDx + ',0)">';
-  out += '<circle cx="-32" cy="-38" r="22" fill="url(#' + id + '-fur)" stroke="var(--bear-stroke)" stroke-width="3"/>';
-  out += '<circle cx="-32" cy="-38" r="10" fill="var(--bear-light)"/>';
-  out += '<circle cx="32" cy="-38" r="22" fill="url(#' + id + '-fur)" stroke="var(--bear-stroke)" stroke-width="3"/>';
-  out += '<circle cx="32" cy="-38" r="10" fill="var(--bear-light)"/>';
+  /* Ears sit at (∓30,-76) r16 — high enough on the head that a good chunk of each ear circle
+     falls outside the r=58 head circle (centre distance ~60 from the head's own centre, so
+     distance + ear_r ≈ 76 clears the head's rim by ~18 units), unlike the old (±32,-38) r22
+     placement, whose centre sat only ~34.9 from the head centre — fully swallowed by the head
+     circle (34.9 + 22 = 56.9 < 58), reading as two bald round heads. Verified geometrically by
+     tests/checks/gate.mjs's hug ear check, not eyeballed (2026-09-28 review, judge probe
+     review-probes/judge/hug_ears.png). */
+  out += '<circle cx="-30" cy="-76" r="16" fill="url(#' + id + '-fur)" stroke="var(--bear-stroke)" stroke-width="3"/>';
+  out += '<circle cx="-30" cy="-76" r="7.5" fill="var(--bear-light)"/>';
+  out += '<circle cx="30" cy="-76" r="16" fill="url(#' + id + '-fur)" stroke="var(--bear-stroke)" stroke-width="3"/>';
+  out += '<circle cx="30" cy="-76" r="7.5" fill="var(--bear-light)"/>';
   out += '<circle cx="0" cy="-24" r="58" fill="url(#' + id + '-fur)" stroke="var(--bear-stroke)" stroke-width="3"/>';
   out += '<ellipse cx="0" cy="-8" rx="27" ry="21" fill="var(--bear-light)"/>';
   out += '<ellipse cx="-32" cy="-16" rx="10" ry="6" fill="var(--bear-blush)" opacity=".55"/>';

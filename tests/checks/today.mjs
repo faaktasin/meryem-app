@@ -69,7 +69,7 @@ export async function run({ page, check, root }) {
     var now = appNow();
     var days = Math.floor((now.getTime() - loveDate.getTime()) / 86400000);
     var nextMilestone = (Math.floor(days / 100) + 1) * 100;
-    var expectedMilestoneText = nextMilestone + ". günümüze " + (nextMilestone - days) + " gün";
+    var expectedMilestoneText = nextMilestone + ". günümüze " + (nextMilestone - days) + " gün kaldı 💕";
     var daysEl = document.querySelector(".bgn-together-days");
     var milestoneEl = document.querySelector(".bgn-milestone");
     return {
@@ -79,10 +79,10 @@ export async function run({ page, check, root }) {
       renderedMilestoneText: milestoneEl ? milestoneEl.textContent : null,
     };
   });
-  await check("today: the together count is exact for 2026-10-04T10:00 (260) and the next-milestone line reads 300. günümüze 40 gün", () => ({
+  await check("today: the together count is exact for 2026-10-04T10:00 (260) and the next-milestone line reads 300. günümüze 40 gün kaldı 💕", () => ({
     ok: together.expectedDays === 260
       && together.renderedDays === "260"
-      && together.expectedMilestoneText === "300. günümüze 40 gün"
+      && together.expectedMilestoneText === "300. günümüze 40 gün kaldı 💕"
       && together.renderedMilestoneText === together.expectedMilestoneText,
     detail: JSON.stringify(together),
   }));
@@ -96,9 +96,76 @@ export async function run({ page, check, root }) {
     days: Math.floor((appNow().getTime() - CONFIG.loveDate.getTime()) / 86400000),
     renderedMilestoneText: (document.querySelector(".bgn-milestone") || {}).textContent || null,
   }));
-  await check("today: the next-milestone line points at the next hundred on an exact boundary (100 days -> 200. günümüze 100 gün)", () => ({
-    ok: boundary.days === 100 && boundary.renderedMilestoneText === "200. günümüze 100 gün",
+  await check("today: the next-milestone line points at the next hundred on an exact boundary (100 days -> 200. günümüze 100 gün kaldı 💕)", () => ({
+    ok: boundary.days === 100 && boundary.renderedMilestoneText === "200. günümüze 100 gün kaldı 💕",
     detail: JSON.stringify(boundary),
+  }));
+
+  // 2c. B1: the greeting, the together pill and the daily message refresh LIVE when midnight
+  // arrives with the app already open. Opens before midnight and waits in real time (the injected
+  // clock keeps ticking) until appNow() has crossed into her birthday; js/birthday.js's tick then
+  // dispatches 'meryem:birthday-unlocked' and daily.js must re-render. Sentinels written before
+  // the crossing prove the handler really ran; nothing here dispatches the event by hand, so the
+  // check covers the whole chain. After the crossing it is her birthday, so the birthday greeting
+  // and the birthday message are what must appear (m18).
+  await openApp(page, {
+    signedIn: true,
+    now: "2026-10-03T23:59:55",
+    storage: { "meryem-gate-played-year": "2026", "meryem-birthday-seen-year": "2026" },
+  });
+  await page.eval(() => new Promise((r) => setTimeout(r, 200)));
+  const beforeTogetherDays = await page.eval(() => document.querySelector(".bgn-together-days").textContent);
+  await page.eval(() => {
+    document.getElementById("daily-message").textContent = "__SENTINEL__";
+    document.querySelector("#today-greeting .bgn-greeting-text").textContent = "__SENTINEL__";
+  });
+  await page.eval(() => new Promise((r) => setTimeout(r, 8000)));
+  const liveRefresh = await page.eval(() => {
+    var greetingText = document.querySelector("#today-greeting .bgn-greeting-text").textContent;
+    return {
+      isBirthdayUnlocked: isBirthdayUnlocked(),
+      msg: document.getElementById("daily-message").textContent,
+      expectedMsg: CONTENT.greetings.birthdayMessage,
+      greeting: greetingText,
+      greetingIsBirthday: CONTENT.greetings.birthday.indexOf(greetingText) !== -1,
+      expectedDays: Math.floor((appNow().getTime() - CONFIG.loveDate.getTime()) / 86400000),
+      renderedDays: document.querySelector(".bgn-together-days").textContent,
+    };
+  });
+  await check("today: the greeting, together pill and daily message refresh live when midnight arrives with the app open", () => ({
+    ok: liveRefresh.isBirthdayUnlocked === true
+      && liveRefresh.msg === liveRefresh.expectedMsg
+      && liveRefresh.greetingIsBirthday === true
+      && Number(liveRefresh.renderedDays) === liveRefresh.expectedDays
+      && liveRefresh.expectedDays === Number(beforeTogetherDays) + 1,
+    detail: JSON.stringify({ beforeTogetherDays, liveRefresh }),
+  }));
+
+  // 2d. m18: on her birthday (all day) Bugün shows a party-hat bear, a birthday greeting and the
+  // birthday message; the next day it is back to the ordinary bucket line and the daily message.
+  const birthdayToday = {};
+  for (const [key, now] of [["on", "2026-10-04T15:00:00"], ["after", "2026-10-05T15:00:00"]]) {
+    await openApp(page, {
+      signedIn: true,
+      now,
+      storage: { "meryem-gate-played-year": "2026", "meryem-birthday-seen-year": "2026" },
+    });
+    await page.eval(() => new Promise((r) => setTimeout(r, 200)));
+    birthdayToday[key] = await page.eval(() => {
+      var greetingText = document.querySelector("#today-greeting .bgn-greeting-text").textContent;
+      return {
+        greetingIsBirthday: CONTENT.greetings.birthday.indexOf(greetingText) !== -1,
+        greetingIsAfternoon: CONTENT.greetings.afternoon.indexOf(greetingText) !== -1,
+        bearHasHat: !!document.querySelector("#today-greeting .kawaii-bear-hat"),
+        msgIsBirthday: document.getElementById("daily-message").textContent === CONTENT.greetings.birthdayMessage,
+        msgIsDaily: document.getElementById("daily-message").textContent === getDailyMessage(),
+      };
+    });
+  }
+  await check("today: on 4 Oct the greeting, bear and message are the birthday ones, and on 5 Oct the ordinary ones", () => ({
+    ok: birthdayToday.on.greetingIsBirthday && birthdayToday.on.bearHasHat && birthdayToday.on.msgIsBirthday
+      && birthdayToday.after.greetingIsAfternoon && !birthdayToday.after.bearHasHat && birthdayToday.after.msgIsDaily,
+    detail: JSON.stringify(birthdayToday),
   }));
 
   // 3. Daily message is non-empty and shuffle changes it
@@ -209,14 +276,14 @@ export const mutants = [
     file: "js/daily.js",
     find: "Math.floor((now.getTime() - CONFIG.loveDate.getTime()) / 86400000)",
     replace: "Math.floor((now.getTime() - CONFIG.loveDate.getTime()) / 86400000) + 1",
-    expect: "today: the together count is exact for 2026-10-04T10:00 (260) and the next-milestone line reads 300. günümüze 40 gün",
+    expect: "today: the together count is exact for 2026-10-04T10:00 (260) and the next-milestone line reads 300. günümüze 40 gün kaldı 💕",
   },
   {
     id: "today-milestone-formula",
     file: "js/daily.js",
     find: "var nextMilestone = (Math.floor(days / 100) + 1) * 100;",
     replace: "var nextMilestone = Math.floor(days / 100) * 100;",
-    expect: "today: the next-milestone line points at the next hundred on an exact boundary (100 days -> 200. günümüze 100 gün)",
+    expect: "today: the next-milestone line points at the next hundred on an exact boundary (100 days -> 200. günümüze 100 gün kaldı 💕)",
   },
   {
     id: "today-morning-wave",
@@ -270,6 +337,34 @@ export const mutants = [
     find: "#today-view .todo-check input:focus-visible + .checkmark::before {\n  outline: 2px solid var(--rose-strong);\n  outline-offset: 3px;\n}",
     replace: "",
     expect: "today: the to-do checkbox is keyboard-focusable (no tabindex=-1 in source or DOM) and shows a visible focus ring",
+  },
+  {
+    id: "today-milestone-kaldi-suffix",
+    file: "js/daily.js",
+    find: "'<p class=\"bgn-milestone\">' + nextMilestone + '. günümüze ' + daysToMilestone + ' gün kaldı 💕</p>';",
+    replace: "'<p class=\"bgn-milestone\">' + nextMilestone + '. günümüze ' + daysToMilestone + ' gün</p>';",
+    expect: "today: the together count is exact for 2026-10-04T10:00 (260) and the next-milestone line reads 300. günümüze 40 gün kaldı 💕",
+  },
+  {
+    id: "today-birthday-unlock-listener",
+    file: "js/daily.js",
+    find: "  document.addEventListener('meryem:birthday-unlocked', function () {\n    renderGreeting();\n    renderTogether();\n    var msgEl = document.getElementById('daily-message');\n    if (msgEl) msgEl.textContent = todaysMessage();\n  });",
+    replace: "",
+    expect: "today: the greeting, together pill and daily message refresh live when midnight arrives with the app open",
+  },
+  {
+    id: "today-birthday-greeting-dropped",
+    file: "js/daily.js",
+    find: "if (isHerBirthdayToday() && birthdayLines && birthdayLines.length) bucket = 'birthday';",
+    replace: "",
+    expect: "today: on 4 Oct the greeting, bear and message are the birthday ones, and on 5 Oct the ordinary ones",
+  },
+  {
+    id: "today-birthday-message-dropped",
+    file: "js/daily.js",
+    find: "if (isHerBirthdayToday() && CONTENT.greetings && CONTENT.greetings.birthdayMessage) {",
+    replace: "if (false) {",
+    expect: "today: on 4 Oct the greeting, bear and message are the birthday ones, and on 5 Oct the ordinary ones",
   },
 ];
 

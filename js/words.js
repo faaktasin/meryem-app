@@ -412,6 +412,7 @@
 
   function renderLettersGrid() {
     var grid = document.getElementById('wz-letters-grid');
+    if (!grid) return;
     grid.innerHTML = '';
     var letters = CONTENT.words.letters;
     var i;
@@ -459,6 +460,13 @@
       })(letters[i]);
     }
   }
+
+  /* js/birthday.js dispatches this on document the instant appNow() crosses into her birthday,
+     including while the app is already open and no reload happens. Re-render so the
+     birthdayOnly ("bday") envelope unlocks immediately instead of staying stuck showing the
+     locked tease until the next reload. Registered once at module load (not inside initWords,
+     which re-runs and would stack duplicate listeners). */
+  document.addEventListener('meryem:birthday-unlocked', renderLettersGrid);
 
   /* ── Init ────────────────────────────────────────────────────────────────────────────── */
 

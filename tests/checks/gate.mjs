@@ -158,6 +158,25 @@ export async function run({ page, check }) {
     detail: JSON.stringify(final25),
   }));
 
+  // 3b. Yes and the hopping No resist iOS's long-press callout/selection and double-tap zoom
+  // (m4). -webkit-touch-callout has no computed-style readback in a headless Chromium browser, so
+  // only touch-action and user-select — the two properties that actually change measurable
+  // browser behaviour (double-tap zoom, text selection) — are read back here; -webkit-touch-callout
+  // is applied via the same .gate-btn rule and left unverified by this check (Constitution 4.6).
+  const yesNoTouch = await page.eval(() => {
+    const yes = getComputedStyle(document.querySelector(".gate-btn-yes"));
+    const no = getComputedStyle(document.querySelector(".gate-btn-no"));
+    return {
+      yesTouchAction: yes.touchAction, yesUserSelect: yes.userSelect,
+      noTouchAction: no.touchAction, noUserSelect: no.userSelect,
+    };
+  });
+  await check("gate: Yes and the hopping No have touch-action:manipulation and user-select:none", () => ({
+    ok: yesNoTouch.yesTouchAction === "manipulation" && yesNoTouch.yesUserSelect === "none"
+      && yesNoTouch.noTouchAction === "manipulation" && yesNoTouch.noUserSelect === "none",
+    detail: JSON.stringify(yesNoTouch),
+  }));
+
   // 4. Say yes through the rest of the automatic birthday sequence to reach the finale, spying
   //    openBirthdaySurprise beforehand (per the task: spy it before finishing).
   await page.eval(() => { window.__gateSpy = false; window.openBirthdaySurprise = function () { window.__gateSpy = true; }; });
@@ -171,6 +190,16 @@ export async function run({ page, check }) {
   const meterInitial = await page.eval(() => ({
     disabled: document.querySelector(".gate-meter-actions .gate-btn-yes").disabled,
     value: Number(document.getElementById("gate-meter-slider").getAttribute("aria-valuenow")),
+  }));
+
+  // '+ daha çok' resists the same long-press callout/selection and double-tap zoom (m4).
+  const moreTouch = await page.eval(() => {
+    const cs = getComputedStyle(document.querySelector(".gate-btn-more"));
+    return { touchAction: cs.touchAction, userSelect: cs.userSelect };
+  });
+  await check("gate: '+ daha çok' has touch-action:manipulation and user-select:none", () => ({
+    ok: moreTouch.touchAction === "manipulation" && moreTouch.userSelect === "none",
+    detail: JSON.stringify(moreTouch),
   }));
   const sliderBox = await page.box("#gate-meter-slider");
   const cx = sliderBox.x + sliderBox.width / 2;
@@ -402,8 +431,34 @@ export async function run({ page, check }) {
     const headOverlapRatio = heads.length === 2
       ? Math.max(0, heads[0].r + heads[1].r - dist(heads[0].center, heads[1].center)) / (heads[0].r + heads[1].r)
       : null;
+    // Ears: the outer ear circles (r="16" in source) must each extend past their OWN head's rim,
+    // not sit fully swallowed by it (the M3 bug — old (±32,-38) r22 landed centre-distance 34.9,
+    // 34.9+22=56.9 < the head's own r=58, fully covered). Measured the same rendered-pixel way as
+    // the heads/arms/eyes above (own element's getCTM, never the source r attribute) so the ratio
+    // is immune to whatever scale getCTM applies. A ratio > 1 means (distance-to-own-head-centre +
+    // this ear's own measured radius) clears the head's own measured radius — the ear's outer rim
+    // pokes outside the head circle. The cream inner circles (r="7.5") are counted only for
+    // presence — same count as the outer ears, one nested inside each.
+    const earsOuter = Array.prototype.slice.call(svg.querySelectorAll("circle"))
+      .filter((c) => c.getAttribute("r") === "16")
+      .map((c) => {
+        const r = Number(c.getAttribute("r"));
+        const cx = Number(c.getAttribute("cx")), cy = Number(c.getAttribute("cy"));
+        const center = toUser(c, cx, cy);
+        const rim = toUser(c, cx + r, cy);
+        return { center, r: dist(center, rim) };
+      });
+    const earsInnerCount = svg.querySelectorAll('circle[r="7.5"]').length;
+    const earHeadOutsetRatios = earsOuter.map((e) => {
+      const ownIdx = dist(e.center, heads[0].center) < dist(e.center, heads[1].center) ? 0 : 1;
+      const own = heads[ownIdx];
+      return (dist(e.center, own.center) + e.r) / own.r;
+    });
     document.body.removeChild(holder);
-    return { headCount: heads.length, lineCount: lines.length, arms, eyeCount: eyePaths.length, eyeFarClearRatios, headOverlapRatio };
+    return {
+      headCount: heads.length, lineCount: lines.length, arms, eyeCount: eyePaths.length, eyeFarClearRatios, headOverlapRatio,
+      earOuterCount: earsOuter.length, earInnerCount: earsInnerCount, earHeadOutsetRatios,
+    };
   });
   // Ratios of distance-to-centre over the (measured) head radius: 1.0 is exactly on the rim.
   // MIN clears the face outright; MAX is where the old ey=70 bug landed (~1.84, belly/hip) — the
@@ -424,6 +479,16 @@ export async function run({ page, check }) {
     ok: hugGeom.headOverlapRatio !== null && hugGeom.headOverlapRatio <= HEAD_OVERLAP_MAX
       && hugGeom.eyeCount === 4 && hugGeom.eyeFarClearRatios.every((r) => r > EYE_CLEAR_MIN_RATIO),
     detail: JSON.stringify({ headOverlapRatio: hugGeom.headOverlapRatio, eyeCount: hugGeom.eyeCount, eyeFarClearRatios: hugGeom.eyeFarClearRatios }),
+  }));
+
+  // Both bears' ears must actually show: each ear circle (with its cream inner circle) pokes
+  // outside its own head circle rather than sitting fully hidden behind it (M3, 2026-09-28 review
+  // — "two bald round heads" in the hug finale and the birthday end screen).
+  const EAR_OUTSIDE_HEAD_MIN_RATIO = 1.0;
+  await check("gate: hugSVG's ears (with their cream inner circle) extend outside the head circle", () => ({
+    ok: hugGeom.earOuterCount === 4 && hugGeom.earInnerCount === 4
+      && hugGeom.earHeadOutsetRatios.every((r) => r > EAR_OUTSIDE_HEAD_MIN_RATIO),
+    detail: JSON.stringify({ earOuterCount: hugGeom.earOuterCount, earInnerCount: hugGeom.earInnerCount, earHeadOutsetRatios: hugGeom.earHeadOutsetRatios }),
   }));
 
   // 10. Contrast (window.__app.readable(), installed by harness.mjs on every goto)
@@ -502,6 +567,42 @@ export const mutants = [
     find: "var HUG_HEAD_OUTSET = 12;",
     replace: "var HUG_HEAD_OUTSET = 0;",
     expect: "gate: hugSVG's heads clear each other's face, touching at most lightly at the cheek",
+  },
+  {
+    // Reintroduces the exact M3 bug: ears back at (±32,-38) r22/r10 — centre-distance 34.9 from
+    // the head's own centre, 34.9+22=56.9 < the head's r=58, fully swallowed by the head circle.
+    id: "gate-hug-ears-hidden",
+    file: "js/bears.js",
+    find: "  out += '<circle cx=\"-30\" cy=\"-76\" r=\"16\" fill=\"url(#' + id + '-fur)\" stroke=\"var(--bear-stroke)\" stroke-width=\"3\"/>';\n" +
+      "  out += '<circle cx=\"-30\" cy=\"-76\" r=\"7.5\" fill=\"var(--bear-light)\"/>';\n" +
+      "  out += '<circle cx=\"30\" cy=\"-76\" r=\"16\" fill=\"url(#' + id + '-fur)\" stroke=\"var(--bear-stroke)\" stroke-width=\"3\"/>';\n" +
+      "  out += '<circle cx=\"30\" cy=\"-76\" r=\"7.5\" fill=\"var(--bear-light)\"/>';",
+    replace: "  out += '<circle cx=\"-32\" cy=\"-38\" r=\"22\" fill=\"url(#' + id + '-fur)\" stroke=\"var(--bear-stroke)\" stroke-width=\"3\"/>';\n" +
+      "  out += '<circle cx=\"-32\" cy=\"-38\" r=\"10\" fill=\"var(--bear-light)\"/>';\n" +
+      "  out += '<circle cx=\"32\" cy=\"-38\" r=\"22\" fill=\"url(#' + id + '-fur)\" stroke=\"var(--bear-stroke)\" stroke-width=\"3\"/>';\n" +
+      "  out += '<circle cx=\"32\" cy=\"-38\" r=\"10\" fill=\"var(--bear-light)\"/>';",
+    expect: "gate: hugSVG's ears (with their cream inner circle) extend outside the head circle",
+  },
+  {
+    // Keeps the new ears' COUNT right (still r="16") but drags this one ear back down near the
+    // old cy=-38 — proves the check's geometric outset-ratio math actually gates on position, not
+    // just on the presence of r="16" circles (the gate-hug-ears-hidden mutant above only reverts
+    // radius/position together and would pass a check that verified count alone).
+    id: "gate-hug-ear-geometry",
+    file: "js/bears.js",
+    find: '<circle cx="-30" cy="-76" r="16"',
+    replace: '<circle cx="-30" cy="-38" r="16"',
+    expect: "gate: hugSVG's ears (with their cream inner circle) extend outside the head circle",
+  },
+  {
+    // m4: touch-action is the one property of the four that changes measurable browser behaviour
+    // (double-tap zoom) and has a computed-style readback — the anchor is unique to .gate-btn
+    // (.gate-meter-heart's own touch-action is "none", a different value/string).
+    id: "gate-btn-touch-action",
+    file: "css/gate.css",
+    find: "  touch-action: manipulation;",
+    replace: "  touch-action: auto;",
+    expect: "gate: Yes and the hopping No have touch-action:manipulation and user-select:none",
   },
   {
     id: "gate-meter-monotonic",

@@ -45,6 +45,14 @@
      not romantic/message text. Listed in this package's report per the module brief. */
   var BDAY_OVERLAY_ARIA_LABEL = 'Doğum günü sürprizi';
 
+  /* Filenames the iOS/Android photo picker assigns when nothing better is given — never worth
+     showing as a slideshow caption ("IMG_4821", "image", "photo (12)", etc). */
+  var BDAY_CAMERA_FILENAME_RE = /^(img|dsc|dscn|pxl|image|photo|foto)[\s_-]*\d*$/i;
+
+  /* The post-blow melody's own deferred-start timer (finishBlowing) — tracked here so a scene
+     change or an overlay close can cancel it before it fires. */
+  var _bdayMelodyTimeoutId = null;
+
   /* ── Small helpers ────────────────────────────────────────────────────── */
 
   /** Escapes text for HTML interpolation; reuses map.js's escapeHtml when present. */
@@ -117,10 +125,10 @@
 
   function bdayCountdownUnitsMarkup() {
     var units = [
-      { key: 'days', label: 'Gün' },
-      { key: 'hours', label: 'Saat' },
-      { key: 'minutes', label: 'Dakika' },
-      { key: 'seconds', label: 'Saniye' }
+      { key: 'days', label: 'gün' },
+      { key: 'hours', label: 'saat' },
+      { key: 'minutes', label: 'dakika' },
+      { key: 'seconds', label: 'saniye' }
     ];
     return units.map(function (u) {
       return '<div class="countdown-unit"><span class="countdown-num" id="bday-cd-' + u.key + '">00</span>' +
@@ -207,7 +215,12 @@
       '</div>';
 
     document.getElementById('bday-open-btn').addEventListener('click', function () {
-      openBirthdaySurprise();
+      /* Gate-aware (B1): a due gate owns opening the birthday surprise — jumping straight there
+         would skip it, and it would then fire on her next reload, replaying the whole surprise a
+         second time. startGateIfDue() is a harmless no-op re-entrant call if the gate is already
+         mid-play from elsewhere. */
+      if (window.isGateDue && window.isGateDue()) window.startGateIfDue();
+      else openBirthdaySurprise();
     });
     updateGiftNavGlow();
   }
@@ -226,6 +239,14 @@
     var wasUnlocked = _bdayCurrentState === 'unlocked';
     if (unlockedNow !== wasUnlocked) {
       renderBirthdayRoot();
+      if (unlockedNow) {
+        /* B1: the clock crossing midnight WHILE the app is already open — nothing else re-checks
+           the gate for that case (startGateIfDue() otherwise only runs once, at load, from
+           app.js's initFeatures()). Other packages (words.js, daily.js) listen for this exact
+           event name to re-render their own once-per-load content; keep it as written. */
+        document.dispatchEvent(new CustomEvent('meryem:birthday-unlocked'));
+        if (typeof window.startGateIfDue === 'function') window.startGateIfDue();
+      }
     } else if (!unlockedNow) {
       updateCountdownDisplay();
     } else {
@@ -253,6 +274,18 @@
   }
 
   /* ── Web Audio: a shared context, and a music-box "Happy Birthday" ──────── */
+
+  /**
+   * iOS 17+'s navigator.audioSession — 'playback' ignores the ring/silent switch (WebKit bug
+   * 237322, without it a pure Web Audio context is muted whenever the switch is on silent);
+   * 'play-and-record' is what getUserMedia needs while the mic listens. A no-op everywhere else
+   * (older iOS, desktop, Android) — never creates a new AudioContext, only routes the existing
+   * one, so it is always safe to call outside a user gesture too.
+   * @param {string} type
+   */
+  function bdaySetAudioSession(type) {
+    try { if (navigator.audioSession) navigator.audioSession.type = type; } catch (e) { /* unsupported */ }
+  }
 
   function ensureAudioContext() {
     var Ctx = window.AudioContext || window.webkitAudioContext;
@@ -387,7 +420,10 @@
       if (deniedEl) deniedEl.hidden = false;
       return;
     }
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+    bdaySetAudioSession('play-and-record');
+    navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    }).then(function (stream) {
       _bdayMicStream = stream;
       var ctx = ensureAudioContext();
       if (!ctx) {
@@ -445,6 +481,7 @@
 
   function finishBlowing() {
     stopMicAndAnalyser();
+    bdaySetAudioSession('playback');
     /* Cancel the scene's own pending "reveal" timers (wish-hide + blow-UI-show) — otherwise they
        fire later regardless of this early finish and re-surface the blow prompt UNDER the
        after-blow celebration this function is about to show. */
@@ -457,7 +494,14 @@
     var afterEl = document.getElementById('bday-after-blow');
     if (afterEl) afterEl.hidden = false;
     fxConfetti({});
-    playMelody();
+    /* The melody waits ~400ms instead of starting the instant the mic path stops the stream —
+       gives the audio-session route above time to flip back from play-and-record before the
+       music plays, so it does not get stuck on the earpiece (M1). */
+    if (_bdayMelodyTimeoutId) clearTimeout(_bdayMelodyTimeoutId);
+    _bdayMelodyTimeoutId = setTimeout(function () {
+      _bdayMelodyTimeoutId = null;
+      playMelody();
+    }, 400);
     var muteBtn = document.getElementById('bday-mute-btn');
     if (muteBtn) muteBtn.addEventListener('click', toggleMute);
     var cont = document.getElementById('bday-scene1-continue');
@@ -560,6 +604,7 @@
       _bdayCakeTimers = [];
       stopMicAndAnalyser();
       stopMelody();
+      if (_bdayMelodyTimeoutId) { clearTimeout(_bdayMelodyTimeoutId); _bdayMelodyTimeoutId = null; }
     };
   }
 
@@ -632,10 +677,18 @@
     return true;
   }
 
+  /* Set by the letter's own tap handler (m15) — makes every remaining paragraph fill instantly
+     instead of only the one currently typing, so "finish" is one tap, not one tap per paragraph.
+     Reset at the top of every startLetterTyping() call. */
+  var _bdayLetterSkipAll = false;
+
   function startLetterTyping(paragraphs) {
+    _bdayLetterSkipAll = false;
     var i = 0;
     function typeNext() {
       if (i >= paragraphs.length) {
+        var hintEl = document.getElementById('bday-letter-hint');
+        if (hintEl) hintEl.hidden = true;
         var sig = document.getElementById('bday-letter-signature');
         if (sig) sig.hidden = false;
         var cont = document.getElementById('bday-scene3-continue');
@@ -648,7 +701,12 @@
       var el = document.getElementById('bday-letter-p-' + i);
       var text = paragraphs[i];
       i++;
-      bdayType(el, text, typeNext);
+      if (_bdayLetterSkipAll) {
+        el.textContent = text;
+        typeNext();
+      } else {
+        bdayType(el, text, typeNext);
+      }
     }
     typeNext();
   }
@@ -666,7 +724,7 @@
         '</div>' +
         '<div class="bday-letter card" id="bday-letter" hidden>' +
           '<p class="bday-letter-greeting">' + bdayEsc(c.letter.greeting) + '</p>' +
-          '<p class="bday-tap-hint">Bitirmek için dokun</p>' +
+          '<p class="bday-tap-hint" id="bday-letter-hint">Bitirmek için dokun</p>' +
           '<div class="bday-letter-body" id="bday-letter-body">' +
             c.letter.paragraphs.map(function (_, i) { return '<p class="bday-letter-p" id="bday-letter-p-' + i + '"></p>'; }).join('') +
           '</div>' +
@@ -689,6 +747,10 @@
 
     document.getElementById('bday-letter').addEventListener('click', function (e) {
       if (e.target.closest('.bday-continue-btn')) return;
+      /* m15: one tap finishes the WHOLE letter, not just the paragraph mid-type — set before
+         skipping the current one, so the chain of typeNext() calls it triggers also writes every
+         later paragraph instantly instead of animating the next one. */
+      _bdayLetterSkipAll = true;
       bdaySkipTypewriter();
     });
 
@@ -712,21 +774,30 @@
 
   function renderSceneSlideshow(stage) {
     var all = window.memories || [];
-    var photos = all.filter(function (m) { return !!getMemoryPhotoUrlSafe(m); });
+    /* firebase.js loads memories via orderBy('date', 'desc') — newest first. Reversed here so the
+       slideshow tells her story chronologically instead of opening on the most recent photo
+       (M19). */
+    var photos = all.filter(function (m) { return !!getMemoryPhotoUrlSafe(m); }).reverse();
     if (photos.length === 0) {
       goToScene(5);
       return null;
     }
 
     var polaroids = photos.map(function (m, i) {
-      var url = getMemoryPhotoUrlSafe(m);
-      var thumb = (typeof getMemoryThumbnailUrl === 'function') ? getMemoryThumbnailUrl(m) : null;
+      var title = m.title || '';
+      /* M7: a camera/picker filename ("IMG_4821", "image", "photo (12)") is never a real caption. */
+      var showCaption = !!title && !BDAY_CAMERA_FILENAME_RE.test(title.trim());
       var rot = (i % 2 === 0 ? -1 : 1) * (4 + (i % 3) * 2);
+      /* src/alt are set as DOM properties in the loop below, never concatenated into this HTML
+         string — bdayEsc()/escapeHtml() only escapes for a TEXT node (it does not escape `"`),
+         so a memory-supplied url/title with a quote in it could otherwise break out of the
+         src="…"/alt="…" attribute (m1, defense in depth: only the signed-in owner writes this
+         data). A DOM property assignment is never re-parsed as HTML, so it closes that gap
+         completely rather than only narrowing it. */
       return '<figure class="bday-polaroid' + (i === 0 ? ' is-active' : '') + '" data-polaroid="' + i +
         '" style="--bday-tilt:' + rot + 'deg">' +
-        '<img src="' + url + '" alt="' + bdayEsc(m.title || '') + '"' +
-          (thumb && thumb !== url ? ' onerror="this.onerror=null;this.src=\'' + thumb + '\'"' : '') + '>' +
-        (m.title ? '<figcaption>' + bdayEsc(m.title) + '</figcaption>' : '') +
+        '<img>' +
+        (showCaption ? '<figcaption>' + bdayEsc(title) + '</figcaption>' : '') +
       '</figure>';
     }).join('');
 
@@ -737,10 +808,33 @@
         '<button type="button" class="btn btn-primary bday-continue-btn" id="bday-scene4-continue">Devam 💕</button>' +
       '</div>';
 
-    var idx = 0;
     var frames = stage.querySelectorAll('.bday-polaroid');
+    frames.forEach(function (fig, i) {
+      var m = photos[i];
+      var img = fig.querySelector('img');
+      if (!img) return;
+      var url = getMemoryPhotoUrlSafe(m);
+      var thumb = (typeof getMemoryThumbnailUrl === 'function') ? getMemoryThumbnailUrl(m) : null;
+      /* A soft blush preview (css/birthday.css) shows behind the full 1600px Drive image while it
+         loads on mobile data (M19). */
+      if (thumb) img.style.backgroundImage = 'url(' + JSON.stringify(thumb) + ')';
+      img.alt = m.title || '';
+      img.src = url;
+      if (thumb && thumb !== url) {
+        img.addEventListener('error', function onImgError() {
+          img.removeEventListener('error', onImgError);
+          img.src = thumb;
+        });
+      }
+    });
+
+    var idx = 0;
     var timer = null;
-    if (frames.length > 1 && !prefersReducedMotion()) {
+    /* M5: this used to also require !prefersReducedMotion(), which meant the slideshow never
+       left the first photo under reduced motion — lost content, not reduced motion. The
+       reduced-motion block already sets .bday-polaroid { transition: none }, so the swap below
+       becomes an instant cut instead of an animated cross-fade; the photos still change. */
+    if (frames.length > 1) {
       timer = setInterval(function () {
         frames[idx].classList.remove('is-active');
         idx = (idx + 1) % frames.length;
@@ -784,6 +878,7 @@
     var titleEl = document.getElementById('bday-title-text');
     var cancelType = fxTypewriter(titleEl, c.title, { speed: 55 });
     document.getElementById('bday-scene0-continue').addEventListener('click', function () {
+      bdaySetAudioSession('playback');
       ensureAudioContext();
       goToScene(1);
     });
@@ -803,6 +898,7 @@
    *  reusable from here) _onOverlayKeydown — keeps focus cycling within the overlay's visible,
    *  enabled controls even where `inert` support is missing on #app-content. */
   function bdayOverlayKeydown(e) {
+    if (e.key === 'Escape') { closeBirthdaySurprise(); return; }
     if (e.key !== 'Tab') return;
     var overlay = document.getElementById('birthday-overlay');
     if (!overlay) return;
@@ -839,8 +935,10 @@
   }
 
   function openBirthdaySurprise() {
-    storageSet('meryem-birthday-seen-year', String(birthdayYear()));
-    updateGiftNavGlow();
+    /* M2: the seen-year flag is written on CLOSE (closeBirthdaySurprise), not here. Writing it
+       the moment the overlay opens meant an interrupted surprise (a call, iOS evicting the
+       backgrounded app) never got re-offered — maybeAutoOpenBirthday() saw the flag already set
+       and silently left her on the plain "yeniden aç" card. */
     _bdayReturnFocusEl = document.activeElement;
 
     var overlay = document.getElementById('birthday-overlay');
@@ -868,6 +966,14 @@
     }
     stopMicAndAnalyser();
     stopMelody();
+    if (_bdayMelodyTimeoutId) { clearTimeout(_bdayMelodyTimeoutId); _bdayMelodyTimeoutId = null; }
+    bdaySetAudioSession('auto');
+
+    /* M2: written here (on a real close), not the moment the overlay opened — see
+       openBirthdaySurprise()'s own comment. storageSet() is itself a no-op in preview mode
+       (time.js's TIME_PREVIEW_PROTECTED_KEYS), so a rehearsal still persists nothing. */
+    storageSet('meryem-birthday-seen-year', String(birthdayYear()));
+    updateGiftNavGlow();
 
     var overlay = document.getElementById('birthday-overlay');
     if (overlay) {

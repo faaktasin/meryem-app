@@ -123,7 +123,7 @@ const LOVE_MESSAGES = [
   'Meryem, seninle tanışmak kaderime teşekkür etmeme yetti.',
   'Sen benim en güzel gecemin yıldızısın.',
   'Seni seviyorum, dün de bugün de yarın da.',
-  'Sen olmasan bu app boş olurdu, tıpkı hayatım gibi.',
+  'Sen olmasan bu uygulama boş olurdu, tıpkı hayatım gibi.',
   'Seninle yediğim her yemek şölen gibi.',
   'Gece yarısı mesajların günümün en güzel sürprizi.',
   'Seninle tartışmak bile özlediğim bir şey olur sonra.',

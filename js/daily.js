@@ -14,9 +14,23 @@
 
   /* ── Daily message + Firestore to-do (unchanged behaviour) ───────────── */
 
+  /** True for the whole calendar day of her birthday (local), read through appNow(). */
+  function isHerBirthdayToday() {
+    var now = appNow();
+    return now.getMonth() === CONFIG.herBirthday.month - 1 && now.getDate() === CONFIG.herBirthday.day;
+  }
+
+  /** Today's note: the birthday message all day on her birthday, the usual daily line otherwise. */
+  function todaysMessage() {
+    if (isHerBirthdayToday() && CONTENT.greetings && CONTENT.greetings.birthdayMessage) {
+      return CONTENT.greetings.birthdayMessage;
+    }
+    return getDailyMessage();
+  }
+
   function initDaily() {
     /* Daily message */
-    document.getElementById('daily-message').textContent = getDailyMessage();
+    document.getElementById('daily-message').textContent = todaysMessage();
 
     /* Shuffle button */
     document.getElementById('shuffle-btn').addEventListener('click', function () {
@@ -111,7 +125,9 @@
        <text> nodes (18px/13px, in bear viewBox units — js/bears.js, not owned by this package)
        that scale down with the whole bear. At 80 they render at ~7px/~5px, effectively invisible
        on a real phone; 100 keeps the same pose/mood but renders them at a legible ~9px/~6.5px. */
-    night: { mood: 'sleepy', arms: 'down', size: 100 }
+    night: { mood: 'sleepy', arms: 'down', size: 100 },
+    /* Her birthday, all day: a party-hat bear holding a heart. */
+    birthday: { mood: 'love', arms: 'wave', heart: true, hat: true }
   };
 
   /**
@@ -130,6 +146,8 @@
     if (!el) return;
 
     var bucket = greetingBucket(appNow().getHours());
+    var birthdayLines = CONTENT.greetings && CONTENT.greetings.birthday;
+    if (isHerBirthdayToday() && birthdayLines && birthdayLines.length) bucket = 'birthday';
     var pose = GREETING_POSE[bucket];
     var lines = (CONTENT.greetings && CONTENT.greetings[bucket]) || [];
     var line = lines.length ? lines[Math.floor(Math.random() * lines.length)] : '';
@@ -139,6 +157,7 @@
         mood: pose.mood,
         arms: pose.arms,
         heart: !!pose.heart,
+        hat: !!pose.hat,
         size: pose.size || 80
       }) + '</div>' +
       '<p class="bgn-greeting-text">' + escapeHtml(line) + '</p>';
@@ -164,8 +183,20 @@
         '</svg>' +
         '<span>' + escapeHtml(CONTENT.together.prefix) + ' <strong class="bgn-together-days">' + days + '</strong> ' + escapeHtml(CONTENT.together.suffix) + '</span>' +
       '</div>' +
-      '<p class="bgn-milestone">' + nextMilestone + '. günümüze ' + daysToMilestone + ' gün</p>';
+      '<p class="bgn-milestone">' + nextMilestone + '. günümüze ' + daysToMilestone + ' gün kaldı 💕</p>';
   }
+
+  /* js/birthday.js dispatches this on document the instant appNow() crosses into her birthday,
+     including while the app is already open and no reload happens. Everything on this tab that
+     reads appNow() is stale until something re-renders it, so refresh it live: the greeting, the
+     together pill/next-milestone line, and the daily message. Registered once at module load
+     (not inside initDaily/initToday, which can re-run and would stack duplicate listeners). */
+  document.addEventListener('meryem:birthday-unlocked', function () {
+    renderGreeting();
+    renderTogether();
+    var msgEl = document.getElementById('daily-message');
+    if (msgEl) msgEl.textContent = todaysMessage();
+  });
 
   /* ── Contract ──────────────────────────────────────────────────────────── */
 

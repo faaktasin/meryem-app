@@ -52,7 +52,7 @@ function ensureGoogleAuth() {
     }
 
     if (!driveState.gisLoaded || !driveState.gapiLoaded) {
-      reject(new Error('Google API henuz yuklenmedi. Sayfayi yenile.'));
+      reject(new Error('Google API henüz yüklenmedi. Sayfayı yenile.'));
       return;
     }
 
@@ -61,7 +61,7 @@ function ensureGoogleAuth() {
     var timeout = setTimeout(function () {
       if (!settled) {
         settled = true;
-        reject(new Error('Google giris zaman asimi. Popup engellenmis olabilir.'));
+        reject(new Error('Google giriş zaman aşımı. Popup engellenmiş olabilir.'));
       }
     }, 30000);
 
@@ -71,7 +71,7 @@ function ensureGoogleAuth() {
       clearTimeout(timeout);
 
       if (response.error) {
-        reject(new Error('Google giris hatasi: ' + response.error));
+        reject(new Error('Google giriş hatası: ' + response.error));
         return;
       }
       driveState.accessToken = response.access_token;
@@ -83,7 +83,7 @@ function ensureGoogleAuth() {
     } catch (err) {
       settled = true;
       clearTimeout(timeout);
-      reject(new Error('Google giris acilamadi: ' + err.message));
+      reject(new Error('Google giriş açılamadı: ' + err.message));
     }
   });
 }
@@ -156,7 +156,7 @@ function uploadToDrive(blob, fileName) {
       body: form
     });
   }).then(function (response) {
-    if (!response.ok) throw new Error('Drive upload hatasi: ' + response.status);
+    if (!response.ok) throw new Error('Drive upload hatası: ' + response.status);
     return response.json();
   }).then(function (data) {
     var fileId = data.id;
@@ -198,6 +198,6 @@ function deleteFromDrive(fileId) {
   gapi.client.drive.files.delete({
     fileId: fileId
   }).catch(function (err) {
-    console.warn('Drive silme hatasi:', err);
+    console.warn('Drive silme hatası:', err);
   });
 }

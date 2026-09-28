@@ -172,11 +172,11 @@
   </section>
 
   <!-- Add Memory Modal -->
-  <div class="modal-overlay" id="memory-modal">
+  <div class="modal-overlay" id="memory-modal" role="dialog" aria-modal="true" aria-label="Yeni Anı">
     <div class="modal">
       <div class="modal-header">
         <h2>Yeni Anı</h2>
-        <button class="modal-close" data-close-modal="memory-modal">&times;</button>
+        <button class="modal-close" data-close-modal="memory-modal" aria-label="Kapat">&times;</button>
       </div>
       <form id="memory-form">
         <input type="hidden" id="memory-lat">
@@ -204,11 +204,11 @@
   </div>
 
   <!-- Memory Detail Modal -->
-  <div class="modal-overlay" id="detail-modal">
+  <div class="modal-overlay" id="detail-modal" role="dialog" aria-modal="true" aria-label="Anı">
     <div class="modal">
       <div class="modal-header">
         <h2>Anı</h2>
-        <button class="modal-close" data-close-modal="detail-modal">&times;</button>
+        <button class="modal-close" data-close-modal="detail-modal" aria-label="Kapat">&times;</button>
       </div>
       <div id="detail-content"></div>
     </div>

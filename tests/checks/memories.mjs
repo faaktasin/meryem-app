@@ -31,6 +31,13 @@ const NO_PHOTO_FIXTURE = [
   { id: "m4", title: "Yıldızlı Gece", date: "2026-08-20", note: "", lat: 39.9334, lng: 32.8597, source: "map" },
 ];
 
+/* M7: one memory whose title was already stripped to '' (a camera default file name at upload
+   time), one with a real title — the gallery must show a caption for only the second. */
+const CAMERA_TITLE_FIXTURE = [
+  { id: "c1", title: "", date: "2026-02-02", note: "", lat: 39.91, lng: 32.86, source: "gallery", thumbnail: DATA_PNG },
+  { id: "c2", title: "Kahve Molası", date: "2026-02-03", note: "", lat: 39.92, lng: 32.87, source: "gallery", thumbnail: DATA_PNG },
+];
+
 async function openMemories(page, memories = MEMORIES_FIXTURE) {
   await openApp(page, { signedIn: true, memories });
   await page.tap('.nav-btn[data-tab="memories-view"]');
@@ -219,6 +226,111 @@ export async function run({ page, check }) {
     ok: page.errors.length === 0,
     detail: page.errors.slice(0, 5).join(" ; "),
   }));
+
+  // ── judge-verdict fixes (shell-memories group) ──────────────────────────
+  // Appended after the pre-existing checks above (past check 10's own "no console errors" read)
+  // so a malformed data: URI in the m1 fixture below can never be blamed on an earlier check.
+
+  // 11. M7: galleryUploadTitle() strips camera default file names to '', real titles pass through.
+  const cameraTitleTests = await page.eval(() => {
+    var camera = [
+      "IMG_4821.JPG", "DSC00012.jpg", "dscn0007.png",
+      "PXL_20260101_120000.jpg", "image.png", "photo123.jpeg", "foto_2.png",
+    ];
+    var normal = ["Kahve Molası.jpg", "Sahilde.png", "image-editing-tips.jpg"];
+    return {
+      cameraResults: camera.map(function (n) { return galleryUploadTitle(n); }),
+      normalResults: normal.map(function (n) { return galleryUploadTitle(n); }),
+    };
+  });
+  await check("memories: camera default file names (IMG_/DSC_/PXL_/photo…) upload with an empty title, real titles pass through (M7)", () => ({
+    ok: cameraTitleTests.cameraResults.every((t) => t === "")
+      && JSON.stringify(cameraTitleTests.normalResults) === JSON.stringify(["Kahve Molası", "Sahilde", "image-editing-tips"]),
+    detail: JSON.stringify(cameraTitleTests),
+  }));
+
+  // 12. M7: a memory with no title (a stripped camera filename) shows no caption in the gallery,
+  // while a real title still does.
+  await openMemories(page, CAMERA_TITLE_FIXTURE);
+  const captions = await page.eval(() => {
+    var btns = document.querySelectorAll("#gallery-grid .anilar-polaroid");
+    return Array.prototype.map.call(btns, function (b) {
+      var cap = b.querySelector(".anilar-polaroid-caption");
+      return cap ? cap.textContent : null;
+    });
+  });
+  await check("memories: a photo with no title shows no caption in the gallery, a real title still does (M7)", () => ({
+    ok: captions.length === 2 && captions.indexOf(null) !== -1 && captions.indexOf("Kahve Molası") !== -1,
+    detail: JSON.stringify(captions),
+  }));
+
+  // 13. m1: photo URLs are escaped before landing in an <img src="…"> — defense in depth against a
+  // crafted title/thumbnail (isValidPhotoUrl only checks the data:/https: prefix, never decodes).
+  const XSS_FIXTURE = [{
+    id: "x1",
+    title: 'Zehir" onmouseover="window.__xssTitle=1',
+    date: "2026-01-01",
+    note: "",
+    lat: 39.9,
+    lng: 32.8,
+    source: "map",
+    thumbnail: 'data:image/png;base64,AAAA" onerror="window.__xssPhoto=1;//',
+  }];
+  await openMemories(page, XSS_FIXTURE);
+  const galleryImg = await page.eval(() => {
+    var img = document.querySelector("#gallery-grid .anilar-polaroid img");
+    return { hasOnerrorAttr: !!(img && img.hasAttribute("onerror")), src: img ? img.src : null };
+  });
+  await page.tap("#gallery-grid .anilar-polaroid");
+  await page.eval(() => new Promise((r) => setTimeout(r, 250)));
+  const detailImg = await page.eval(() => {
+    var img = document.querySelector("#detail-content .anilar-polaroid-photo img");
+    return { hasOnerrorAttr: !!(img && img.hasAttribute("onerror")), src: img ? img.src : null };
+  });
+  const xssFired = await page.eval(() => !!window.__xssTitle || !!window.__xssPhoto);
+  await check("memories: a crafted title/thumbnail cannot break out of the gallery or detail <img> attribute (m1)", () => ({
+    ok: galleryImg.hasOnerrorAttr === false && detailImg.hasOnerrorAttr === false && !xssFired
+      && !!galleryImg.src && galleryImg.src.indexOf("data:image/") === 0
+      && !!detailImg.src && detailImg.src.indexOf("data:image/") === 0,
+    detail: JSON.stringify({ galleryImg, detailImg, xssFired }),
+  }));
+  await page.tap('[data-close-modal="detail-modal"]');
+  await page.eval(() => new Promise((r) => setTimeout(r, 150)));
+
+  // 14. m5: the map hint starts at full opacity (was 0.92, below 4.5:1 contrast), and under
+  // reduced motion it stays fully visible instead of racing hintFade straight to invisible.
+  await openMemories(page);
+  await switchToMap(page);
+  const hintNormal = await page.eval(() => {
+    var cs = getComputedStyle(document.getElementById("map-hint"));
+    return { opacity: parseFloat(cs.opacity) };
+  });
+  await openApp(page, { signedIn: true, memories: MEMORIES_FIXTURE, reducedMotion: true });
+  await page.tap('.nav-btn[data-tab="memories-view"]');
+  await page.eval(() => new Promise((r) => setTimeout(r, 200)));
+  await page.tap('.seg-btn[data-seg="map"]');
+  await page.eval(() => new Promise((r) => setTimeout(r, 300)));
+  const hintReduced = await page.eval(() => {
+    var cs = getComputedStyle(document.getElementById("map-hint"));
+    return { opacity: parseFloat(cs.opacity), animationName: cs.animationName };
+  });
+  await check("memories: the map hint starts at full opacity and stays fully visible under reduced motion (m5)", () => ({
+    ok: hintNormal.opacity >= 0.999 && hintReduced.opacity >= 0.999 && hintReduced.animationName === "none",
+    detail: JSON.stringify({ hintNormal, hintReduced }),
+  }));
+
+  // 15. m6: map pins carry an accessible name (aria-label) matching the memory title — a divIcon's
+  // element is a plain <div>, so Leaflet's own `alt` option is a silent no-op on it.
+  await openMemories(page);
+  await switchToMap(page);
+  const markerA11y = await page.eval(() => {
+    var els = document.querySelectorAll(".heart-marker, .camera-marker");
+    return Array.prototype.map.call(els, function (el) { return el.getAttribute("aria-label"); }).sort();
+  });
+  await check("memories: map pins carry an accessible name (aria-label) matching the memory title (m6)", () => ({
+    ok: JSON.stringify(markerA11y) === JSON.stringify(["Deniz Kenarı", "İlk Buluşma"]),
+    detail: JSON.stringify(markerA11y),
+  }));
 }
 
 export const mutants = [
@@ -278,6 +390,58 @@ export const mutants = [
     replace: "''",
     expect: "memories: a map pin with no photo shows a bear in the detail modal, not a blank box",
   },
+  {
+    id: "memories-camera-filename-regex",
+    file: "js/map.js",
+    find: "var CAMERA_FILENAME_RE = /^(img|dsc|dscn|pxl|image|photo|foto)[\\s_\\d-]*$/i;",
+    replace: "var CAMERA_FILENAME_RE = /^$/;",
+    expect: "memories: camera default file names (IMG_/DSC_/PXL_/photo…) upload with an empty title, real titles pass through (M7)",
+  },
+  {
+    id: "memories-camera-caption-suppressed",
+    file: "js/map.js",
+    find: "var showCaption = !!m.title && !isCameraFilenameTitle(m.title);",
+    replace: "var showCaption = true;",
+    expect: "memories: a photo with no title shows no caption in the gallery, a real title still does (M7)",
+  },
+  {
+    id: "memories-xss-photosrc-unescaped",
+    file: "js/map.js",
+    find: "'<img src=\"' + escapeHtml(photoSrc) + '\" alt=\"'",
+    replace: "'<img src=\"' + photoSrc + '\" alt=\"'",
+    expect: "memories: a crafted title/thumbnail cannot break out of the gallery or detail <img> attribute (m1)",
+  },
+  {
+    id: "memories-escapehtml-quote-unsafe",
+    file: "js/map.js",
+    find: "function escapeHtml(text) {\n  var s = text == null ? '' : String(text);\n  return s\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;')\n    .replace(/'/g, '&#39;');\n}",
+    replace: "function escapeHtml(text) {\n  var div = document.createElement('div');\n  div.textContent = text;\n  return div.innerHTML;\n}",
+    expect: "memories: a crafted title/thumbnail cannot break out of the gallery or detail <img> attribute (m1)",
+  },
+  {
+    id: "memories-map-hint-reduced-motion",
+    file: "css/style.css",
+    find: "  /* m5: the universal rule above collapses hintFade's 4s duration to ~0, so without this it\n     rushes straight through to its 100% keyframe (opacity: 0) — invisible from the first frame\n     instead of merely \"not animated\". Held fully visible instead. */\n  .map-hint {\n    animation: none;\n    opacity: 1;\n  }\n}",
+    replace: "}",
+    expect: "memories: the map hint starts at full opacity and stays fully visible under reduced motion (m5)",
+  },
+  {
+    id: "memories-map-hint-opacity",
+    file: "css/style.css",
+    // The running hintFade animation controls .map-hint's opacity from frame 0 onward, so its own
+    // declared base `opacity: 1;` is inert while normal motion is on — the keyframe percentages
+    // are what actually reach the screen, so that is what the mutant (and the m5 fix) must target.
+    find: "@keyframes hintFade {\n  0%, 70% { opacity: 1; }\n  100% { opacity: 0; }\n}",
+    replace: "@keyframes hintFade {\n  0%, 70% { opacity: 0.92; }\n  100% { opacity: 0; }\n}",
+    expect: "memories: the map hint starts at full opacity and stays fully visible under reduced motion (m5)",
+  },
+  {
+    id: "memories-marker-aria-label",
+    file: "js/map.js",
+    find: "  var markerEl = marker.getElement();\n  if (markerEl) markerEl.setAttribute('aria-label', name);\n",
+    replace: "",
+    expect: "memories: map pins carry an accessible name (aria-label) matching the memory title (m6)",
+  },
 ];
 
 export const shots = [
@@ -310,6 +474,18 @@ export const shots = [
     await page.eval(() => new Promise((r) => setTimeout(r, 250)));
   } },
   { name: "gallery-reduced", open: { signedIn: true, memories: MEMORIES_FIXTURE, reducedMotion: true }, act: async (page) => {
+    await page.tap('.nav-btn[data-tab="memories-view"]');
+    await page.eval(() => new Promise((r) => setTimeout(r, 300)));
+  } },
+  // m5: the map hint must stay visible (not fade to invisible) under reduced motion.
+  { name: "map-reduced", open: { signedIn: true, memories: MEMORIES_FIXTURE, reducedMotion: true }, act: async (page) => {
+    await page.tap('.nav-btn[data-tab="memories-view"]');
+    await page.eval(() => new Promise((r) => setTimeout(r, 150)));
+    await page.tap('.seg-btn[data-seg="map"]');
+    await page.eval(() => new Promise((r) => setTimeout(r, 500)));
+  } },
+  // M7: a caption-less polaroid (empty title) beside a normally-captioned one.
+  { name: "gallery-camera-title", open: { signedIn: true, memories: CAMERA_TITLE_FIXTURE }, act: async (page) => {
     await page.tap('.nav-btn[data-tab="memories-view"]');
     await page.eval(() => new Promise((r) => setTimeout(r, 300)));
   } },

@@ -3,86 +3,96 @@
  * Every word the app shows lives here, under one global CONTENT object, so Furkan can change any
  * text without touching view logic. Feature code only READS this object.
  * Poem lines in words.quotes are verified against the poem's own text — keep their exact wording.
+ * `\u00a0` before a closing emoji is a no-break space: it keeps the emoji on the same line as
+ * the word before it. Keep it when you edit such a line.
  */
 
 var CONTENT = {
   greetings: {
     morning: [
-      'Günaydın güzelim ☀️',
+      'Günaydın güzelim\u00a0☀️',
       'Günaydın hayatım, güne gülümseyerek başla',
-      'Uyandın mı canım? Ayıcık seni bekliyordu 🐻',
+      'Uyandın mı canım? Ayıcık seni bekliyordu\u00a0🐻',
       'Günaydın Meryem, bugün de güzel bir gün olsun',
       'Gözlerini aç, güneş de sensin zaten'
     ],
     afternoon: [
       'Günün nasıl gidiyor bakalım?',
-      'Biraz mola ver, seni düşünüyorum şu an 💭',
+      'Biraz mola ver, seni düşünüyorum şu an\u00a0💭',
       'Öğlen arası bir gülümseme sana yeter mi?',
       'Umarım günün güzel geçiyordur canım',
-      'Ayıcık merak etti, sen iyi misin? 🐻'
+      'Ayıcık merak etti, sen iyi misin?\u00a0🐻'
     ],
     evening: [
-      'Akşamın hayırlı olsun güzelim 🌆',
+      'Akşamın hayırlı olsun güzelim\u00a0🌆',
       'Gün bitti, şimdi sıra dinlenmekte',
       'Bugün de bir gün daha seni sevdim',
       'Akşam oldu, aklım yine sende',
       'Nasıl geçti günün, anlat bana'
     ],
     night: [
-      'İyi geceler Meryem, tatlı rüyalar 🌙',
+      'İyi geceler Meryem, tatlı rüyalar\u00a0🌙',
       'Gözlerin kapanmadan bil ki seni seviyorum',
       'Uyu güzelim, yarın yine buradayım',
-      'Ayıcık nöbette, sen rahat uyu 🐻',
+      'Ayıcık nöbette, sen rahat uyu\u00a0🐻',
       'Gece de seninle güzel, iyi uykular'
-    ]
+    ],
+    /* Her birthday (4 Oct, all day) replaces the time-of-day line above — Furkan speaking to her. */
+    birthday: [
+      'İyi ki doğdun güzelim\u00a0🎂',
+      'Bugün senin günün, doğum günün kutlu olsun\u00a0🎉',
+      'Dünyanın en güzel kızının doğum günü bugün\u00a0🎂'
+    ],
+    /* On her birthday this replaces "Bugünün Mesajı" for the whole day. */
+    birthdayMessage: 'Bugün dünyaya geldiğin gün. İyi ki doğdun, iyi ki benimlesin Meryem.'
   },
 
   together: {
     prefix: 'Birlikte',
-    suffix: 'gündür 💞'
+    suffix: 'gündür\u00a0💞'
   },
 
   gate: {
-    yesLabel: 'Evet 💗',
+    yesLabel: 'Evet\u00a0💗',
     noLabels: [
       'Hayır',
       'Emin misin?',
-      'Gerçekten mi? 🥺',
+      'Gerçekten mi?\u00a0🥺',
       'Bir daha düşün bence',
-      'Ayıcık üzülüyor bak 🐻',
-      'Kalbimi kırıyorsun 💔',
-      'Ayıcık ağlıyor bak 😭',
-      'Yapma böyle ya 😢',
+      'Ayıcık üzülüyor bak\u00a0🐻',
+      'Kalbimi kırıyorsun\u00a0💔',
+      'Ayıcık ağlıyor bak\u00a0😭',
+      'Yapma böyle ya\u00a0😢',
       'Son şansın bu ha',
       'Bu tuş bozuk galiba',
       'Neredeyse bitti, dayan',
-      'Hayır diye bir şey yok 💗'
+      'Hayır diye bir şey yok\u00a0💗'
     ],
     /* The reply is Furkan's answer after she presses Yes. */
     opener: {
       q: 'Meryem, beni seviyor musun?',
-      reply: 'Biliyordum! Ben de seni çok seviyorum 💗'
+      reply: 'Biliyordum! Ben de seni çok seviyorum\u00a0💗'
     },
     pool: [
-      { q: 'Pizzanın son dilimini bana verir misin?', reply: 'İşte gerçek aşk bu 🍕' },
-      { q: 'Ben dünyanın en tatlı sevgilisi miyim?', reply: 'Resmen onaylandı, belgesi hazırlanıyor 📜' },
-      { q: 'Benimle yaşlanır mısın?', reply: 'Birlikte beyaz tüylü ayıcıklar olacağız 🐻' },
-      { q: 'Kötü şakalarıma bile gülüyor musun?', reply: 'İşte bu yüzden seni seviyorum 😄' },
-      { q: 'Bugün beni biraz özledin mi?', reply: 'Ben de seni çok özledim 🥺' },
-      { q: 'Benimle bir kahve içmeye gelir misin?', reply: 'Randevu kaydedildi ☕' },
-      { q: 'Bir gün aynı evde uyanacak mıyız?', reply: 'En güzel planım bu 🏡' },
-      { q: 'Beni ilk günden daha çok mu seviyorsun?', reply: 'Ben de seni her gün daha çok 💗' },
+      { q: 'Pizzanın son dilimini bana verir misin?', reply: 'İşte gerçek aşk bu\u00a0🍕' },
+      { q: 'Ben dünyanın en tatlı sevgilisi miyim?', reply: 'Resmen onaylandı, belgesi hazırlanıyor\u00a0📜' },
+      { q: 'Benimle yaşlanır mısın?', reply: 'Birlikte beyaz tüylü ayıcıklar olacağız\u00a0🐻' },
+      { q: 'Kötü şakalarıma bile gülüyor musun?', reply: 'İşte bu yüzden seni seviyorum\u00a0😄' },
+      { q: 'Bugün beni biraz özledin mi?', reply: 'Ben de seni çok özledim\u00a0🥺' },
+      { q: 'Benimle bir kahve içmeye gelir misin?', reply: 'Randevu kaydedildi\u00a0☕' },
+      { q: 'Bir gün aynı evde uyanacak mıyız?', reply: 'En güzel planım bu\u00a0🏡' },
+      { q: 'Beni ilk günden daha çok mu seviyorsun?', reply: 'Ben de seni her gün daha çok\u00a0💗' },
       { q: 'Kavga etsek bile yanımda kalır mısın?', reply: 'Ben de hep yanındayım, söz' },
-      { q: 'Film seçme hakkını bu seferlik bana verir misin?', reply: 'Yaşasın! Bu akşamın filmi benden 🎬' },
-      { q: 'Sana sarılmama izin verir misin?', reply: 'Geliyorum, kollarım açık 🤗' },
-      { q: 'Bugün bana bir öpücük borçlu musun?', reply: 'Not aldım, tahsil edeceğim 😘' },
-      { q: 'Kolumu yastık yapar mısın?', reply: 'Kolum sadece sana ayrıldı 🧸' },
-      { q: 'Gece yarısı dondurma yemeye gelir misin?', reply: 'Anlaştık, tek kase iki kaşık 🍦' },
-      { q: 'Sonsuza kadar elimi tutar mısın?', reply: 'Ben de hiç bırakmayacağım 🤝' }
+      { q: 'Film seçme hakkını bu seferlik bana verir misin?', reply: 'Yaşasın! Bu akşamın filmi benden\u00a0🎬' },
+      { q: 'Sana sarılmama izin verir misin?', reply: 'Geliyorum, kollarım açık\u00a0🤗' },
+      { q: 'Bugün bana bir öpücük borçlu musun?', reply: 'Not aldım, tahsil edeceğim\u00a0😘' },
+      { q: 'Kolumu yastık yapar mısın?', reply: 'Kolum sadece sana ayrıldı\u00a0🧸' },
+      { q: 'Gece yarısı dondurma yemeye gelir misin?', reply: 'Anlaştık, tek kase iki kaşık\u00a0🍦' },
+      { q: 'Sonsuza kadar elimi tutar mısın?', reply: 'Ben de hiç bırakmayacağım\u00a0🤝' }
     ],
     birthday: [
-      { q: 'Bugün çok özel bir gün, biliyor musun?', reply: 'Bugün dünyanın en güzel kızının doğum günü 🎂' },
-      { q: 'Hediyeni açmaya hazır mısın?', reply: 'O zaman sıkı tutun, geliyor! 🎁' }
+      { q: 'Bugün çok özel bir gün, biliyor musun?', reply: 'Bugün dünyanın en güzel kızının doğum günü\u00a0🎂' },
+      { q: 'Hediyeni açmaya hazır mısın?', reply: 'O zaman sıkı tutun, geliyor!\u00a0🎁' }
     ],
     meter: {
       q: 'Peki beni ne kadar seviyorsun?',
@@ -92,17 +102,17 @@ var CONTENT = {
     finale: {
       title: 'Ben de seni sonsuz seviyorum',
       text: 'Bunu her sabah yeniden söylemek isterim, bıkmadan.',
-      button: 'İçeri gel 💕',
-      birthdayButton: 'Sürprizini aç 🎁'
+      button: 'İçeri gel\u00a0💕',
+      birthdayButton: 'Sürprizini aç\u00a0🎁'
     }
   },
 
   words: {
     /* Small messages on the Sözler tab, in Furkan's voice. */
     ui: {
-      favEmpty: 'Henüz favori sözün yok. Kalbe dokun, favorilere ekle 💗',   // favourites filter is on but empty
-      jarHint: 'Kavanoza dokun, sana bir not çıksın 💌',                  // under the jar, before/while drawing
-      jarReshuffled: 'Hepsini okudun! Kavanoz yeniden karışıyor 🔄'        // after all reasons were drawn
+      favEmpty: 'Henüz favori sözün yok. Kalbe dokun, favorilere ekle\u00a0💗',   // favourites filter is on but empty
+      jarHint: 'Kavanoza dokun, sana bir not çıksın\u00a0💌',                  // under the jar, before/while drawing
+      jarReshuffled: 'Hepsini okudun! Kavanoz yeniden karışıyor\u00a0🔄'        // after all reasons were drawn
     },
     quotes: [
       {
@@ -168,7 +178,7 @@ var CONTENT = {
       'Küçük şeyleri seninle büyük yapıyorum.',
       'Gülümsedin mi bilmiyorum ama ben senin için gülümsedim.',
       'Uyandığımda bile seni özlüyorum, mantıksız biliyorum.',
-      'Ayıcık bugün de senin adına nöbet tuttu 🐻',
+      'Ayıcık bugün de senin adına nöbet tuttu\u00a0🐻',
       'Aklımda bir sürü plan var, hepsinin ortasında sen varsın.',
       'Bugün ne kadar güzel olduğunu söyledim mi? Söyleyeyim: çok güzelsin.',
       'Yanımda olmadığında bile elini tutuyormuş gibi hissediyorum.',
@@ -181,7 +191,7 @@ var CONTENT = {
       'Telefonun titremesi, seni yazmışsındır umuduyla heyecanlandırıyor beni.',
       'Güzel bir şey olursa ilk seninle paylaşmak istiyorum.',
       'Yorulduğumda bile seni düşünmek dinlendiriyor.',
-      'En sevdiğim rutin: günün sonunda sana ulaşmak 💕'
+      'En sevdiğim rutin: günün sonunda sana ulaşmak\u00a0💕'
     ],
     reasons: [
       'Seni seviyorum çünkü gülüşün odaya giren ilk şey oluyor.',
@@ -287,7 +297,7 @@ var CONTENT = {
         birthdayOnly: false,
         body: [
           'Gülmek mi istiyorsun? O zaman şunu hayal et: ben dans ederken.',
-          'Evet, o kadar kötü. Sağ ayağım hangi taraf bilmiyor, ritim benden kaçıyor ama yine de her fırsatta deniyorum, sırf sen güleyim diye.',
+          'Evet, o kadar kötü. Sağ ayağım hangi taraf bilmiyor, ritim benden kaçıyor ama yine de her fırsatta deniyorum, sırf sen gülesin diye.',
           'Bir de o andaki yüzündeki ifadeyi hayal ediyorum, gülümsemen bile bana yeter zaten.'
         ]
       },
@@ -334,45 +344,45 @@ var CONTENT = {
   birthday: {
     /* The 🎁 tab card once the surprise is unlocked (Furkan speaking to her). */
     ready: {
-      title: 'Sürprizin hazır! 🎉',
-      firstTime: 'Dokun, doğum günü sürprizin başlasın 🎁',                   // before she has opened it this year
-      again: 'Ne zaman istersen yeniden aç, her seferinde aynı heyecanla 💗'   // after she has opened it
+      title: 'Sürprizin hazır!\u00a0🎉',
+      firstTime: 'Dokun, doğum günü sürprizin başlasın\u00a0🎁',                   // before she has opened it this year
+      again: 'Ne zaman istersen yeniden aç, her seferinde aynı heyecanla\u00a0💗'   // after she has opened it
     },
-    balloonsPrompt: 'Bir balon seç, içinden bir dilek çıksın 🎈',            // above the balloons scene
+    balloonsPrompt: 'Bir balon seç, içinden bir dilek çıksın\u00a0🎈',            // above the balloons scene
     locked: {
-      title: 'Burada bir sürpriz var 🎁',
-      subtitle: "Ama 4 Ekim'e kadar kilitli. Ayıcık nöbette 🐻",
+      title: 'Burada bir sürpriz var\u00a0🎁',
+      subtitle: "Ama 4 Ekim'e kadar kilitli. Ayıcık nöbette\u00a0🐻",
       teases: [
-        'Sabret, daha {days} gün var 🙈',
-        'Kurcalama, ayıcık bekçi 🐻',
+        'Sabret, daha {days} gün var\u00a0🙈',
+        'Kurcalama, ayıcık bekçi\u00a0🐻',
         'Bu kapı sadece doğum gününde açılıyor',
         '{days} gün sonra görüşürüz burada',
-        'Meraklı olma, sürpriz sürpriz kalsın 😉',
-        'Ayıcık nöbeti bırakmıyor, kilit kalıyor 🔒'
+        'Meraklı olma, sürpriz sürpriz kalsın\u00a0😉',
+        'Ayıcık nöbeti bırakmıyor, kilit kalıyor\u00a0🔒'
       ]
     },
     title: 'İyi ki doğdun Meryem',
     wish: 'Gözlerini kapat ve bir dilek tut.',
     blow: {
       prompt: 'Mumları üfle!',
-      micButton: 'Mikrofonu aç ve üfle 🎤',
+      micButton: 'Mikrofonu aç ve üfle\u00a0🎤',
       tapHint: 'Ya da mumlara dokunarak söndür',
-      micDenied: 'Mikrofon izni yoksa sorun değil, mumlara dokunman yeterli 💗'
+      micDenied: 'Mikrofon izni yoksa sorun değil, mumlara dokunman yeterli\u00a0💗'
     },
-    afterBlow: 'Dileğin tutuldu! Umarım hepsi gerçek olur, hepsini hak ediyorsun ✨',
+    afterBlow: 'Dileğin tutuldu! Umarım hepsi gerçek olur, hepsini hak ediyorsun\u00a0✨',
     balloons: [
-      'Bu yeni yaşın sana sağlık ve mutluluk getirsin 🎈',
+      'Bu yeni yaşın sana sağlık ve mutluluk getirsin\u00a0🎈',
       'Gülüşün hiç eksilmesin yüzünden.',
       'Her dileğin bir bir gerçek olsun.',
       'Bu yıl sana hep iyi şeyler gelsin.',
       'Kalbin hep bu kadar güzel kalsın.',
       'Yanında olduğum her gün için minnettarım.',
-      'Doğum günün kutlu olsun, güzelim 🎂',
+      'Doğum günün kutlu olsun, güzelim\u00a0🎂',
       'Seninle geçecek nice yıllara.'
     ],
     gift: {
       prompt: 'Sana bir hediyem var.',
-      open: 'Hediyeni aç 🎁'
+      open: 'Hediyeni aç\u00a0🎁'
     },
     letter: {
       greeting: 'Sevgili Meryem,',
@@ -387,11 +397,11 @@ var CONTENT = {
       signature: 'Seni çok seven, Furkan'
     },
     slideshow: {
-      title: 'Bizim güzel anılarımız 📸'
+      title: 'Bizim güzel anılarımız\u00a0📸'
     },
     end: {
-      title: 'İyi ki doğdun, iyi ki varsın 💗',
-      button: 'Uygulamaya dön 💕'
+      title: 'İyi ki doğdun, iyi ki varsın\u00a0💗',
+      button: 'Seni seviyorum, hadi içeri gel\u00a0💕'
     }
   }
 };

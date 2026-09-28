@@ -138,6 +138,15 @@ export async function run({ page, check }) {
     firstParagraph: document.querySelector("#wz-letter-body p") ? document.querySelector("#wz-letter-body p").textContent : null,
     focusIsClose: document.activeElement && document.activeElement.id === "wz-letter-close",
   }));
+
+  // 4b. m2: the letter reader's own scroll container contains overscroll instead of chaining a
+  // bounce/scroll through to whatever sits behind the (opaque) overlay on iOS Safari 16+.
+  const letterOverscroll = await page.eval(() => getComputedStyle(document.getElementById("wz-letter-paper")).getPropertyValue("overscroll-behavior-y"));
+  await check("words: the letter reader's scroll container contains overscroll (no chaining behind the overlay)", () => ({
+    ok: letterOverscroll === "contain",
+    detail: JSON.stringify({ letterOverscroll }),
+  }));
+
   await page.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27 });
   await page.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27 });
   await page.eval(() => new Promise((r) => setTimeout(r, 50)));
@@ -203,6 +212,40 @@ export async function run({ page, check }) {
     ok: lockedState.locked === true && stillClosed === true
       && unlockedState.locked === false && opensNow.hidden === false && opensNow.firstParagraph === expectedBdayFirstParagraph,
     detail: JSON.stringify({ lockedState, stillClosed, unlockedState, opensNow }),
+  }));
+
+  // 5b. B1: the bday envelope unlocks LIVE when midnight arrives with the app already open. Opens
+  // before midnight and waits in real time (the injected clock keeps ticking) until appNow() has
+  // crossed into her birthday; js/birthday.js's tick then dispatches 'meryem:birthday-unlocked'
+  // and words.js must re-render the grid. Nothing here dispatches the event by hand — the check
+  // covers the whole chain, and dropping words.js's listener leaves the envelope locked.
+  await openApp(page, {
+    signedIn: true,
+    now: "2026-10-03T23:59:55",
+    storage: { "meryem-gate-played-year": "2026", "meryem-birthday-seen-year": "2026" },
+  });
+  await gotoWords(page);
+  const preMidnight = await page.eval(() => {
+    var btn = document.querySelector('.wz-envelope[data-letter-id="bday"]');
+    return { locked: btn.classList.contains("wz-envelope--locked"), emoji: btn.querySelector(".wz-envelope-emoji").textContent };
+  });
+  await page.eval(() => new Promise((r) => setTimeout(r, 8000)));
+  const liveUnlocked = await page.eval(() => {
+    var btn = document.querySelector('.wz-envelope[data-letter-id="bday"]');
+    return {
+      locked: btn.classList.contains("wz-envelope--locked"),
+      emoji: btn.querySelector(".wz-envelope-emoji").textContent,
+      status: btn.querySelector(".wz-envelope-status").textContent,
+      ariaLabel: btn.getAttribute("aria-label"),
+      isBirthdayUnlocked: isBirthdayUnlocked(),
+    };
+  });
+  await check("words: the bday envelope unlocks live on 'meryem:birthday-unlocked' with no reload (letters grid re-renders)", () => ({
+    ok: preMidnight.locked === true && preMidnight.emoji === "🔒"
+      && liveUnlocked.isBirthdayUnlocked === true
+      && liveUnlocked.locked === false && liveUnlocked.emoji !== "🔒"
+      && liveUnlocked.status !== "Kilitli" && liveUnlocked.ariaLabel.indexOf("kilitli") === -1,
+    detail: JSON.stringify({ preMidnight, liveUnlocked }),
   }));
 
   // 6. reduced motion: the jar's flying note never appears, and the letter's flap/paper open
@@ -468,6 +511,20 @@ export const mutants = [
     find: "      var next = !favOnly;\n      this.setAttribute('aria-pressed', next ? 'true' : 'false');\n      setFavOnly(next);",
     replace: "      var next = !favOnly;\n      setFavOnly(next);",
     expect: "words: the favourites toggle is a pill button whose aria-pressed flips with the filter",
+  },
+  {
+    id: "words-birthday-unlock-listener",
+    file: "js/words.js",
+    find: "  document.addEventListener('meryem:birthday-unlocked', renderLettersGrid);\n\n  /* ── Init",
+    replace: "  /* ── Init",
+    expect: "words: the bday envelope unlocks live on 'meryem:birthday-unlocked' with no reload (letters grid re-renders)",
+  },
+  {
+    id: "words-letter-reader-overscroll",
+    file: "css/words.css",
+    find: "  overflow-y: auto;\n  overscroll-behavior: contain;\n  flex: 1;\n}",
+    replace: "  overflow-y: auto;\n  flex: 1;\n}",
+    expect: "words: the letter reader's scroll container contains overscroll (no chaining behind the overlay)",
   },
 ];
 

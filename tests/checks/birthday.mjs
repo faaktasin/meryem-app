@@ -33,6 +33,27 @@ async function waitUntilOverlayOpen(page, timeoutMs = 3000) {
   return opened;
 }
 
+/** Advances a freshly-opened overlay from scene 0 through cake/balloons/gift+letter to the
+ *  slideshow (scene 4) — the sequence every slideshow-specific check (m1, M7, M19) shares. */
+async function reachSlideshow(page) {
+  await waitUntilOverlayOpen(page);
+  await page.tap("#bday-scene0-continue");
+  await blowAllCandlesByTap(page);
+  await page.tap("#bday-scene1-continue");
+  await wait(page, 150);
+  await page.tap("#bday-scene2-continue");
+  await wait(page, 150);
+  await page.tap("#bday-gift-open-btn");
+  await wait(page, 650);
+  for (let i = 0; i < 8; i++) {
+    await page.tap(".bday-letter");
+    await wait(page, 60);
+  }
+  await wait(page, 150);
+  await page.tap("#bday-scene3-continue");
+  await wait(page, 300);
+}
+
 /**
  * Reads the boxes of the top tier and all 5 candles and reports, per candle, whether its own box
  * sits horizontally inside the tier's span and its bottom edge lands within 6px (vertically) of
@@ -111,23 +132,42 @@ export async function run({ page, check }) {
     return text;
   });
   await check("birthday: on the eve (days=0) the {days}-interpolated teases are excluded — no '0 gün' wording", () => ({
-    ok: dayZeroTease.indexOf("{days}") === -1 && dayZeroTease.indexOf("0 gün") === -1 && dayZeroTease === "Kurcalama, ayıcık bekçi 🐻",
+    ok: dayZeroTease.indexOf("{days}") === -1 && dayZeroTease.indexOf("0 gün") === -1 && dayZeroTease === "Kurcalama, ayıcık bekçi 🐻",
     detail: dayZeroTease,
   }));
 
-  // 2. The locked countdown flips to the unlocked card live, without reloading.
+  const unitLabels = await page.eval(() => Array.prototype.map.call(document.querySelectorAll("#bday-countdown .countdown-unit-label"), (el) => el.textContent));
+  await check("birthday: the 🎁 countdown's unit labels are lowercase (gün/saat/dakika/saniye), matching Tarihler's own widget (m12)", () => ({
+    ok: JSON.stringify(unitLabels) === JSON.stringify(["gün", "saat", "dakika", "saniye"]),
+    detail: JSON.stringify(unitLabels),
+  }));
+
+  // 2. The locked countdown flips to the unlocked card live, without reloading — and passing
+  // midnight while the app is OPEN also fires meryem:birthday-unlocked and starts the due gate
+  // (B1): before this fix, only the 🎁 tab's own view flipped; the gate stayed silent until her
+  // next reload, and its finale then replayed the whole surprise a second time.
   await openApp(page, { now: "2026-10-03T23:59:57", signedIn: true, storage: {} });
   await page.tap(".nav-btn[data-tab=\"birthday-view\"]");
   await wait(page, 100);
   const beforeFlip = await page.eval(() => !!document.querySelector(".bday-view--locked"));
+  await page.eval(() => {
+    window.__bdayUnlockedEventFired = false;
+    document.addEventListener("meryem:birthday-unlocked", function () { window.__bdayUnlockedEventFired = true; });
+  });
   await wait(page, 5000);
   const afterFlip = await page.eval(() => ({
     locked: !!document.querySelector(".bday-view--locked"),
     unlocked: !!document.querySelector(".bday-view--unlocked"),
+    eventFired: window.__bdayUnlockedEventFired === true,
+    gateOverlayVisible: document.getElementById("gate-overlay") ? document.getElementById("gate-overlay").hidden === false : false,
   }));
   await check("birthday: the locked countdown flips live to the unlocked card at midnight (no reload)", () => ({
     ok: beforeFlip === true && afterFlip.locked === false && afterFlip.unlocked === true,
     detail: JSON.stringify({ beforeFlip, afterFlip }),
+  }));
+  await check("birthday: passing midnight while the app is already open fires meryem:birthday-unlocked and starts the due gate (B1)", () => ({
+    ok: afterFlip.eventFired === true && afterFlip.gateOverlayVisible === true,
+    detail: JSON.stringify(afterFlip),
   }));
 
   // Freshly unlocked (never opened this year) — the ready card reads CONTENT.birthday.ready's
@@ -143,18 +183,32 @@ export async function run({ page, check }) {
     detail: JSON.stringify(readyFirstTime),
   }));
 
-  // 3. Gate already played this year -> auto-opens once; the next open (same year) does not.
+  // 3. Gate already played this year -> auto-opens once. M2: the seen-year flag is written on
+  // CLOSE, not the moment it opens — so an interrupted surprise (a call, iOS evicting the
+  // backgrounded app) gets re-offered on the next load instead of silently vanishing behind a
+  // "yeniden aç" card.
   await openApp(page, { now: "2026-10-04T00:01:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
   const opened1 = await waitUntilOverlayOpen(page);
-  const dump1 = await page.storageDump();
-  await check("birthday: gate already played this year — the surprise auto-opens once and stores the seen-year flag", () => ({
-    ok: opened1 === true && dump1["meryem-birthday-seen-year"] === "2026",
-    detail: JSON.stringify({ opened1, dump1 }),
+  const dumpWhileOpen = await page.storageDump();
+  await check("birthday: gate already played this year — the surprise auto-opens once", () => ({
+    ok: opened1 === true,
+    detail: String(opened1),
+  }));
+  await check("birthday: the seen-year flag is not written while the surprise is still open (M2)", () => ({
+    ok: dumpWhileOpen["meryem-birthday-seen-year"] == null,
+    detail: JSON.stringify(dumpWhileOpen),
+  }));
+  await page.tap("#bday-close-btn");
+  await wait(page, 150);
+  const dumpAfterClose = await page.storageDump();
+  await check("birthday: closing the surprise writes the seen-year flag (M2)", () => ({
+    ok: dumpAfterClose["meryem-birthday-seen-year"] === "2026",
+    detail: JSON.stringify(dumpAfterClose),
   }));
   await openApp(page, { now: "2026-10-04T00:01:00", signedIn: true, keepStorage: true });
   await wait(page, 400);
   const opened2 = await page.eval(() => document.getElementById("birthday-overlay").hidden === false);
-  await check("birthday: reopening the same year does not auto-open again", () => ({
+  await check("birthday: reopening after a real close does not auto-open again", () => ({
     ok: opened2 === false,
     detail: String(opened2),
   }));
@@ -167,6 +221,17 @@ export async function run({ page, check }) {
   await check("birthday: the unlocked ready card (already opened this year) reads CONTENT.birthday.ready.again", () => ({
     ok: readyAgain.subtitleText === readyAgain.expectedSubtitle,
     detail: JSON.stringify(readyAgain),
+  }));
+
+  // M2: reloading WITHOUT closing (an interrupted surprise — a call, iOS backgrounding it away)
+  // re-offers it on the next load, because nothing marks it "seen" until a real close does.
+  await openApp(page, { now: "2026-10-04T00:01:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
+  await waitUntilOverlayOpen(page);
+  await openApp(page, { now: "2026-10-04T00:01:00", signedIn: true, keepStorage: true });
+  const reopenedAfterInterruption = await waitUntilOverlayOpen(page);
+  await check("birthday: reloading before closing (an interrupted surprise) re-offers it on the next load (M2)", () => ({
+    ok: reopenedAfterInterruption === true,
+    detail: String(reopenedAfterInterruption),
   }));
 
   // 4. A due gate defers the birthday auto-open entirely (the gate owns opening it). The real
@@ -202,8 +267,26 @@ export async function run({ page, check }) {
     detail: String(glowWhenDeferred),
   }));
 
+  // B1: with the gate due, tapping #bday-open-btn on the ready card starts the gate instead of
+  // jumping straight to the birthday overlay (isGateDue is still stubbed true from above).
+  const openBtnGateAwareResult = await page.eval(() => {
+    window.__bdayGateStartCalled = false;
+    window.startGateIfDue = function () { window.__bdayGateStartCalled = true; };
+    document.getElementById("bday-open-btn").click();
+    return {
+      gateStartCalled: window.__bdayGateStartCalled,
+      birthdayOverlayHidden: document.getElementById("birthday-overlay").hidden,
+    };
+  });
+  await check("birthday: with the gate due, tapping #bday-open-btn starts the gate instead of opening the surprise directly (B1)", () => ({
+    ok: openBtnGateAwareResult.gateStartCalled === true && openBtnGateAwareResult.birthdayOverlayHidden === true,
+    detail: JSON.stringify(openBtnGateAwareResult),
+  }));
+
   // 5. Preview mode's own auto-open logic, isolated from the (now real) gate package's own flow:
-  // with the gate forced clear, this module still opens the surprise and still persists nothing.
+  // with the gate forced clear, this module still opens the surprise and still persists nothing —
+  // including after a REAL close, which is the only thing that proves TIME_PREVIEW_PROTECTED_KEYS
+  // still guards the flag now that M2 moved the write to close time instead of open time.
   await openApp(page, { query: "?onizleme=dogumgunu", signedIn: true, storage: {} });
   await wait(page, 300); // let any natural gate/birthday auto-play (real gate.js) settle first
   const previewResult = await page.eval(() => {
@@ -218,14 +301,20 @@ export async function run({ page, check }) {
     try { localStorage.removeItem("meryem-birthday-seen-year"); } catch (e) {}
     window.isGateDue = function () { return false; };
     window.maybeAutoOpenBirthday();
-    return {
-      opened: document.getElementById("birthday-overlay").hidden === false,
-      seenYearStored: (function () { try { return localStorage.getItem("meryem-birthday-seen-year"); } catch (e) { return "ERR"; } })(),
-    };
+    return { opened: document.getElementById("birthday-overlay").hidden === false };
   });
-  await check("birthday: preview mode opens the surprise (gate clear) but stores nothing (seen-year no-op)", () => ({
-    ok: previewResult.opened === true && previewResult.seenYearStored == null,
+  await check("birthday: preview mode opens the surprise (gate clear)", () => ({
+    ok: previewResult.opened === true,
     detail: JSON.stringify(previewResult),
+  }));
+  await page.tap("#bday-close-btn");
+  await wait(page, 150);
+  const seenYearAfterPreviewClose = await page.eval(() => {
+    try { return localStorage.getItem("meryem-birthday-seen-year"); } catch (e) { return "ERR"; }
+  });
+  await check("birthday: preview mode stores nothing even after a real close — the seen-year write stays preview-protected under M2 (M2)", () => ({
+    ok: seenYearAfterPreviewClose == null,
+    detail: String(seenYearAfterPreviewClose),
   }));
 
   // 6. The blow-sustain detector: pure logic, synthetic RMS frames, no microphone.
@@ -478,22 +567,7 @@ export async function run({ page, check }) {
 
   // 11. Slideshow with photo memories: one polaroid per photo, auto-cycling from the first.
   await openApp(page, { now: "2026-10-04T00:09:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" }, memories: THREE_MEMORIES });
-  await waitUntilOverlayOpen(page);
-  await page.tap("#bday-scene0-continue");
-  await blowAllCandlesByTap(page);
-  await page.tap("#bday-scene1-continue");
-  await wait(page, 150);
-  await page.tap("#bday-scene2-continue"); // skip balloons without popping
-  await wait(page, 150);
-  await page.tap("#bday-gift-open-btn");
-  await wait(page, 650);
-  for (let i = 0; i < 8; i++) {
-    await page.tap(".bday-letter");
-    await wait(page, 60);
-  }
-  await wait(page, 150);
-  await page.tap("#bday-scene3-continue");
-  await wait(page, 300);
+  await reachSlideshow(page);
   const slideshowResult = await page.eval(() => ({
     polaroidCount: document.querySelectorAll(".bday-polaroid").length,
     activeCount: document.querySelectorAll(".bday-polaroid.is-active").length,
@@ -501,6 +575,241 @@ export async function run({ page, check }) {
   await check("birthday: the slideshow shows one polaroid per photo memory (3-memory fixture)", () => ({
     ok: slideshowResult.polaroidCount === 3 && slideshowResult.activeCount === 1,
     detail: JSON.stringify(slideshowResult),
+  }));
+  const previewBgResult = await page.eval(() => {
+    var img = document.querySelector(".bday-polaroid img");
+    var cs = getComputedStyle(img);
+    return { backgroundImage: cs.backgroundImage, backgroundColor: cs.backgroundColor };
+  });
+  await check("birthday: each slideshow photo shows a blush-background thumbnail preview behind the full image (M19)", () => ({
+    ok: previewBgResult.backgroundImage.indexOf("url(") === 0 && previewBgResult.backgroundColor !== "rgba(0, 0, 0, 0)",
+    detail: JSON.stringify(previewBgResult),
+  }));
+
+  // 12. m1: a crafted photo URL (a quote-breakout payload) never executes as injected markup —
+  // src/alt are set as DOM properties in the post-render loop, never concatenated into the HTML
+  // string. The sentinel is armed BEFORE the scene renders (not reset afterwards) so a real
+  // regression — the payload executing the instant the <img> is inserted — cannot be missed by
+  // reading it too late.
+  const XSS_PAYLOAD_URL = "data:image/png;base64,AAA\" onerror=\"window.__bdayXssFired=true\" x=\"";
+  const XSS_MEMORY = [
+    { id: "x1", title: "Zarar", date: "2026-01-01", note: "", lat: null, lng: null, source: "gallery", thumbnail: XSS_PAYLOAD_URL, photo: XSS_PAYLOAD_URL },
+  ];
+  await openApp(page, { now: "2026-10-04T00:21:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" }, memories: XSS_MEMORY });
+  await page.eval(() => { window.__bdayXssFired = false; });
+  await reachSlideshow(page);
+  await wait(page, 200);
+  const xssResult = await page.eval(() => ({
+    xssFired: window.__bdayXssFired === true,
+    imgCount: document.querySelectorAll(".bday-polaroid img").length,
+    imgSrc: document.querySelector(".bday-polaroid img").getAttribute("src"),
+  }));
+  await check("birthday: a crafted photo URL (quote-breakout payload) never executes as markup (m1)", () => ({
+    ok: xssResult.xssFired === false && xssResult.imgCount === 1 && xssResult.imgSrc === XSS_PAYLOAD_URL,
+    detail: JSON.stringify(xssResult),
+  }));
+
+  // 13. M7 + M19: Firestore delivers memories newest-first (orderBy('date','desc'), firebase.js);
+  // the slideshow reverses them to tell her story chronologically, and a camera/picker filename
+  // ("IMG_4821") never shows as a caption while a real title still does.
+  const SLIDESHOW_ORDER_MEMORIES = [
+    { id: "s1", title: "En yeni", date: "2026-03-01", note: "", lat: null, lng: null, source: "gallery", thumbnail: PHOTO_DATA_URL, photo: PHOTO_DATA_URL },
+    { id: "s2", title: "IMG_4821", date: "2026-02-01", note: "", lat: null, lng: null, source: "gallery", thumbnail: PHOTO_DATA_URL, photo: PHOTO_DATA_URL },
+    { id: "s3", title: "En eski", date: "2026-01-01", note: "", lat: null, lng: null, source: "gallery", thumbnail: PHOTO_DATA_URL, photo: PHOTO_DATA_URL },
+  ];
+  await openApp(page, { now: "2026-10-04T00:23:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" }, memories: SLIDESHOW_ORDER_MEMORIES });
+  await reachSlideshow(page);
+  const slideshowOrderResult = await page.eval(() => {
+    var figs = document.querySelectorAll(".bday-polaroid");
+    return {
+      alts: Array.prototype.map.call(figs, (f) => f.querySelector("img").getAttribute("alt")),
+      captions: Array.prototype.map.call(figs, (f) => !!f.querySelector("figcaption")),
+    };
+  });
+  await check("birthday: the slideshow shows photos oldest-first, reversing Firestore's newest-first order (M19)", () => ({
+    ok: JSON.stringify(slideshowOrderResult.alts) === JSON.stringify(["En eski", "IMG_4821", "En yeni"]),
+    detail: JSON.stringify(slideshowOrderResult),
+  }));
+  await check("birthday: a camera/picker filename ('IMG_4821') is never shown as a slideshow caption; a real title still is (M7)", () => ({
+    ok: JSON.stringify(slideshowOrderResult.captions) === JSON.stringify([true, false, true]),
+    detail: JSON.stringify(slideshowOrderResult),
+  }));
+
+  // M5: under reduced motion the slideshow still advances (instantly, no transition) instead of
+  // staying frozen on the first photo forever — this was lost content, not reduced motion.
+  await openApp(page, { now: "2026-10-04T00:24:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" }, memories: THREE_MEMORIES, reducedMotion: true });
+  await reachSlideshow(page);
+  const activeBefore = await page.eval(() => Array.prototype.findIndex.call(document.querySelectorAll(".bday-polaroid"), (f) => f.classList.contains("is-active")));
+  await wait(page, 2800);
+  const activeAfter = await page.eval(() => Array.prototype.findIndex.call(document.querySelectorAll(".bday-polaroid"), (f) => f.classList.contains("is-active")));
+  await check("birthday: under reduced motion the slideshow still advances past the first photo — lost content, not motion (M5)", () => ({
+    ok: activeBefore === 0 && activeAfter !== activeBefore,
+    detail: JSON.stringify({ activeBefore, activeAfter }),
+  }));
+
+  // 14. m9: Escape closes the birthday overlay, matching the letter-reader's own contract.
+  await openApp(page, { now: "2026-10-04T00:25:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
+  await waitUntilOverlayOpen(page);
+  await page.tap("#bday-scene0-continue");
+  await wait(page, 150);
+  await page.eval(() => {
+    document.getElementById("birthday-overlay").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+  });
+  await wait(page, 150);
+  const afterEscape = await page.eval(() => document.getElementById("birthday-overlay").hidden);
+  await check("birthday: pressing Escape closes the birthday overlay (m9)", () => ({
+    ok: afterEscape === true,
+    detail: String(afterEscape),
+  }));
+
+  // 15. m14: the title scene's background balloons are a fixed, unclipped full-viewport layer
+  // (the old absolute layer was cut off mid-screen by .bday-scene--title's own overflow:hidden
+  // box), with the scene's own content lifted above it so the balloons never cover the title/bears
+  // /button. .bday-close-btn (position:fixed, unaffected by this fix) already proves fixed
+  // positioning escapes the overlay's scroll container correctly in every other shot.
+  await openApp(page, { now: "2026-10-04T00:27:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
+  await waitUntilOverlayOpen(page);
+  await wait(page, 150);
+  const balloonLayerResult = await page.eval(() => {
+    var scene = document.querySelector(".bday-scene--title");
+    var layer = document.querySelector(".bday-bg-balloons");
+    var title = document.querySelector(".bday-title-script");
+    var sceneCs = getComputedStyle(scene);
+    var layerCs = getComputedStyle(layer);
+    var layerBox = layer.getBoundingClientRect();
+    return {
+      sceneOverflow: sceneCs.overflow,
+      layerPosition: layerCs.position,
+      layerHeight: layerBox.height,
+      viewportHeight: window.innerHeight,
+      titleZIndex: getComputedStyle(title).zIndex,
+    };
+  });
+  await check("birthday: the title scene's background balloons are a fixed, unclipped full-viewport layer, with the scene content stacked above it (m14)", () => ({
+    ok: balloonLayerResult.sceneOverflow !== "hidden" && balloonLayerResult.layerPosition === "fixed"
+      && Math.abs(balloonLayerResult.layerHeight - balloonLayerResult.viewportHeight) < 2
+      && balloonLayerResult.titleZIndex === "1",
+    detail: JSON.stringify(balloonLayerResult),
+  }));
+
+  // 16. M1: navigator.audioSession.type follows the scene on iOS — 'playback' for the Devam
+  // gesture (so the ring/silent switch does not mute the melody, WebKit bug 237322),
+  // 'play-and-record' only while the mic listens, back to 'playback' once blowing finishes (the
+  // melody itself deferred ~400ms so the route has time to flip back before it plays), and 'auto'
+  // once the whole surprise closes. Real iOS audio-session ROUTING is unverified from here (no
+  // iPhone available) — this proves birthday.js drives the property and the delay at the right
+  // moments, which is what M1's fix actually changed.
+  await openApp(page, { now: "2026-10-04T00:29:00", signedIn: true, mic: "fake", storage: { "meryem-gate-played-year": "2026" } });
+  await waitUntilOverlayOpen(page);
+  await page.eval(() => {
+    navigator.audioSession = { _t: "auto", get type() { return this._t; }, set type(v) { this._t = v; } };
+    window.__bdayOscCount = 0;
+  });
+  await page.tap("#bday-scene0-continue");
+  await wait(page, 100);
+  const audioAfterContinue = await page.eval(() => navigator.audioSession.type);
+  await page.eval(() => {
+    var Orig = window.AudioContext || window.webkitAudioContext;
+    var origCreateOsc = Orig.prototype.createOscillator;
+    Orig.prototype.createOscillator = function () {
+      window.__bdayOscCount++;
+      return origCreateOsc.apply(this, arguments);
+    };
+  });
+  await wait(page, 4600); // reach the blow-UI reveal, as the mic:'fake' flow above does
+  await page.tap("#bday-mic-btn");
+  await wait(page, 150);
+  const audioAfterMicStart = await page.eval(() => navigator.audioSession.type);
+  for (let i = 0; i < 5; i++) {
+    await page.tap(`.bday-candle[data-candle="${i}"]`);
+    await wait(page, 80);
+  }
+  await wait(page, 150);
+  const audioAfterFinishBlowing = await page.eval(() => navigator.audioSession.type);
+  const oscSoonAfterBlow = await page.eval(() => window.__bdayOscCount);
+  await check("birthday: navigator.audioSession.type follows the scene — playback for the opener, play-and-record while the mic listens, playback once blowing finishes (M1)", () => ({
+    ok: audioAfterContinue === "playback" && audioAfterMicStart === "play-and-record" && audioAfterFinishBlowing === "playback",
+    detail: JSON.stringify({ audioAfterContinue, audioAfterMicStart, audioAfterFinishBlowing }),
+  }));
+  await check("birthday: the post-blow melody is deferred, not started the instant the last candle is out (M1)", () => ({
+    ok: oscSoonAfterBlow === 0,
+    detail: String(oscSoonAfterBlow),
+  }));
+  await wait(page, 500);
+  const oscAfterDelay = await page.eval(() => window.__bdayOscCount);
+  await check("birthday: the deferred melody does start, about 400ms after the last candle (M1)", () => ({
+    ok: oscAfterDelay > 0,
+    detail: String(oscAfterDelay),
+  }));
+  await page.tap("#bday-close-btn");
+  await wait(page, 150);
+  const audioAfterClose = await page.eval(() => navigator.audioSession.type);
+  await check("birthday: closing the surprise resets navigator.audioSession.type to 'auto' (M1)", () => ({
+    ok: audioAfterClose === "auto",
+    detail: String(audioAfterClose),
+  }));
+
+  // 17. m15: opening the letter, a SINGLE tap fills every remaining paragraph (not just the
+  // current one), the "Bitirmek için dokun" hint then hides, and the Devam button is centred like
+  // every other scene's.
+  await openApp(page, { now: "2026-10-04T00:31:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
+  await waitUntilOverlayOpen(page);
+  await page.tap("#bday-scene0-continue");
+  await blowAllCandlesByTap(page);
+  await page.tap("#bday-scene1-continue");
+  await wait(page, 150);
+  await page.tap("#bday-scene2-continue");
+  await wait(page, 150);
+  await page.tap("#bday-gift-open-btn");
+  await wait(page, 650);
+  await page.tap(".bday-letter"); // a single tap
+  await wait(page, 150);
+  const letterSingleTapResult = await page.eval(() => {
+    var expected = CONTENT.birthday.letter.paragraphs;
+    var actual = Array.prototype.map.call(document.querySelectorAll(".bday-letter-p"), (p) => p.textContent);
+    return {
+      allFilled: JSON.stringify(actual) === JSON.stringify(expected),
+      hintHidden: document.getElementById("bday-letter-hint").hidden === true,
+      signatureVisible: document.getElementById("bday-letter-signature").hidden === false,
+    };
+  });
+  await check("birthday: one tap on the letter fills every remaining paragraph at once, not just the current one (m15)", () => ({
+    ok: letterSingleTapResult.allFilled === true,
+    detail: JSON.stringify(letterSingleTapResult),
+  }));
+  await check("birthday: the \"Bitirmek için dokun\" hint hides once the letter has finished (m15)", () => ({
+    ok: letterSingleTapResult.hintHidden === true && letterSingleTapResult.signatureVisible === true,
+    detail: JSON.stringify(letterSingleTapResult),
+  }));
+  const continueBtnCenterResult = await page.eval(() => {
+    var btn = document.getElementById("bday-scene3-continue").getBoundingClientRect();
+    var letter = document.getElementById("bday-letter").getBoundingClientRect();
+    return { btnCenter: btn.left + btn.width / 2, letterCenter: letter.left + letter.width / 2 };
+  });
+  await check("birthday: the letter's Devam button is centred, like every other scene's (m15)", () => ({
+    ok: Math.abs(continueBtnCenterResult.btnCenter - continueBtnCenterResult.letterCenter) < 3,
+    detail: JSON.stringify(continueBtnCenterResult),
+  }));
+
+  // 18. m4: candle/balloon/gift/guard touch targets set touch-action:manipulation and disable
+  // text-select/callout, so a burst of rapid taps (5 candles, 8 balloons) never risks the iOS
+  // text-selection bubble or a double-tap zoom.
+  const touchTargetsResult = await page.eval(() => {
+    var selectors = ["bday-candle", "bday-balloon", "bday-gift-open-btn", "bday-guard"];
+    var out = {};
+    selectors.forEach(function (cls) {
+      var probe = document.createElement("button");
+      probe.className = cls;
+      document.body.appendChild(probe);
+      var cs = getComputedStyle(probe);
+      out[cls] = { touchAction: cs.touchAction, userSelect: cs.userSelect };
+      document.body.removeChild(probe);
+    });
+    return out;
+  });
+  await check("birthday: candle/balloon/gift/guard touch targets set touch-action:manipulation and disable text-select/callout (m4)", () => ({
+    ok: Object.keys(touchTargetsResult).every((k) => touchTargetsResult[k].touchAction === "manipulation" && touchTargetsResult[k].userSelect === "none"),
+    detail: JSON.stringify(touchTargetsResult),
   }));
 }
 
@@ -510,7 +819,7 @@ export const mutants = [
     file: "js/birthday.js",
     find: "if (seenYear === String(birthdayYear())) return;",
     replace: "if (false) return;",
-    expect: "birthday: reopening the same year does not auto-open again",
+    expect: "birthday: reopening after a real close does not auto-open again",
   },
   {
     id: "birthday-gate-due-guard",
@@ -623,6 +932,160 @@ export const mutants = [
     find: "overlay.addEventListener('keydown', bdayOverlayKeydown);",
     replace: "",
     expect: "birthday: Tab from the last focusable control in the overlay wraps to the first (focus trap)",
+  },
+  {
+    id: "birthday-countdown-labels-lowercase",
+    file: "js/birthday.js",
+    find: "{ key: 'days', label: 'gün' },",
+    replace: "{ key: 'days', label: 'Gün' },",
+    expect: "birthday: the 🎁 countdown's unit labels are lowercase (gün/saat/dakika/saniye), matching Tarihler's own widget (m12)",
+  },
+  {
+    id: "birthday-tick-gate-on-unlock",
+    file: "js/birthday.js",
+    find: "if (typeof window.startGateIfDue === 'function') window.startGateIfDue();",
+    replace: "",
+    expect: "birthday: passing midnight while the app is already open fires meryem:birthday-unlocked and starts the due gate (B1)",
+  },
+  {
+    id: "birthday-tick-unlock-event-dispatched",
+    file: "js/birthday.js",
+    find: "document.dispatchEvent(new CustomEvent('meryem:birthday-unlocked'));",
+    replace: "",
+    expect: "birthday: passing midnight while the app is already open fires meryem:birthday-unlocked and starts the due gate (B1)",
+  },
+  {
+    id: "birthday-open-btn-gate-aware",
+    file: "js/birthday.js",
+    find: "if (window.isGateDue && window.isGateDue()) window.startGateIfDue();\n      else openBirthdaySurprise();",
+    replace: "openBirthdaySurprise();",
+    expect: "birthday: with the gate due, tapping #bday-open-btn starts the gate instead of opening the surprise directly (B1)",
+  },
+  {
+    id: "birthday-seenyear-written-on-close",
+    file: "js/birthday.js",
+    find: "storageSet('meryem-birthday-seen-year', String(birthdayYear()));",
+    replace: "",
+    expect: "birthday: closing the surprise writes the seen-year flag (M2)",
+  },
+  {
+    id: "birthday-seenyear-not-written-on-open",
+    file: "js/birthday.js",
+    find: "_bdayReturnFocusEl = document.activeElement;",
+    replace: "storageSet('meryem-birthday-seen-year', String(birthdayYear())); _bdayReturnFocusEl = document.activeElement;",
+    expect: "birthday: the seen-year flag is not written while the surprise is still open (M2)",
+  },
+  {
+    id: "birthday-slideshow-advances-under-reduced-motion",
+    file: "js/birthday.js",
+    find: "if (frames.length > 1) {",
+    replace: "if (frames.length > 1 && !prefersReducedMotion()) {",
+    expect: "birthday: under reduced motion the slideshow still advances past the first photo — lost content, not motion (M5)",
+  },
+  {
+    id: "birthday-slideshow-camera-filename-caption-filter",
+    file: "js/birthday.js",
+    find: "var showCaption = !!title && !BDAY_CAMERA_FILENAME_RE.test(title.trim());",
+    replace: "var showCaption = !!title;",
+    expect: "birthday: a camera/picker filename ('IMG_4821') is never shown as a slideshow caption; a real title still is (M7)",
+  },
+  {
+    id: "birthday-slideshow-chronological-order",
+    file: "js/birthday.js",
+    find: "var photos = all.filter(function (m) { return !!getMemoryPhotoUrlSafe(m); }).reverse();",
+    replace: "var photos = all.filter(function (m) { return !!getMemoryPhotoUrlSafe(m); });",
+    expect: "birthday: the slideshow shows photos oldest-first, reversing Firestore's newest-first order (M19)",
+  },
+  {
+    id: "birthday-slideshow-photo-src-dom-property-not-concatenated",
+    file: "js/birthday.js",
+    find: "img.src = url;",
+    replace: "img.outerHTML = '<img src=\"' + url + '\">';",
+    expect: "birthday: a crafted photo URL (quote-breakout payload) never executes as markup (m1)",
+  },
+  {
+    id: "birthday-slideshow-thumbnail-background-preview",
+    file: "js/birthday.js",
+    find: "if (thumb) img.style.backgroundImage = 'url(' + JSON.stringify(thumb) + ')';",
+    replace: "",
+    expect: "birthday: each slideshow photo shows a blush-background thumbnail preview behind the full image (M19)",
+  },
+  {
+    id: "birthday-escape-closes-overlay",
+    file: "js/birthday.js",
+    find: "if (e.key === 'Escape') { closeBirthdaySurprise(); return; }",
+    replace: "",
+    expect: "birthday: pressing Escape closes the birthday overlay (m9)",
+  },
+  {
+    id: "birthday-title-scene-balloons-unclipped",
+    file: "css/birthday.css",
+    find: "position: fixed;\n  inset: 0;\n  z-index: 0;\n  pointer-events: none;\n  overflow: hidden;\n}\n\n.bday-hat-bears,\n.bday-scene--title .bday-title-script,\n.bday-scene--title .bday-continue-btn {\n  position: relative;\n  z-index: 1;\n}",
+    replace: "position: absolute;\n  inset: 0;\n  pointer-events: none;\n  overflow: hidden;\n}",
+    expect: "birthday: the title scene's background balloons are a fixed, unclipped full-viewport layer, with the scene content stacked above it (m14)",
+  },
+  {
+    id: "birthday-audio-session-playback-on-open",
+    file: "js/birthday.js",
+    find: "bdaySetAudioSession('playback');\n      ensureAudioContext();",
+    replace: "ensureAudioContext();",
+    expect: "birthday: navigator.audioSession.type follows the scene — playback for the opener, play-and-record while the mic listens, playback once blowing finishes (M1)",
+  },
+  {
+    id: "birthday-audio-session-play-and-record",
+    file: "js/birthday.js",
+    find: "bdaySetAudioSession('play-and-record');",
+    replace: "",
+    expect: "birthday: navigator.audioSession.type follows the scene — playback for the opener, play-and-record while the mic listens, playback once blowing finishes (M1)",
+  },
+  {
+    id: "birthday-audio-session-playback-after-blow",
+    file: "js/birthday.js",
+    find: "stopMicAndAnalyser();\n    bdaySetAudioSession('playback');",
+    replace: "stopMicAndAnalyser();",
+    expect: "birthday: navigator.audioSession.type follows the scene — playback for the opener, play-and-record while the mic listens, playback once blowing finishes (M1)",
+  },
+  {
+    id: "birthday-melody-deferred-after-blow",
+    file: "js/birthday.js",
+    find: "_bdayMelodyTimeoutId = setTimeout(function () {\n      _bdayMelodyTimeoutId = null;\n      playMelody();\n    }, 400);",
+    replace: "playMelody();",
+    expect: "birthday: the post-blow melody is deferred, not started the instant the last candle is out (M1)",
+  },
+  {
+    id: "birthday-audio-session-reset-on-close",
+    file: "js/birthday.js",
+    find: "bdaySetAudioSession('auto');",
+    replace: "",
+    expect: "birthday: closing the surprise resets navigator.audioSession.type to 'auto' (M1)",
+  },
+  {
+    id: "birthday-letter-single-tap-skip-all",
+    file: "js/birthday.js",
+    find: "if (_bdayLetterSkipAll) {",
+    replace: "if (false) {",
+    expect: "birthday: one tap on the letter fills every remaining paragraph at once, not just the current one (m15)",
+  },
+  {
+    id: "birthday-letter-hint-hides-on-finish",
+    file: "js/birthday.js",
+    find: "if (hintEl) hintEl.hidden = true;",
+    replace: "",
+    expect: "birthday: the \"Bitirmek için dokun\" hint hides once the letter has finished (m15)",
+  },
+  {
+    id: "birthday-letter-continue-btn-centered",
+    file: "css/birthday.css",
+    find: ".bday-letter .bday-continue-btn {\n  display: block;\n  margin-left: auto;\n  margin-right: auto;\n}",
+    replace: "",
+    expect: "birthday: the letter's Devam button is centred, like every other scene's (m15)",
+  },
+  {
+    id: "birthday-touch-targets-manipulation",
+    file: "css/birthday.css",
+    find: ".bday-candle,\n.bday-balloon,\n.bday-gift-open-btn,\n.bday-guard {\n  -webkit-touch-callout: none;\n  -webkit-user-select: none;\n  user-select: none;\n  touch-action: manipulation;\n}",
+    replace: "",
+    expect: "birthday: candle/balloon/gift/guard touch targets set touch-action:manipulation and disable text-select/callout (m4)",
   },
 ];
 

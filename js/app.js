@@ -144,14 +144,66 @@ function saveData(key, data) {
 
 /* ── Modal Helpers ──────────────────────────────────── */
 
+var _modalReturnFocusEl = null;
+var _modalOpenId = null;
+
+/**
+ * m7: #memory-modal/#detail-modal are real dialogs (role="dialog" aria-modal="true" in
+ * index.html) — the background is inerted, focus moves in, and Escape/close restore it.
+ * Unlike js/gate.js and js/birthday.js's own overlays (siblings of #app-content, so they inert
+ * the whole thing), these two modals are themselves DOM CHILDREN of #app-content — inerting
+ * #app-content here would inert the modal being opened too, so every OTHER child of #app-content
+ * is inerted instead, leaving the modal itself fully interactive.
+ */
 function openModal(id) {
-  document.getElementById(id).classList.add('open');
+  var modal = document.getElementById(id);
+  if (!modal) return;
+  _modalOpenId = id;
+  _modalReturnFocusEl = document.activeElement;
+
+  modal.classList.add('open');
   document.body.style.overflow = 'hidden';
+
+  var appContent = document.getElementById('app-content');
+  if (appContent) {
+    Array.prototype.forEach.call(appContent.children, function (child) {
+      if (child !== modal) child.setAttribute('inert', '');
+    });
+  }
+
+  var closeBtn = modal.querySelector('.modal-close');
+  if (closeBtn) {
+    try { closeBtn.focus(); } catch (e) { /* not focusable — ignore */ }
+  }
+  document.addEventListener('keydown', _modalKeydown);
 }
 
 function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
+  var modal = document.getElementById(id);
+  if (!modal) return;
+
+  modal.classList.remove('open');
   document.body.style.overflow = '';
+
+  var appContent = document.getElementById('app-content');
+  if (appContent) {
+    Array.prototype.forEach.call(appContent.children, function (child) {
+      child.removeAttribute('inert');
+    });
+  }
+
+  document.removeEventListener('keydown', _modalKeydown);
+  if (_modalOpenId === id) _modalOpenId = null;
+
+  var toFocus = _modalReturnFocusEl;
+  _modalReturnFocusEl = null;
+  if (toFocus && typeof toFocus.focus === 'function' && document.contains(toFocus)) {
+    try { toFocus.focus(); } catch (e) { /* element no longer focusable — ignore */ }
+  }
+}
+
+function _modalKeydown(e) {
+  if (e.key === 'Escape' && _modalOpenId) closeModal(_modalOpenId);
 }
 
 /* ── Toast Notification ─────────────────────────────── */
@@ -163,6 +215,10 @@ function showToast(message, duration) {
 
   var toast = document.createElement('div');
   toast.className = 'toast';
+  /* m8: without this a toast is silent to VoiceOver — role=status + aria-live=polite gets
+     "Anı kaydedildi!" and the upload progress announced without stealing focus. */
+  toast.setAttribute('role', 'status');
+  toast.setAttribute('aria-live', 'polite');
   toast.textContent = message;
   document.body.appendChild(toast);
 

@@ -442,6 +442,7 @@
   opacity: 0;
   transition: transform 0.45s ease, opacity 0.45s ease;
   overflow-y: auto;
+  overscroll-behavior: contain;
   flex: 1;
 }
 
