@@ -180,7 +180,7 @@ function getDailyMessageIndex(date) {
  * @returns {string}
  */
 function getDailyMessage() {
-  return LOVE_MESSAGES[getDailyMessageIndex(new Date())];
+  return LOVE_MESSAGES[getDailyMessageIndex(appNow())];
 }
 
 /**
@@ -201,7 +201,7 @@ function getRandomMessage(currentMessage) {
  * @returns {{ days: number, hours: number, minutes: number, seconds: number, passed: boolean }}
  */
 function getElapsed(sinceDate) {
-  var now = new Date();
+  var now = appNow();
   var diff = now - sinceDate;
 
   if (diff < 0) {
@@ -217,7 +217,7 @@ function getElapsed(sinceDate) {
 }
 
 function getNextBirthdayCountdown(month, day) {
-  var now = new Date();
+  var now = appNow();
   var thisYear = new Date(now.getFullYear(), month - 1, day);
   var target = now < thisYear ? thisYear : new Date(now.getFullYear() + 1, month - 1, day);
   var diff = target - now;

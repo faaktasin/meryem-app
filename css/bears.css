@@ -1,0 +1,71 @@
+/**
+ * Meryem App — Kawaii Bears (idle motion)
+ * Tiny idle animations for every bearSVG() output: breathing, blinking, ear wiggle. All three are
+ * killed by the global reduced-motion block in css/style.css (animation-duration: .01ms
+ * !important on *), so no extra @media query is needed here.
+ */
+
+.kawaii-bear,
+.kawaii-bear-hug {
+  display: block;
+  overflow: visible;
+}
+
+.kawaii-bear-body {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bearBreathe 3.6s ease-in-out infinite;
+}
+
+.kawaii-bear-ear {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bearEarWiggle 6s ease-in-out infinite;
+}
+
+.kawaii-bear-ear:nth-of-type(2) {
+  animation-delay: .18s;
+}
+
+.kawaii-bear-face {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bearBlink 4.8s ease-in-out infinite;
+}
+
+.kawaii-bear-heart {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bearHeartPulse 1.6s ease-in-out infinite;
+}
+
+.kawaii-bear-z {
+  font-family: var(--font-body), sans-serif;
+  font-weight: 600;
+  fill: var(--bear-stroke);
+  opacity: .75;
+}
+
+.kawaii-bear-z--sm {
+  opacity: .55;
+}
+
+@keyframes bearBreathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02, 0.985); }
+}
+
+@keyframes bearEarWiggle {
+  0%, 90%, 100% { transform: rotate(0deg); }
+  95% { transform: rotate(-5deg); }
+}
+
+@keyframes bearBlink {
+  0%, 94%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.12); }
+}
+
+@keyframes bearHeartPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bear Gallery</title>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500;700&family=Fredoka:wght@400;500;600&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../css/style.css">
+<link rel="stylesheet" href="../../css/bears.css">
+<style>
+  body { padding: 20px; }
+  h1, h2 { font-family: var(--font-script); color: var(--rose-strong); margin-bottom: 12px; }
+  .bear-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .bear-cell { background: var(--paper); border-radius: var(--radius-sm); padding: 12px; text-align: center; border: 1px solid var(--rose-100); }
+  .bear-cell span { display: block; font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
+</style>
+</head>
+<body>
+  <h1>Bear Gallery — moods x arms</h1>
+  <div class="bear-grid" id="grid"></div>
+  <h2>Hug</h2>
+  <div id="hug-slot"></div>
+  <script src="../../js/bears.js"></script>
+  <script>
+    var moods = ['normal', 'happy', 'pleading', 'teary', 'crying', 'love', 'sleepy'];
+    var grid = document.getElementById('grid');
+    moods.forEach(function (mood) {
+      ['down', 'wave', 'up'].forEach(function (arms) {
+        var cell = document.createElement('div');
+        cell.className = 'bear-cell';
+        cell.innerHTML = bearSVG({ mood: mood, arms: arms, heart: arms === 'wave', size: 110 }) +
+          '<span>' + mood + ' / ' + arms + '</span>';
+        grid.appendChild(cell);
+      });
+    });
+
+    var meterCell = document.createElement('div');
+    meterCell.className = 'bear-cell';
+    meterCell.innerHTML = bearSVG({ mood: 'happy', arms: 0.5, size: 110 }) +
+      '<span>arms: 0.5 (love meter)</span>';
+    grid.appendChild(meterCell);
+
+    var hatCell = document.createElement('div');
+    hatCell.className = 'bear-cell';
+    hatCell.innerHTML = bearSVG({ mood: 'happy', hat: true, heart: true, arms: 'wide', size: 130 }) +
+      '<span>happy / hat + heart</span>';
+    grid.appendChild(hatCell);
+
+    var headCell = document.createElement('div');
+    headCell.className = 'bear-cell';
+    headCell.innerHTML = bearSVG({ mood: 'love', headOnly: true, size: 90 }) + '<span>head only</span>';
+    grid.appendChild(headCell);
+
+    document.getElementById('hug-slot').innerHTML = hugSVG({ size: 260 });
+  </script>
+</body>
+</html>

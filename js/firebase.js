@@ -98,6 +98,7 @@ function onAppReady() {
   initTabs();
   initMap();
   initDaily();
+  initFeatures();
   registerServiceWorker();
   migrateLocalStorage();
 }
