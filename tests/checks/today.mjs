@@ -39,9 +39,9 @@ export async function run({ page, check, root }) {
         hasZ: !!zEl,
         // Rendered pixel height of the bigger 'z' glyph, not just its DOM presence — a bear drawn
         // too small makes the same markup effectively invisible on a real phone screen (the
-        // defect this guards). Measured directly: 9px at the shared 80px bear size (the old,
-        // too-small regression) vs 11px at the night bucket's own 100px size (the fix) — 10 is
-        // the cut between them.
+        // defect this guards). Measured with the first bear: 9px at 80px (the too-small
+        // regression) vs 11px at the night bucket's own 100px (the fix) — 10 is the cut. With the
+        // baby-faced bear (7294832): 8px at 60px, 10px at 80px, 13px at 100px.
         zHeight: zEl ? zEl.getBoundingClientRect().height : 0,
         wave: handYs.indexOf(150) !== -1 && handYs.indexOf(208) !== -1,
         textInBucket: !!(window.CONTENT && window.CONTENT.greetings[bucket] && window.CONTENT.greetings[bucket].indexOf(text) !== -1),
@@ -295,8 +295,10 @@ export const mutants = [
   {
     id: "today-night-bear-size-reverted",
     file: "js/daily.js",
+    // bearSVG's default size became 120px with the baby-faced bear, so dropping `size` no longer
+    // shrinks the night bear; the mutant draws it too small directly instead (z measured 8px).
     find: "night: { mood: 'sleepy', arms: 'down', size: 100 }",
-    replace: "night: { mood: 'sleepy', arms: 'down' }",
+    replace: "night: { mood: 'sleepy', arms: 'down', size: 60 }",
     expect: "today: greeting bucket and bear mood follow the time of day (08:00 morning happy+wave, 14:00 afternoon normal+heart, 20:00 evening love, 23:30 night sleepy), and the night bear is drawn big enough for its 'z' to actually read on screen",
   },
   {

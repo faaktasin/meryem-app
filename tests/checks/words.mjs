@@ -2,7 +2,7 @@
  * meryem-app tests — checks/words.mjs
  *
  * Covers js/words.js + css/words.css: the quote/line deck (next/prev, a synthetic swipe,
- * favourites persisted + filtered), the jar of 50 reasons (draw-without-replacement + reshuffle),
+ * favourites persisted + filtered), the jar of reasons (draw-without-replacement + reshuffle),
  * the 8 letter envelopes (open/close/Escape/persist/birthday-lock), and the reduced-motion
  * guards on the jar's flying note and the letter's flap/paper reveal.
  */
@@ -103,7 +103,7 @@ export async function run({ page, check }) {
     detail: JSON.stringify({ favText0, pressedAfterTap, favDump1, favText0AfterReload, pressedAfterReload, filteredPos, filteredText }),
   }));
 
-  // 3. 50 jar draws give 50 distinct reasons; the 51st reshuffles
+  // 3. N jar draws give all N reasons once each; draw N+1 reshuffles
   await openApp(page, { signedIn: true, reducedMotion: true });
   await gotoWords(page);
   const reasonsTotal = await page.eval(() => CONTENT.words.reasons.length);
@@ -117,7 +117,7 @@ export async function run({ page, check }) {
   const counterAt51 = await page.text("#wz-jar-counter");
   const reshuffleVisible = await page.eval(() => !document.getElementById("wz-jar-reshuffle").hidden);
 
-  await check("words: 50 jar draws give 50 distinct reasons, the 51st reshuffles", () => ({
+  await check("words: the jar draws every reason once before it reshuffles", () => ({
     ok: drawnAt50.length === reasonsTotal && new Set(drawnAt50).size === reasonsTotal
       && counterAt50 === `${reasonsTotal} / ${reasonsTotal}`
       && drawnAt51.length === 1 && counterAt51 === `1 / ${reasonsTotal}` && reshuffleVisible === true,
@@ -454,7 +454,7 @@ export const mutants = [
     file: "js/words.js",
     find: "if (drawn.indexOf(i) === -1) remaining.push(i);",
     replace: "if (drawn.indexOf(i) !== -1) remaining.push(i);",
-    expect: "words: 50 jar draws give 50 distinct reasons, the 51st reshuffles",
+    expect: "words: the jar draws every reason once before it reshuffles",
   },
   {
     id: "words-letter-escape",

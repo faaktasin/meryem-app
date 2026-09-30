@@ -67,7 +67,10 @@
 }
 
 html {
-  color-scheme: light;
+  /* "only" stops Chrome's auto dark theme repainting the page dark (plain "light" does not).
+     Samsung Internet's website dark theme is asked the same way; whether it listens is
+     unconfirmed, and its own Labs switch "Use website dark theme" wins either way. */
+  color-scheme: only light;
 }
 
 body {

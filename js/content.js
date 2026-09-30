@@ -11,8 +11,8 @@ var CONTENT = {
   greetings: {
     morning: [
       'Günaydın güzelim\u00a0☀️',
-      'Günaydın hayatım, güne gülümseyerek başla',
-      'Uyandın mı canım? Ayıcık seni bekliyordu\u00a0🐻',
+      'Günaydın tatlım, güne gülümseyerek başla',
+      'Uyandın mı bebeğim? Ayıcık seni bekliyordu\u00a0🐻',
       'Günaydın Meryem, bugün de güzel bir gün olsun',
       'Gözlerini aç, güneş de sensin zaten'
     ],
@@ -20,7 +20,7 @@ var CONTENT = {
       'Günün nasıl gidiyor bakalım?',
       'Biraz mola ver, seni düşünüyorum şu an\u00a0💭',
       'Öğlen arası bir gülümseme sana yeter mi?',
-      'Umarım günün güzel geçiyordur canım',
+      'Umarım günün güzel geçiyordur tatlım',
       'Ayıcık merak etti, sen iyi misin?\u00a0🐻'
     ],
     evening: [
@@ -34,13 +34,13 @@ var CONTENT = {
       'İyi geceler Meryem, tatlı rüyalar\u00a0🌙',
       'Gözlerin kapanmadan bil ki seni seviyorum',
       'Uyu güzelim, yarın yine buradayım',
-      'Ayıcık nöbette, sen rahat uyu\u00a0🐻',
+      'Ayıcık nöbette, sen rahat uyu bebeğim\u00a0🐻',
       'Gece de seninle güzel, iyi uykular'
     ],
     /* Her birthday (4 Oct, all day) replaces the time-of-day line above — Furkan speaking to her. */
     birthday: [
       'İyi ki doğdun güzelim\u00a0🎂',
-      'Bugün senin günün, doğum günün kutlu olsun\u00a0🎉',
+      'Bugün senin günün tatlım, doğum günün kutlu olsun\u00a0🎉',
       'Dünyanın en güzel kızının doğum günü bugün\u00a0🎂'
     ],
     /* On her birthday this replaces "Bugünün Mesajı" for the whole day. */
@@ -59,6 +59,7 @@ var CONTENT = {
       'Emin misin?',
       'Gerçekten mi?\u00a0🥺',
       'Bir daha düşün bence',
+      'Evlenmeden olmaz\u00a0😉',
       'Ayıcık üzülüyor bak\u00a0🐻',
       'Kalbimi kırıyorsun\u00a0💔',
       'Ayıcık ağlıyor bak\u00a0😭',
@@ -79,7 +80,7 @@ var CONTENT = {
       { q: 'Kötü şakalarıma bile gülüyor musun?', reply: 'İşte bu yüzden seni seviyorum\u00a0😄' },
       { q: 'Bugün beni biraz özledin mi?', reply: 'Ben de seni çok özledim\u00a0🥺' },
       { q: 'Benimle bir kahve içmeye gelir misin?', reply: 'Randevu kaydedildi\u00a0☕' },
-      { q: 'Bir gün aynı evde uyanacak mıyız?', reply: 'En güzel planım bu\u00a0🏡' },
+      { q: 'Bir gün aynı evde uyanacak mıyız?', reply: 'Uyanacağız, ama biliyorsun: evlenmeden olmaz\u00a0😉' },
       { q: 'Beni ilk günden daha çok mu seviyorsun?', reply: 'Ben de seni her gün daha çok\u00a0💗' },
       { q: 'Kavga etsek bile yanımda kalır mısın?', reply: 'Ben de hep yanındayım, söz' },
       { q: 'Sana sarılmama izin verir misin?', reply: 'Geliyorum, kollarım açık\u00a0🤗' },
@@ -219,6 +220,8 @@ var CONTENT = {
       'Seni seviyorum çünkü inatçılığını bile sevimli buluyorum.',
       'Seni seviyorum çünkü yanında olduğumda ev orası oluyor.',
       'Seni seviyorum çünkü sabırlısın, benimle bile.',
+      'Seni seviyorum çünkü o kadar tatlısın ki sana kızmayı hiç beceremiyorum.',
+      'Seni seviyorum çünkü cilvene her seferinde yeniden yeniliyorum.',
       'Seni seviyorum çünkü sıkıldığında yüzünü buruşturman bile çok tatlı.',
       'Seni seviyorum çünkü planlarımızı hayal etmek bile keyifli.',
       'Seni seviyorum çünkü kalbin cömert, herkese karşı.',
@@ -275,7 +278,7 @@ var CONTENT = {
         emoji: '🤍',
         birthdayOnly: false,
         body: [
-          'Canın sıkkınsa, önce derin bir nefes al. Sonra bil ki yalnız değilsin.',
+          'Canın sıkkınsa, önce derin bir nefes al güzelim. Sonra bil ki yalnız değilsin.',
           'Bu duygu geçici, sen kalıcısın. Ben burada, seni bekliyorum, ne zaman hazır olursan.',
           'İstersen anlat, istersen sadece sessiz kal. İkisi de bana uyar, yeter ki yanında olayım.'
         ]
@@ -288,7 +291,7 @@ var CONTENT = {
         body: [
           'Gözlerin açık kalmışsa, bırak bu satırlar seni yavaşça uyutsun.',
           'Bugünü geride bırak. Yarın hâlâ orada olacak, bu gece sadece dinlen.',
-          'Ben buradayım, kalbimde bir yerin hep sıcak duruyor. Gözlerini kapat, güzel rüyalar seni bulsun.'
+          'Ben buradayım, kalbimde bir yerin hep sıcak duruyor. Gözlerini kapat bebeğim, güzel rüyalar seni bulsun.'
         ]
       },
       {
@@ -342,7 +345,7 @@ var CONTENT = {
         birthdayOnly: true,
         body: [
           'Bugün gözlerini açtığında ilk bilmeni istediğim şey: bugün senin günün, ve ben bunu kutlamak için sabırsızlanıyorum.',
-          "Bu yıl, birbirimize ilk kez 'seni seviyorum' dediğimiz yıl. Ve bu yılın en güzel gününü de seninle kutluyorum.",
+          "Bu yıl, birbirimize ilk kez 'seni seviyorum' dediğimiz ve nişanlandığımız yıl. Ve bu yılın en güzel gününü de seninle kutluyorum.",
           'İyi ki doğdun Meryem. Bugünün, tıpkı sen gibi, güzel geçmesini diliyorum.'
         ]
       }
@@ -406,7 +409,9 @@ var CONTENT = {
     letter: {
       greeting: 'Sevgili Meryem,',
       paragraphs: [
-        "Bu yıl benim için bambaşka bir yıl oldu, çünkü içinde sen vardın. Ocak'ta birbirimize sevgimizi söyledik, Mart'ta ilk kez yüz yüze geldik ve o günden beri hayatım çok daha güzel bir yer.",
+        "Bu yıl benim için bambaşka bir yıl oldu, çünkü içinde sen vardın. Ocak'ta birbirimize sevgimizi söyledik, Mart'ta da ilk kez yüz yüze geldik.",
+        "Kızılay'da metroda buluşup Akköprü'ye gitmiştik, hatırlıyor musun? İkimiz de saçma sapan heyecanlıydık, ne yapacağımızı bir türlü bilememiştik. Şimdi düşününce o hâlimiz bile çok tatlı geliyor; o günden beri hayatım çok daha güzel bir yer.",
+        "25 Temmuz'da nişanlandık. Nişan bittikten sonra ilk kez baş başa kaldığımız o an, ilk öpücüğümüz, hâlâ gözümün önünde.",
         'Bu, birlikte kutladığımız ilk doğum günün. Nasıl kutlasam diye çok düşündüm; bu küçük uygulama da o düşüncelerin bir parçası, içindeki her kalp senin için.',
         'Sana her gün küçük bir şey söylemek istedim, çünkü seni her gün biraz daha çok sevdiğimi fark ettim. Bugün de bunlardan biri, ama en özel olanı.',
         'Umarım bu yeni yaşın sana sağlık, mutluluk ve gülümseyeceğin çok an getirir. Umarım hayat sana hak ettiğin kadar güzel davranır.',

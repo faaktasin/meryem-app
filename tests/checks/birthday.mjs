@@ -22,10 +22,11 @@ const THREE_MEMORIES = [
 
 const wait = (page, ms) => page.eval((n) => new Promise((r) => setTimeout(r, n)), ms);
 
-/** Scrolls `selector` into view first — the coupon booklet (scene or 🎁-tab) can push its own
- *  entries below the 390x844 viewport's fold, where a plain page.tap() silently hits nothing
- *  (words.mjs's own scrollIntoView precedent, applied here to every coupon tap). */
-async function tapCoupon(page, selector) {
+/** Scrolls `selector` into view first — the coupon booklet (scene or 🎁-tab) and the letter's
+ *  Devam button (below 8 paragraphs) sit below the 390x844 viewport's fold, where a plain
+ *  page.tap() silently hits nothing (words.mjs's own scrollIntoView precedent). On the phone the
+ *  overlay scrolls to them; measured 2026-10-01 at 390x844 and 360x780. */
+async function tapInView(page, selector) {
   await page.eval((sel) => {
     var el = document.querySelector(sel);
     if (el && el.scrollIntoView) el.scrollIntoView({ block: "center", inline: "center" });
@@ -62,7 +63,7 @@ async function reachSlideshow(page, { hasVoice = false } = {}) {
     await wait(page, 60);
   }
   await wait(page, 150);
-  await page.tap("#bday-scene3-continue");
+  await tapInView(page, "#bday-scene3-continue");
   await wait(page, 150);
   if (hasVoice) {
     await page.tap("#bday-scene-voice-continue");
@@ -470,7 +471,7 @@ export async function run({ page, check }) {
     detail: JSON.stringify({ letterResult, expectedSignature }),
   }));
 
-  await page.tap("#bday-scene3-continue");
+  await tapInView(page, "#bday-scene3-continue");
   await wait(page, 150);
   await page.tap("#bday-scene-coupons-continue");
   await wait(page, 200);
@@ -867,7 +868,7 @@ export async function run({ page, check }) {
     await wait(page, 60);
   }
   await wait(page, 150);
-  await page.tap("#bday-scene3-continue");
+  await tapInView(page, "#bday-scene3-continue");
   await wait(page, 150);
   const noVoiceResult = await page.eval(() => ({
     voicePresent: !!document.querySelector(".bday-scene--voice"),
@@ -897,7 +898,7 @@ export async function run({ page, check }) {
   // defensive stopMelody() call, not just the (already-true) fact that earlier scenes stop it too.
   await page.eval(() => { window.birthdayTestStartMelody(); });
   const melodyForcedOn = await page.eval(() => window.birthdayTestIsMelodyPlaying());
-  await page.tap("#bday-scene3-continue");
+  await tapInView(page, "#bday-scene3-continue");
   await wait(page, 150);
   const voiceSceneResult = await page.eval(() => {
     var titleEl = document.querySelector(".bday-voice-title");
@@ -1010,7 +1011,7 @@ export async function run({ page, check }) {
     await wait(page, 60);
   }
   await wait(page, 150);
-  await page.tap("#bday-scene3-continue");
+  await tapInView(page, "#bday-scene3-continue");
   await wait(page, 150);
   await page.tap("#bday-voice-play");
   await wait(page, 150);
@@ -1045,7 +1046,7 @@ export async function run({ page, check }) {
     await wait(page, 60);
   }
   await wait(page, 150);
-  await page.tap("#bday-scene3-continue");
+  await tapInView(page, "#bday-scene3-continue");
   await wait(page, 150);
   const couponsSceneResult = await page.eval(() => ({
     count: document.querySelectorAll("#bday-coupon-booklet .bday-coupon").length,
@@ -1062,7 +1063,7 @@ export async function run({ page, check }) {
     var orig = window.confirm;
     window.confirm = function () { window.__bdayConfirmCalled = true; return orig ? orig.apply(window, arguments) : false; };
   });
-  await tapCoupon(page, '#bday-coupon-booklet [data-coupon="hug"]');
+  await tapInView(page, '#bday-coupon-booklet [data-coupon="hug"]');
   await wait(page, 150);
   const confirmDialogResult = await page.eval(() => ({
     visible: document.getElementById("bday-coupon-confirm").hidden === false,
@@ -1095,7 +1096,7 @@ export async function run({ page, check }) {
     detail: JSON.stringify(afterNoResult),
   }));
 
-  await tapCoupon(page, '#bday-coupon-booklet [data-coupon="hug"]');
+  await tapInView(page, '#bday-coupon-booklet [data-coupon="hug"]');
   await wait(page, 150);
   await page.tap("#bday-coupon-confirm-yes");
   await wait(page, 150);
@@ -1171,7 +1172,7 @@ export async function run({ page, check }) {
     detail: JSON.stringify(tabBooklet),
   }));
 
-  await tapCoupon(page, '#bday-coupon-booklet-tab [data-coupon="hug"]');
+  await tapInView(page, '#bday-coupon-booklet-tab [data-coupon="hug"]');
   await wait(page, 150);
   const usedTapIsNoop = await page.eval(() => {
     var dialog = document.getElementById("bday-coupon-confirm");
@@ -1197,7 +1198,7 @@ export async function run({ page, check }) {
   });
   await page.tap(".nav-btn[data-tab=\"birthday-view\"]");
   await wait(page, 150);
-  await tapCoupon(page, '#bday-coupon-booklet-tab [data-coupon="trip"]');
+  await tapInView(page, '#bday-coupon-booklet-tab [data-coupon="trip"]');
   await wait(page, 150);
   await page.tap("#bday-coupon-confirm-yes");
   await wait(page, 150);
@@ -1227,7 +1228,7 @@ export async function run({ page, check }) {
     await wait(page, 60);
   }
   await wait(page, 150);
-  await page.tap("#bday-scene3-continue");
+  await tapInView(page, "#bday-scene3-continue");
   await wait(page, 150);
   await page.tap("#bday-voice-play");
   await wait(page, 150);
@@ -1247,7 +1248,7 @@ export async function run({ page, check }) {
 
   await page.tap("#bday-scene-voice-continue");
   await wait(page, 150);
-  await tapCoupon(page, '#bday-coupon-booklet [data-coupon="hug"]');
+  await tapInView(page, '#bday-coupon-booklet [data-coupon="hug"]');
   await wait(page, 150);
   const reducedConfirmResult = await page.eval(() => ({
     visible: document.getElementById("bday-coupon-confirm").hidden === false,
@@ -1779,7 +1780,7 @@ export const shots = [
         await wait(page, 60);
       }
       await wait(page, 150);
-      await page.tap("#bday-scene3-continue");
+      await tapInView(page, "#bday-scene3-continue");
       await wait(page, 200);
       await page.tap("#bday-voice-play");
       await wait(page, 150);
@@ -1803,7 +1804,7 @@ export const shots = [
         await wait(page, 60);
       }
       await wait(page, 150);
-      await page.tap("#bday-scene3-continue");
+      await tapInView(page, "#bday-scene3-continue");
       await wait(page, 200);
     },
   },
@@ -1825,9 +1826,9 @@ export const shots = [
         await wait(page, 60);
       }
       await wait(page, 150);
-      await page.tap("#bday-scene3-continue");
+      await tapInView(page, "#bday-scene3-continue");
       await wait(page, 200);
-      await tapCoupon(page, '#bday-coupon-booklet [data-coupon="hug"]');
+      await tapInView(page, '#bday-coupon-booklet [data-coupon="hug"]');
       await wait(page, 150);
     },
   },
@@ -1857,7 +1858,7 @@ export const shots = [
         await wait(page, 60);
       }
       await wait(page, 150);
-      await page.tap("#bday-scene3-continue");
+      await tapInView(page, "#bday-scene3-continue");
       await wait(page, 150);
       await page.tap("#bday-scene-coupons-continue");
       await wait(page, 300);
@@ -1881,7 +1882,7 @@ export const shots = [
         await wait(page, 60);
       }
       await wait(page, 150);
-      await page.tap("#bday-scene3-continue");
+      await tapInView(page, "#bday-scene3-continue");
       await wait(page, 150);
       await page.tap("#bday-scene-coupons-continue");
       await wait(page, 300);

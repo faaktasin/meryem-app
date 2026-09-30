@@ -537,9 +537,74 @@ export async function run({ page, check, root }) {
     ok: giftResults.every((r) => r.startsPink && Math.abs(r.dx) <= 1.5 && Math.abs(r.dy) <= 1.5 && r.w >= 44 && r.h >= 44),
     detail: JSON.stringify(giftResults),
   }));
+
+  // A phone in dark mode may repaint the pastel page dark (Chrome's auto dark theme, Samsung
+  // Internet's website dark theme). `color-scheme: only light`, in the head meta and on <html>,
+  // opts out; plain `light` does not. Read from painted pixels under the browser's forced dark,
+  // with a control inside the check — the same page with only plain `light` must go dark, or the
+  // probe proves nothing. Samsung's own Labs switch cannot be emulated here.
+  async function meanLuminance() {
+    const { data } = await page.send("Page.captureScreenshot", { format: "png" });
+    return page.eval((b64) => new Promise((resolve, reject) => {
+      var img = new Image();
+      img.onload = function () {
+        var canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        var ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        var d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        var sum = 0, n = 0;
+        for (var i = 0; i < d.length; i += 64) { sum += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]; n++; }
+        resolve(Math.round(sum / n));
+      };
+      img.onerror = function () { reject(new Error("screenshot did not decode")); };
+      img.src = "data:image/png;base64," + b64;
+    }), data);
+  }
+  await openApp(page, { signedIn: true });
+  await page.eval(() => new Promise((r) => setTimeout(r, 400)));
+  const declared = await page.eval(() => {
+    var meta = document.querySelector('meta[name="color-scheme"]');
+    return { meta: meta ? meta.getAttribute("content") : null, css: getComputedStyle(document.documentElement).colorScheme };
+  });
+  const lumNormal = await meanLuminance();
+  await page.send("Emulation.setAutoDarkModeOverride", { enabled: true });
+  await page.eval(() => new Promise((r) => setTimeout(r, 400)));
+  const lumForced = await meanLuminance();
+  await page.eval(() => {
+    var meta = document.querySelector('meta[name="color-scheme"]');
+    if (meta) meta.remove();
+    var s = document.createElement("style");
+    s.textContent = "html { color-scheme: light !important; }";
+    document.head.appendChild(s);
+    return new Promise((r) => setTimeout(r, 400));
+  });
+  const lumControl = await meanLuminance();
+  await page.send("Emulation.setAutoDarkModeOverride", {});
+  await check("shell: the page stays light when the browser forces dark (only light in meta and CSS; plain light as control goes dark)", () => ({
+    // The computed value serialises as "light only"; compare the keywords, not their order.
+    ok: declared.meta === "only light" && declared.css.split(/\s+/).sort().join(" ") === "light only"
+      && lumNormal >= 200 && lumForced >= lumNormal - 10 && lumControl <= 120,
+    detail: JSON.stringify({ declared, lumNormal, lumForced, lumControl }),
+  }));
 }
 
 export const mutants = [
+  {
+    id: "shell-dark-meta-dropped",
+    file: "index.html",
+    find: '  <meta name="color-scheme" content="only light">\n',
+    replace: "",
+    expect: "shell: the page stays light when the browser forces dark (only light in meta and CSS; plain light as control goes dark)",
+  },
+  {
+    id: "shell-dark-css-plain-light",
+    file: "css/style.css",
+    find: "  color-scheme: only light;\n",
+    replace: "  color-scheme: light;\n",
+    expect: "shell: the page stays light when the browser forces dark (only light in meta and CSS; plain light as control goes dark)",
+  },
   {
     id: "shell-gift-circle-offcentre",
     file: "css/style.css",
