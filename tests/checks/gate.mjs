@@ -386,109 +386,116 @@ export async function run({ page, check }) {
     document.body.appendChild(holder);
     holder.innerHTML = hugSVG({ size: 200 });
     const svg = holder.querySelector("svg");
-    const toUser = (el, x, y) => {
-      const pt = svg.createSVGPoint();
-      pt.x = x; pt.y = y;
-      return pt.matrixTransform(el.getCTM());
-    };
+    const all = (sel) => Array.prototype.slice.call(svg.querySelectorAll(sel));
+    const pt = (x, y) => { const p = svg.createSVGPoint(); p.x = x; p.y = y; return p; };
+    // Rendered-pixel space: every point is pushed through its own element's screen matrix, so the
+    // figures' translate+rotate transforms are applied exactly as the browser applies them.
+    const toScreen = (el, x, y) => pt(x, y).matrixTransform(el.getScreenCTM());
+    const inFill = (el, s) => el.isPointInFill(pt(s.x, s.y).matrixTransform(el.getScreenCTM().inverse()));
     const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-    const heads = Array.prototype.slice.call(svg.querySelectorAll("circle"))
-      .filter((c) => c.getAttribute("r") === "58")
-      .map((c) => {
-        const r = Number(c.getAttribute("r"));
-        const cx = Number(c.getAttribute("cx")), cy = Number(c.getAttribute("cy"));
-        const center = toUser(c, cx, cy);
-        const rim = toUser(c, cx + r, cy);
-        return { center, r: dist(center, rim) };
-      });
-    const lines = Array.prototype.slice.call(svg.querySelectorAll("line"));
-    // Each arm draws two identical <line>s (stroke outline + fur fill) — one per arm is enough.
-    const arms = [];
-    for (let i = 0; i < lines.length; i += 2) {
-      const l = lines[i];
-      const start = toUser(l, Number(l.getAttribute("x1")), Number(l.getAttribute("y1")));
-      const end = toUser(l, Number(l.getAttribute("x2")), Number(l.getAttribute("y2")));
-      const ownIdx = dist(start, heads[0].center) < dist(start, heads[1].center) ? 0 : 1;
-      const farIdx = 1 - ownIdx;
-      arms.push({
-        startClearOfOwnRatio: dist(start, heads[ownIdx].center) / heads[ownIdx].r,
-        handClearOfOwnRatio: dist(end, heads[ownIdx].center) / heads[ownIdx].r,
-        handClearOfFarRatio: dist(end, heads[farIdx].center) / heads[farIdx].r,
-      });
-    }
-    // Eyes: each _bearEyeArc() draws a <path stroke-width="3.4">, the only paths at that width in
-    // the whole hug SVG (the mouths are 2.6, the heart 2) — 4 total, 2 per bear. Own/far is decided
-    // the same way as for the arms: whichever head centre a given eye sits closer to (world frame).
-    const eyePaths = Array.prototype.slice.call(svg.querySelectorAll('path[stroke-width="3.4"]'));
-    const eyeFarClearRatios = eyePaths.map((p) => {
-      const bb = p.getBBox();
-      const c = toUser(p, bb.x + bb.width / 2, bb.y + bb.height / 2);
-      const farIdx = dist(c, heads[0].center) < dist(c, heads[1].center) ? 1 : 0;
-      return dist(c, heads[farIdx].center) / heads[farIdx].r;
+    const bboxCentre = (el) => { const b = el.getBBox(); return toScreen(el, b.x + b.width / 2, b.y + b.height / 2); };
+    // Points along an element's outline, in screen space: a path by arc length, a circle by angle.
+    const outline = (el, n) => {
+      const out = [];
+      if (el.tagName.toLowerCase() === "circle") {
+        const cx = Number(el.getAttribute("cx")), cy = Number(el.getAttribute("cy")), r = Number(el.getAttribute("r"));
+        for (let i = 0; i < n; i++) out.push(toScreen(el, cx + r * Math.cos((2 * Math.PI * i) / n), cy + r * Math.sin((2 * Math.PI * i) / n)));
+      } else {
+        const len = el.getTotalLength();
+        for (let i = 0; i <= n; i++) { const q = el.getPointAtLength((len * i) / n); out.push(toScreen(el, q.x, q.y)); }
+      }
+      return out;
+    };
+    const heads = all("path.kawaii-bear-head");
+    const bodies = all("ellipse.kawaii-bear-hug-body");
+    const headC = heads.map(bboxCentre);
+    const bodyC = bodies.map(bboxCentre);
+    const nearest = (c, list) => (dist(c, list[0]) < dist(c, list[1]) ? 0 : 1);
+    const inAnyHead = (s) => heads.some((h) => inFill(h, s));
+
+    // Eyes: every sample of each ^^ arc sits inside its OWN head and inside NEITHER the other head.
+    const eyes = all('.kawaii-bear-face path[stroke-width="3.4"]').map((e) => {
+      const pts = outline(e, 8);
+      const own = nearest(bboxCentre(e), headC);
+      return { inOwn: pts.filter((s) => inFill(heads[own], s)).length, inOther: pts.filter((s) => inFill(heads[1 - own], s)).length, n: pts.length };
     });
-    // How much the two head circles overlap, as a fraction of their combined width (2r each, equal
-    // radii here) — 0 is exactly tangent (touching, no overlap), 1 would be fully coincident.
-    const headOverlapRatio = heads.length === 2
-      ? Math.max(0, heads[0].r + heads[1].r - dist(heads[0].center, heads[1].center)) / (heads[0].r + heads[1].r)
-      : null;
-    // Ears: the outer ear circles (r="16" in source) must each extend past their OWN head's rim,
-    // not sit fully swallowed by it (the M3 bug — old (±32,-38) r22 landed centre-distance 34.9,
-    // 34.9+22=56.9 < the head's own r=58, fully covered). Measured the same rendered-pixel way as
-    // the heads/arms/eyes above (own element's getCTM, never the source r attribute) so the ratio
-    // is immune to whatever scale getCTM applies. A ratio > 1 means (distance-to-own-head-centre +
-    // this ear's own measured radius) clears the head's own measured radius — the ear's outer rim
-    // pokes outside the head circle. The cream inner circles (r="7.5") are counted only for
-    // presence — same count as the outer ears, one nested inside each.
-    const earsOuter = Array.prototype.slice.call(svg.querySelectorAll("circle"))
-      .filter((c) => c.getAttribute("r") === "16")
-      .map((c) => {
-        const r = Number(c.getAttribute("r"));
-        const cx = Number(c.getAttribute("cx")), cy = Number(c.getAttribute("cy"));
-        const center = toUser(c, cx, cy);
-        const rim = toUser(c, cx + r, cy);
-        return { center, r: dist(center, rim) };
-      });
-    const earsInnerCount = svg.querySelectorAll('circle[r="7.5"]').length;
-    const earHeadOutsetRatios = earsOuter.map((e) => {
-      const ownIdx = dist(e.center, heads[0].center) < dist(e.center, heads[1].center) ? 0 : 1;
-      const own = heads[ownIdx];
-      return (dist(e.center, own.center) + e.r) / own.r;
+    // How much of one head's outline lies inside the other head: 0 = tangent, 1 = coincident.
+    const headOverlap = heads.length === 2 ? outline(heads[0], 60).filter((s) => inFill(heads[1], s)).length / 61 : null;
+
+    // Ears: the share of each outer ear's rim that lies OUTSIDE its own head (0 = swallowed by it).
+    const earsOuter = all(".kawaii-bear-ear > circle:first-child").map((c) => {
+      const pts = outline(c, 24);
+      const own = nearest(bboxCentre(c), headC);
+      return { outside: pts.filter((s) => !inFill(heads[own], s)).length / pts.length, centreInOther: inFill(heads[1 - own], bboxCentre(c)) };
     });
+    const earsInner = all(".kawaii-bear-ear > circle:last-child").length;
+
+    // Arms + paws: each arm starts under its own bear's chin and ends in a paw on the OTHER bear's
+    // shoulder. The paw must lie on the other body, clear of every head (rim included), above the
+    // body's middle (shoulder, not belly); no point of the arm may sit below the body's middle.
+    const arms = all("path.kawaii-bear-hug-arm");
+    const paws = all("circle.kawaii-bear-hug-paw");
+    const armInfo = arms.map((a) => {
+      const pts = outline(a, 20);
+      const own = nearest(pts[0], bodyC);
+      const paw = paws.find((p) => dist(bboxCentre(p), pts[pts.length - 1]) < 6);
+      const pc = paw ? bboxCentre(paw) : null;
+      return {
+        hasPaw: !!paw,
+        pawOnFarBody: !!paw && inFill(bodies[1 - own], pc) && !inFill(bodies[own], pc),
+        pawRimInHeads: paw ? outline(paw, 16).filter(inAnyHead).length : -1,
+        armEndInHead: inAnyHead(pts[pts.length - 1]),
+        armLowestY: Math.max.apply(null, pts.map((s) => s.y)),
+        bodyMiddleY: bodyC[1 - own].y,
+        pawAboveMiddle: !!paw && pc.y < bodyC[1 - own].y,
+      };
+    });
+    // Hearts: exactly one, above both heads and between them.
+    const hearts = all(".kawaii-bear-heart").map(bboxCentre);
+    const heartInfo = hearts.map((h) => ({
+      aboveHeads: headC.length === 2 && h.y < Math.min(headC[0].y, headC[1].y),
+      between: headC.length === 2 && h.x > Math.min(headC[0].x, headC[1].x) && h.x < Math.max(headC[0].x, headC[1].x),
+    }));
     document.body.removeChild(holder);
     return {
-      headCount: heads.length, lineCount: lines.length, arms, eyeCount: eyePaths.length, eyeFarClearRatios, headOverlapRatio,
-      earOuterCount: earsOuter.length, earInnerCount: earsInnerCount, earHeadOutsetRatios,
+      headCount: heads.length, bodyCount: bodies.length, eyes, headOverlap,
+      earsOuter, earsInner, armCount: arms.length, pawCount: paws.length, armInfo, heartCount: hearts.length, heartInfo,
     };
   });
-  // Ratios of distance-to-centre over the (measured) head radius: 1.0 is exactly on the rim.
-  // MIN clears the face outright; MAX is where the old ey=70 bug landed (~1.84, belly/hip) — the
-  // fixed ey=40 lands at ~1.33 (shoulder/back), comfortably inside both bounds.
-  const MIN_RATIO = 1.08, MAX_RATIO = 1.65;
+  // Each arm's paw rests on the far bear's shoulder: on that body, clear of every head, above the
+  // body's middle; and no arm point dips below that middle (the old ey=70 bug landed at belly/hip).
   await check("gate: hugSVG's arms rest at shoulder height, clear of both faces", () => ({
-    ok: hugGeom.headCount === 2 && hugGeom.lineCount === 4 && hugGeom.arms.length === 2
-      && hugGeom.arms.every((a) => a.startClearOfOwnRatio > MIN_RATIO && a.handClearOfOwnRatio > MIN_RATIO
-        && a.handClearOfFarRatio > MIN_RATIO && a.handClearOfFarRatio < MAX_RATIO),
-    detail: JSON.stringify(hugGeom),
+    ok: hugGeom.headCount === 2 && hugGeom.bodyCount === 2 && hugGeom.armCount === 2 && hugGeom.pawCount === 2
+      && hugGeom.armInfo.length === 2
+      && hugGeom.armInfo.every((a) => a.hasPaw && a.pawOnFarBody && a.pawRimInHeads === 0 && !a.armEndInHead
+        && a.pawAboveMiddle && a.armLowestY < a.bodyMiddleY),
+    detail: JSON.stringify(hugGeom.armInfo),
   }));
 
-  // Heads may touch at the cheek (the old bug buried the right bear's head over about half of the
-  // left bear's face, ~28% of a head's width) but each bear's eyes must clear the OTHER bear's
-  // head circle outright — read back the same way as the arms, not eyeballed.
-  const HEAD_OVERLAP_MAX = 0.12, EYE_CLEAR_MIN_RATIO = 1.1;
+  // Both faces stay fully visible: every ^^ eye lies wholly inside its own head and touches neither
+  // the other head; the heads themselves may touch at the cheek but not bury each other (the old
+  // bug buried the right bear's head over about half of the left bear's face).
+  const HEAD_OVERLAP_MAX = 0.12;
   await check("gate: hugSVG's heads clear each other's face, touching at most lightly at the cheek", () => ({
-    ok: hugGeom.headOverlapRatio !== null && hugGeom.headOverlapRatio <= HEAD_OVERLAP_MAX
-      && hugGeom.eyeCount === 4 && hugGeom.eyeFarClearRatios.every((r) => r > EYE_CLEAR_MIN_RATIO),
-    detail: JSON.stringify({ headOverlapRatio: hugGeom.headOverlapRatio, eyeCount: hugGeom.eyeCount, eyeFarClearRatios: hugGeom.eyeFarClearRatios }),
+    ok: hugGeom.headOverlap !== null && hugGeom.headOverlap <= HEAD_OVERLAP_MAX
+      && hugGeom.eyes.length === 4 && hugGeom.eyes.every((e) => e.inOwn === e.n && e.inOther === 0),
+    detail: JSON.stringify({ headOverlap: hugGeom.headOverlap, eyes: hugGeom.eyes }),
   }));
 
   // Both bears' ears must actually show: each ear circle (with its cream inner circle) pokes
-  // outside its own head circle rather than sitting fully hidden behind it (M3, 2026-09-28 review
-  // — "two bald round heads" in the hug finale and the birthday end screen).
-  const EAR_OUTSIDE_HEAD_MIN_RATIO = 1.0;
+  // outside its own head instead of sitting hidden behind it (M3, 2026-09-28 review — "two bald
+  // round heads"), and is not buried under the OTHER head either.
+  const EAR_OUTSIDE_MIN = 0.35;
   await check("gate: hugSVG's ears (with their cream inner circle) extend outside the head circle", () => ({
-    ok: hugGeom.earOuterCount === 4 && hugGeom.earInnerCount === 4
-      && hugGeom.earHeadOutsetRatios.every((r) => r > EAR_OUTSIDE_HEAD_MIN_RATIO),
-    detail: JSON.stringify({ earOuterCount: hugGeom.earOuterCount, earInnerCount: hugGeom.earInnerCount, earHeadOutsetRatios: hugGeom.earHeadOutsetRatios }),
+    ok: hugGeom.earsOuter.length === 4 && hugGeom.earsInner === 4
+      && hugGeom.earsOuter.every((e) => e.outside >= EAR_OUTSIDE_MIN && !e.centreInOther),
+    detail: JSON.stringify({ earsInner: hugGeom.earsInner, earsOuter: hugGeom.earsOuter }),
+  }));
+
+  // One heart, floating above the two heads and between them.
+  await check("gate: hugSVG carries exactly one heart, above and between the two heads", () => ({
+    ok: hugGeom.heartCount === 1 && hugGeom.heartInfo[0].aboveHeads && hugGeom.heartInfo[0].between,
+    detail: JSON.stringify({ heartCount: hugGeom.heartCount, heartInfo: hugGeom.heartInfo }),
   }));
 
   // 10. Contrast (window.__app.readable(), installed by harness.mjs on every goto)
@@ -560,38 +567,27 @@ export const mutants = [
     expect: "gate: the heart-pattern layer is full-bleed with a small tile",
   },
   {
-    // Reintroduces the original bug: no head-outset, so the two r=58 head circles overlap by ~28%
-    // of a head's width — the right bear's head burying half of the left bear's face.
+    // Pushes the two figures together (HUG_CX 75 -> 105): the heads bury each other's faces.
     id: "gate-hug-head-overlap",
     file: "js/bears.js",
-    find: "var HUG_HEAD_OUTSET = 12;",
-    replace: "var HUG_HEAD_OUTSET = 0;",
+    find: "var HUG_CX = 79;",
+    replace: "var HUG_CX = 108;",
     expect: "gate: hugSVG's heads clear each other's face, touching at most lightly at the cheek",
   },
   {
-    // Reintroduces the exact M3 bug: ears back at (±32,-38) r22/r10 — centre-distance 34.9 from
-    // the head's own centre, 34.9+22=56.9 < the head's r=58, fully swallowed by the head circle.
+    // Both ears moved inside the head (the shared head builder): swallowed by the head shape, the M3 bug.
     id: "gate-hug-ears-hidden",
     file: "js/bears.js",
-    find: "  out += '<circle cx=\"-30\" cy=\"-76\" r=\"16\" fill=\"url(#' + id + '-fur)\" stroke=\"var(--bear-stroke)\" stroke-width=\"3\"/>';\n" +
-      "  out += '<circle cx=\"-30\" cy=\"-76\" r=\"7.5\" fill=\"var(--bear-light)\"/>';\n" +
-      "  out += '<circle cx=\"30\" cy=\"-76\" r=\"16\" fill=\"url(#' + id + '-fur)\" stroke=\"var(--bear-stroke)\" stroke-width=\"3\"/>';\n" +
-      "  out += '<circle cx=\"30\" cy=\"-76\" r=\"7.5\" fill=\"var(--bear-light)\"/>';",
-    replace: "  out += '<circle cx=\"-32\" cy=\"-38\" r=\"22\" fill=\"url(#' + id + '-fur)\" stroke=\"var(--bear-stroke)\" stroke-width=\"3\"/>';\n" +
-      "  out += '<circle cx=\"-32\" cy=\"-38\" r=\"10\" fill=\"var(--bear-light)\"/>';\n" +
-      "  out += '<circle cx=\"32\" cy=\"-38\" r=\"22\" fill=\"url(#' + id + '-fur)\" stroke=\"var(--bear-stroke)\" stroke-width=\"3\"/>';\n" +
-      "  out += '<circle cx=\"32\" cy=\"-38\" r=\"10\" fill=\"var(--bear-light)\"/>';",
+    find: "svg += _bearEar(id, 'l', 32, 40, 27, 12.5, outlineW);\n  svg += _bearEar(id, 'r', 168, 40, 27, 12.5, outlineW);",
+    replace: "svg += _bearEar(id, 'l', 90, 50, 27, 12.5, outlineW);\n  svg += _bearEar(id, 'r', 110, 50, 27, 12.5, outlineW);",
     expect: "gate: hugSVG's ears (with their cream inner circle) extend outside the head circle",
   },
   {
-    // Keeps the new ears' COUNT right (still r="16") but drags this one ear back down near the
-    // old cy=-38 — proves the check's geometric outset-ratio math actually gates on position, not
-    // just on the presence of r="16" circles (the gate-hug-ears-hidden mutant above only reverts
-    // radius/position together and would pass a check that verified count alone).
+    // Keeps the ear COUNT right (4 outer + 4 inner) but drags the left ears down into the head - proves the check gates on position, not on presence.
     id: "gate-hug-ear-geometry",
     file: "js/bears.js",
-    find: '<circle cx="-30" cy="-76" r="16"',
-    replace: '<circle cx="-30" cy="-38" r="16"',
+    find: "svg += _bearEar(id, 'l', 32, 40, 27, 12.5, outlineW);",
+    replace: "svg += _bearEar(id, 'l', 60, 70, 27, 12.5, outlineW);",
     expect: "gate: hugSVG's ears (with their cream inner circle) extend outside the head circle",
   },
   {
@@ -612,23 +608,28 @@ export const mutants = [
     expect: "gate: the love meter cannot decrease and only enables its button at max",
   },
   {
-    // Reintroduces the older bug: arms crossing right at mouth/chin height (inside the head
-    // circle's own radius from the far bear's head centre).
+    // Paws up at eye height (HUG_PAW_Y 136 -> 84): each paw lands on the far bear's face.
     id: "gate-hug-arm-face-height",
     file: "js/bears.js",
-    find: "var ex = dir * 62, ey = 28;",
-    replace: "var ex = dir * 62, ey = -6;",
+    find: "var HUG_PAW_Y = 136;",
+    replace: "var HUG_PAW_Y = 84;",
     expect: "gate: hugSVG's arms rest at shoulder height, clear of both faces",
   },
   {
-    // Reintroduces the exact defect the 2026-09-28 review found: the hand overshoots the far
-    // bear's shoulder/back and lands down at belly/hip height (a real head-circle-radius check
-    // catches this; the old y1>0 && y2>0 mutant guard could not — Constitution 2.5).
+    // Paws down at belly height (HUG_PAW_Y 136 -> 162): a bar across the bellies, not a hug round the shoulders.
     id: "gate-hug-arm-belly-overshoot",
     file: "js/bears.js",
-    find: "var ex = dir * 62, ey = 28;",
-    replace: "var ex = dir * 62, ey = 70;",
+    find: "var HUG_PAW_Y = 136;",
+    replace: "var HUG_PAW_Y = 162;",
     expect: "gate: hugSVG's arms rest at shoulder height, clear of both faces",
+  },
+  {
+    // The heart moved from above the heads to below them.
+    id: "gate-hug-heart-below",
+    file: "js/bears.js",
+    find: "translate(130,-2) scale(0.62)",
+    replace: "translate(130,150) scale(0.62)",
+    expect: "gate: hugSVG carries exactly one heart, above and between the two heads",
   },
   {
     id: "gate-reduced-motion-burst",

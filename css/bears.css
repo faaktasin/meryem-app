@@ -1,8 +1,18 @@
 /**
- * Meryem App — Kawaii Bears (idle motion)
- * Tiny idle animations for every bearSVG() output: breathing, blinking, ear wiggle. All three are
- * killed by the global reduced-motion block in css/style.css (animation-duration: .01ms
- * !important on *), so no extra @media query is needed here.
+ * Meryem App — Kawaii Bears (idle motion) — soft baby-faced plush
+ * Every animation is a CSS keyframe driving transform/opacity on a group — no JS timers. Motion is
+ * deliberately gentle: sine-like easing, small amplitudes, long cycles. The host page's global
+ * reduced-motion rule (css/style.css) shortens every duration; the @media block at the bottom also
+ * switches these animations off, so this file behaves correctly standalone (gallery / preview).
+ *
+ *   - Blink is a fur-coloured eyelid sweeping over the eye. Its resting state is scaleY(0) in the
+ *     BASE rule (and inline in the markup), so a static render — reduced motion, no animation —
+ *     shows open eyes; only the running blink animation ever closes it.
+ *   - A tear is a STATIC copy (always on) plus a DRIP copy that is the only one animated; every
+ *     fade-from-nothing loop (drip, z's, mini hearts) runs at a NEGATIVE delay with fill-mode both,
+ *     so a fresh re-render is already mid-cycle on its first frame instead of popping in.
+ *   - The mood hop is gated off for a headOnly render (.kawaii-bear--head-only); hearts and z's
+ *     never reach a headOnly render at all (js/bears.js).
  */
 
 .kawaii-bear,
@@ -11,61 +21,209 @@
   overflow: visible;
 }
 
+/* ── Soft idle — the default rest motion for every mood ────── */
+.kawaii-bear-figure {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: bearIdleBounce 4.2s cubic-bezier(.45, .05, .55, .95) infinite;
+}
+
+/* ── Happy little hop — happy/love, full-body only ── */
+.kawaii-bear--happy:not(.kawaii-bear--head-only) .kawaii-bear-figure,
+.kawaii-bear--love:not(.kawaii-bear--head-only) .kawaii-bear-figure {
+  animation: bearHop 2.2s cubic-bezier(.45, .05, .55, .95) infinite;
+}
+
+/* ── Breathing — chest only, barely there ─────────────────── */
 .kawaii-bear-body {
   transform-box: fill-box;
   transform-origin: center;
-  animation: bearBreathe 3.6s ease-in-out infinite;
+  animation: bearBreathe 4.6s cubic-bezier(.45, .05, .55, .95) infinite;
 }
 
+/* ── Ear flop — trails the head tilt by a beat ──────────────── */
 .kawaii-bear-ear {
   transform-box: fill-box;
-  transform-origin: center;
-  animation: bearEarWiggle 6s ease-in-out infinite;
+  animation: bearEarFlop 8.4s cubic-bezier(.45, .05, .55, .95) infinite;
+}
+.kawaii-bear-ear--l {
+  transform-origin: 70% 78%;
+}
+.kawaii-bear-ear--r {
+  transform-origin: 30% 78%;
+  animation-delay: .14s;
 }
 
-.kawaii-bear-ear:nth-of-type(2) {
-  animation-delay: .18s;
+/* ── Slow head tilt — rotates the whole head+face around the neck ─── */
+.kawaii-bear-head-wrap {
+  transform-box: fill-box;
+  transform-origin: 50% 88%;
+  animation: bearHeadTilt 8.4s cubic-bezier(.45, .05, .55, .95) infinite;
 }
 
-.kawaii-bear-face {
+/* ── Blink — resting state is collapsed (scaleY 0): open eyes with no animation ── */
+.kawaii-bear-eyelid {
+  transform: scaleY(0);
   transform-box: fill-box;
   transform-origin: center;
-  animation: bearBlink 4.8s ease-in-out infinite;
+  animation: bearEyelidBlink 5.6s cubic-bezier(.45, .05, .55, .95) infinite;
 }
 
+/* ── Waving arm (arms:'wave' only) — rotates around the shoulder ──── */
+.kawaii-bear-arm-wave {
+  transform-box: view-box;
+  transform-origin: 140px 176px;
+  animation: bearWave 1.6s cubic-bezier(.45, .05, .55, .95) infinite;
+}
+.kawaii-bear-arm-wave .kawaii-bear-wrist {
+  animation: bearWristFlick 1.6s cubic-bezier(.45, .05, .55, .95) infinite;
+}
+
+/* ── Held/floating heart — a soft heartbeat ─── */
 .kawaii-bear-heart {
   transform-box: fill-box;
   transform-origin: center;
-  animation: bearHeartPulse 1.6s ease-in-out infinite;
+  animation: bearHeartPulse 2s cubic-bezier(.45, .05, .55, .95) infinite;
 }
 
+/* ── Tears ──────────────────────────────────────────────────────────
+   The static copy carries no animation; the drip copy on top is the only one that moves, and starts
+   at a NEGATIVE delay (mid-drip on frame 0). Its resting opacity is 0, so without animation only
+   the static tear shows. */
+.kawaii-bear-tear-static {
+  opacity: .85;
+}
+.kawaii-bear-tear-drip {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bearTearDrip 2.8s ease-in infinite;
+  animation-delay: -1.4s;
+  animation-fill-mode: both;
+}
+.kawaii-bear-tear-drip--2 {
+  animation-delay: -2.3s;
+}
+
+/* ── Sleepy z's — float up and fade, mid-cycle on frame 0 ─────────────────── */
 .kawaii-bear-z {
   font-family: var(--font-body), sans-serif;
   font-weight: 600;
-  fill: var(--bear-stroke);
-  opacity: .75;
+  fill: var(--bear-eye, #5A382B);
+  opacity: .6;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bearZFloat 4s ease-in-out infinite;
+  animation-fill-mode: both;
+}
+.kawaii-bear-z--1 { animation-delay: -.8s; }
+.kawaii-bear-z--2 { animation-delay: -2.1s; }
+.kawaii-bear-z--3 { animation-delay: -3.3s; }
+.kawaii-bear-z--sm {
+  opacity: .5;
 }
 
-.kawaii-bear-z--sm {
-  opacity: .55;
+/* ── Mini hearts drifting up for 'love' — mid-cycle on frame 0 ─────────────── */
+.kawaii-bear-mini-heart {
+  opacity: .75;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bearMiniHeartFloat 3.4s ease-in-out infinite;
+  animation-fill-mode: both;
+}
+.kawaii-bear-mini-heart--1 { animation-delay: -.5s; }
+.kawaii-bear-mini-heart--2 { animation-delay: -1.4s; }
+.kawaii-bear-mini-heart--3 { animation-delay: -2.4s; }
+
+/* ── Keyframes ──────────────────────────────────────────────────────── */
+
+@keyframes bearIdleBounce {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  50% { transform: translateY(-2px) scale(1.004, 0.996); }
 }
 
 @keyframes bearBreathe {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.02, 0.985); }
+  50% { transform: scale(1.018, 0.985); }
 }
 
-@keyframes bearEarWiggle {
-  0%, 90%, 100% { transform: rotate(0deg); }
-  95% { transform: rotate(-5deg); }
+@keyframes bearEarFlop {
+  0%, 100% { transform: rotate(0deg); }
+  48% { transform: rotate(5deg); }
+  76% { transform: rotate(-2.5deg); }
 }
 
-@keyframes bearBlink {
-  0%, 94%, 100% { transform: scaleY(1); }
-  96% { transform: scaleY(0.12); }
+@keyframes bearHeadTilt {
+  0%, 100% { transform: rotate(0deg); }
+  48% { transform: rotate(2.4deg); }
+  76% { transform: rotate(-1deg); }
+}
+
+@keyframes bearEyelidBlink {
+  0%, 93%, 100% { transform: scaleY(0); }
+  96.5% { transform: scaleY(1); }
+}
+
+@keyframes bearWave {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(11deg); }
+}
+
+@keyframes bearWristFlick {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(8deg); }
+}
+
+@keyframes bearHop {
+  0%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-4px); }
+  55% { transform: translateY(0); }
+  72% { transform: translateY(-1px); }
+  86% { transform: translateY(0); }
 }
 
 @keyframes bearHeartPulse {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.08); }
+  18% { transform: scale(1.12); }
+  36% { transform: scale(1); }
+  52% { transform: scale(1.07); }
+  70% { transform: scale(1); }
+}
+
+@keyframes bearTearDrip {
+  0% { transform: translateY(0); opacity: 0; }
+  20% { opacity: .9; }
+  85% { opacity: .45; }
+  100% { transform: translateY(18px); opacity: 0; }
+}
+
+@keyframes bearZFloat {
+  0% { transform: translate(0, 0); opacity: 0; }
+  25% { opacity: .65; }
+  80% { opacity: .35; }
+  100% { transform: translate(3px, -10px); opacity: 0; }
+}
+
+@keyframes bearMiniHeartFloat {
+  0% { transform: translateY(0) scale(0.75); opacity: 0; }
+  25% { opacity: .8; }
+  75% { opacity: .45; }
+  100% { transform: translateY(-20px) scale(1); opacity: 0; }
+}
+
+/* ── Reduced motion — belt and braces alongside the host page's global rule ── */
+@media (prefers-reduced-motion: reduce) {
+  .kawaii-bear-figure,
+  .kawaii-bear-body,
+  .kawaii-bear-ear,
+  .kawaii-bear-head-wrap,
+  .kawaii-bear-eyelid,
+  .kawaii-bear-arm-wave,
+  .kawaii-bear-arm-wave .kawaii-bear-wrist,
+  .kawaii-bear-heart,
+  .kawaii-bear-tear-drip,
+  .kawaii-bear-z,
+  .kawaii-bear-mini-heart {
+    animation: none;
+  }
 }
