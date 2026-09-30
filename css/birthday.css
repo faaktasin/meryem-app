@@ -6,9 +6,9 @@
  * redefined here, only consumed via var(...).
  */
 
-/* ── Nav glow (targets the frozen .nav-btn--gift from css/style.css) ───── */
+/* ── Nav glow (the circle is .nav-gift-bubble::before, css/style.css) ──── */
 
-.nav-btn--gift.is-glowing::before {
+.nav-btn--gift.is-glowing .nav-gift-bubble::before {
   animation: bdayGiftGlow 1.8s ease-in-out infinite;
 }
 
@@ -1149,7 +1149,7 @@
 /* ── Reduced motion ───────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
-  .nav-btn--gift.is-glowing::before {
+  .nav-btn--gift.is-glowing .nav-gift-bubble::before {
     animation: none;
     box-shadow: 0 6px 20px var(--rose-strong), 0 0 0 4px var(--cream);
   }

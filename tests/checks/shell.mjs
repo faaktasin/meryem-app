@@ -476,9 +476,84 @@ export async function run({ page, check, root }) {
     ok: missingDriveStrings.length === 0 && staleAsciiDrive.length === 0,
     detail: missingDriveStrings.length ? `missing: ${missingDriveStrings.join(" | ")}` : (staleAsciiDrive.length ? `stale ascii: ${staleAsciiDrive.join(", ")}` : "ok"),
   }));
+
+  // The gift icon sits in the middle of its raised pink circle — read from the painted pixels, on
+  // two phone sizes and with the Sürpriz tab both idle and selected (the selected state once
+  // dropped the icon out of the circle). From the icon's edges the scan walks outwards through the
+  // pink ring to the circle's rim on all four sides; the rim's midpoint must be the icon's centre.
+  const giftCases = [
+    { name: "390x844 idle", viewport: { width: 390, height: 844 }, select: false },
+    { name: "390x844 selected", viewport: { width: 390, height: 844 }, select: true },
+    { name: "412x915 idle", viewport: { width: 412, height: 915 }, select: false },
+  ];
+  const giftResults = [];
+  for (const c of giftCases) {
+    await openApp(page, { signedIn: true, viewport: c.viewport });
+    await page.eval(() => new Promise((r) => setTimeout(r, 200)));
+    if (c.select) await page.tap('.nav-btn[data-tab="birthday-view"]');
+    await page.eval(() => new Promise((r) => setTimeout(r, 400)));
+    const icon = await page.eval(() => {
+      var r = document.querySelector(".nav-btn--gift svg").getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, dpr: window.devicePixelRatio };
+    });
+    const { data } = await page.send("Page.captureScreenshot", { format: "png" });
+    const rim = await page.eval((b64, icon) => new Promise((resolve, reject) => {
+      var img = new Image();
+      img.onload = function () {
+        var canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        var ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        var d = icon.dpr;
+        function pink(x, y) {
+          var p = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
+          return p[0] >= 180 && p[1] <= 130 && p[2] >= 90 && p[2] <= 170 && p[0] - p[1] >= 80;
+        }
+        function walk(x, y, dx, dy) {
+          var steps = 0;
+          while (pink(x + dx, y + dy) && steps < 200) { x += dx; y += dy; steps++; }
+          return { x: x, y: y, steps: steps };
+        }
+        var cx = (icon.left + icon.right) / 2 * d;
+        var cy = (icon.top + icon.bottom) / 2 * d;
+        var top = walk(cx, icon.top * d - 3, 0, -1);
+        var bottom = walk(cx, icon.bottom * d + 3, 0, 1);
+        var left = walk(icon.left * d - 3, cy, -1, 0);
+        var right = walk(icon.right * d + 3, cy, 1, 0);
+        resolve({
+          rimCx: (left.x + right.x) / 2 / d, rimCy: (top.y + bottom.y) / 2 / d,
+          iconCx: cx / d, iconCy: cy / d,
+          width: (right.x - left.x) / d, height: (bottom.y - top.y) / d,
+          startsPink: pink(cx, icon.top * d - 3) && pink(cx, icon.bottom * d + 3),
+        });
+      };
+      img.onerror = function () { reject(new Error("screenshot did not decode")); };
+      img.src = "data:image/png;base64," + b64;
+    }), data, icon);
+    giftResults.push({ name: c.name, dx: +(rim.rimCx - rim.iconCx).toFixed(2), dy: +(rim.rimCy - rim.iconCy).toFixed(2), w: +rim.width.toFixed(1), h: +rim.height.toFixed(1), startsPink: rim.startsPink });
+  }
+  await check("shell: the Sürpriz icon is centred in its raised circle (painted pixels, two sizes, idle and selected)", () => ({
+    ok: giftResults.every((r) => r.startsPink && Math.abs(r.dx) <= 1.5 && Math.abs(r.dy) <= 1.5 && r.w >= 44 && r.h >= 44),
+    detail: JSON.stringify(giftResults),
+  }));
 }
 
 export const mutants = [
+  {
+    id: "shell-gift-circle-offcentre",
+    file: "css/style.css",
+    find: "  transform: translate(-50%, -50%);\n  border-radius: 50%;\n  background: linear-gradient(160deg, var(--rose), var(--rose-strong));",
+    replace: "  transform: translate(-50%, -38%);\n  border-radius: 50%;\n  background: linear-gradient(160deg, var(--rose), var(--rose-strong));",
+    expect: "shell: the Sürpriz icon is centred in its raised circle (painted pixels, two sizes, idle and selected)",
+  },
+  {
+    id: "shell-gift-active-shift",
+    file: "css/style.css",
+    find: ".nav-btn.is-active .nav-gift-bubble svg {\n  transform: scale(1.08);",
+    replace: ".nav-btn.is-active .nav-gift-bubble svg {\n  transform: translateY(12px) scale(1.08);",
+    expect: "shell: the Sürpriz icon is centred in its raised circle (painted pixels, two sizes, idle and selected)",
+  },
   {
     id: "shell-input-font-size-todo",
     file: "css/style.css",

@@ -119,15 +119,16 @@ export async function run({ page, check }) {
     function overlaps(a, b) {
       return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
     }
-    var giftBtn = document.querySelector(".nav-btn--gift");
-    var giftRect = giftBtn.getBoundingClientRect();
-    var cs = getComputedStyle(giftBtn, "::before");
+    // The raised circle is .nav-gift-bubble::before, centred on the bubble (whose rect already
+    // includes its lift transform).
+    var bubble = document.querySelector(".nav-btn--gift .nav-gift-bubble");
+    var bubbleRect = bubble.getBoundingClientRect();
+    var cs = getComputedStyle(bubble, "::before");
     var w = parseFloat(cs.width);
     var h = parseFloat(cs.height);
-    var topOffset = parseFloat(cs.top);
-    var cx = giftRect.left + giftRect.width / 2;
-    var circleTop = giftRect.top + topOffset;
-    var circle = { left: cx - w / 2, right: cx + w / 2, top: circleTop, bottom: circleTop + h };
+    var cx = bubbleRect.left + bubbleRect.width / 2;
+    var cy = bubbleRect.top + bubbleRect.height / 2;
+    var circle = { left: cx - w / 2, right: cx + w / 2, top: cy - h / 2, bottom: cy + h / 2 };
     var zoom = rect(document.querySelector(".leaflet-control-zoom"));
     var attr = rect(document.querySelector(".leaflet-control-attribution"));
     var nav = rect(document.querySelector(".bottom-nav"));

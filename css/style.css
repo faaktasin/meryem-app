@@ -343,34 +343,48 @@ button, input, textarea {
      sits inside the raised pink circle below) needs paper-white; scoped to it alone, further down. */
 }
 
-.nav-btn--gift::before {
+.nav-btn--gift span {
+  position: relative;
+}
+
+/* The raised pink circle is drawn around the icon itself, so the two share one centre on every
+   phone. It used to hang from the button's top edge (top: -14px) while the icon was centred by
+   the flex column and nudged up separately, so any change in the nav's height moved the icon off
+   the circle's middle. The bubble keeps the icon's own 22px footprint in the flex column (the label
+   stays aligned with the other four) and is lifted with transform, which never touches layout. */
+.nav-gift-bubble {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  transform: translateY(-15px);
+}
+
+.nav-gift-bubble::before {
   content: '';
   position: absolute;
-  top: -14px;
   left: 50%;
-  transform: translateX(-50%);
+  top: 50%;
   width: 52px;
   height: 52px;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
   background: linear-gradient(160deg, var(--rose), var(--rose-strong));
   box-shadow: 0 6px 16px var(--shadow), 0 0 0 4px var(--cream);
   z-index: -1;
 }
 
-.nav-btn--gift svg,
-.nav-btn--gift span {
+.nav-gift-bubble svg {
   position: relative;
-}
-
-.nav-btn--gift svg {
   /* White for contrast against its own pink circle — measured white-on-cream (the label's
      ground) at ~1.1:1 when this was set on the whole button instead of just the icon. */
   color: var(--paper);
-  /* transform, not margin: a negative margin shrinks this icon's contribution to the flex
-     column's centering math, which pushed the label underneath it flush against the very bottom
-     edge (measured: it started clipping). transform moves the icon visually without touching
-     layout, so the label stays centred exactly like the other four buttons. */
-  transform: translateY(-15px);
+}
+
+/* Selected: grow in place. The generic .nav-btn.is-active svg rule would also shift it. */
+.nav-btn.is-active .nav-gift-bubble svg {
+  transform: scale(1.08);
 }
 
 /* ── Views ──────────────────────────────────────────── */
