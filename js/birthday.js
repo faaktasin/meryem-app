@@ -2,13 +2,18 @@
  * Meryem App — Birthday surprise (Sürpriz)
  * Owns #birthday-root (the 🎁 tab) and the contents of #birthday-overlay (the full-screen
  * surprise). Two tab states — LOCKED (a guarded gift box with a live countdown) and UNLOCKED (a
- * card that opens the surprise) — plus a six-scene overlay: title, cake, balloons, gift+letter,
- * slideshow, end. Every timer/animation this file starts is torn down when its scene ends, the
- * overlay closes, or initBirthday() runs again.
+ * card that opens the surprise, plus a "Kuponların" list of her love coupons) — plus a scene
+ * stepper: title, cake, balloons, gift+letter, [voice message — only when Furkan has dropped a
+ * recording at audio/sesli-mesaj.*], love coupons, slideshow, end. Scenes advance with
+ * goToNextScene() (relative to the current one), not a hardcoded index, precisely so the voice
+ * scene can be spliced in or out without renumbering every other scene's continue button. Every
+ * timer/animation this file starts is torn down when its scene ends, the overlay closes, or
+ * initBirthday() runs again.
  *
  * Contract (window-exposed): initBirthday(), maybeAutoOpenBirthday(), openBirthdaySurprise().
- * Also exposes birthdayBlowDetector() (a pure RMS-over-time detector factory) purely so
- * tests/checks/birthday.mjs can prove the "blow" logic without a real microphone.
+ * Also exposes birthdayBlowDetector() (a pure RMS-over-time detector factory) and
+ * birthdayTestStartMelody()/birthdayTestIsMelodyPlaying(), purely so tests/checks/birthday.mjs can
+ * prove the "blow" and "music box stops before her voice plays" logic without a real microphone.
  */
 (function () {
   'use strict';
@@ -204,6 +209,8 @@
     var readySubtitle = (seen ? ready.again : ready.firstTime) || (seen
       ? 'İstersen tekrar aç, seninle her seferinde konuşmak isterim 💗'
       : 'Dokun ve doğum günü sürprizini gör');
+    var couponsContent = CONTENT.birthday.coupons || {};
+    var couponsTitle = couponsContent.title || 'Doğum günü kuponların 🎟️';
     root.innerHTML =
       '<div class="bday-view bday-view--unlocked">' +
         '<div class="bday-ready-card">' +
@@ -212,7 +219,12 @@
           '<p class="bday-ready-subtitle">' + bdayEsc(readySubtitle) + '</p>' +
           '<button type="button" class="btn btn-primary bday-open-btn" id="bday-open-btn">🎁 Sürprizi Aç</button>' +
         '</div>' +
+        '<div class="bday-coupons-tab-section">' +
+          '<h3 class="bday-coupons-tab-title">' + bdayEsc(couponsTitle) + '</h3>' +
+          '<div class="bday-coupon-booklet bday-coupon-booklet--tab" id="bday-coupon-booklet-tab">' + bdayCouponsListMarkup() + '</div>' +
+        '</div>' +
       '</div>';
+    bdayWireCouponContainer(document.getElementById('bday-coupon-booklet-tab'));
 
     document.getElementById('bday-open-btn').addEventListener('click', function () {
       /* Gate-aware (B1): a due gate owns opening the birthday surprise — jumping straight there
@@ -262,6 +274,9 @@
     _bdayCurrentState = null;
     renderBirthdayRoot();
     _bdayTickId = setInterval(bdayTick, 1000);
+    /* Probe once at load time and patch the scene list the moment it resolves — long before she
+       could ever tap through to the scene right after the letter, whichever way it comes out. */
+    bdayProbeVoiceUrl().then(function (voiceUrl) { _bdayScenes = bdayBuildScenes(voiceUrl); });
     maybeAutoOpenBirthday();
   }
 
@@ -509,7 +524,7 @@
       cont.hidden = false;
       cont.addEventListener('click', function () {
         stopMelody();
-        goToScene(2);
+        goToNextScene();
       });
     }
   }
@@ -649,7 +664,7 @@
       });
     });
 
-    document.getElementById('bday-scene2-continue').addEventListener('click', function () { goToScene(3); });
+    document.getElementById('bday-scene2-continue').addEventListener('click', function () { goToNextScene(); });
     return null;
   }
 
@@ -694,7 +709,7 @@
         var cont = document.getElementById('bday-scene3-continue');
         if (cont) {
           cont.hidden = false;
-          cont.addEventListener('click', function () { goToScene(4); });
+          cont.addEventListener('click', function () { goToNextScene(); });
         }
         return;
       }
@@ -757,6 +772,333 @@
     return function cleanup() { bdaySkipTypewriter(); };
   }
 
+  /* ── Voice message probing (audio/sesli-mesaj.*) ─────────────────────── */
+
+  /* Extensions probed in order — the first that answers 200 to a HEAD request wins. Furkan drops
+     one file at audio/sesli-mesaj.<ext> in the repo; none of these exist until he does, so the
+     scene is skipped entirely on every load until then. */
+  var BDAY_VOICE_EXTS = ['m4a', 'mp3', 'ogg', 'opus', 'wav'];
+
+  var _bdayVoiceUrl; /* undefined = not probed yet, null = probed, none found, string = the url */
+  var _bdayVoiceProbePromise = null;
+
+  /**
+   * Resolves to the first audio/sesli-mesaj.<ext> that exists (a cheap HEAD request, in order), or
+   * null if none do. Cached for the page's lifetime — a rehearsal or a real visit only probes once.
+   * @returns {Promise<string|null>}
+   */
+  function bdayProbeVoiceUrl() {
+    if (_bdayVoiceProbePromise) return _bdayVoiceProbePromise;
+    if (typeof fetch !== 'function') {
+      _bdayVoiceUrl = null;
+      _bdayVoiceProbePromise = Promise.resolve(null);
+      return _bdayVoiceProbePromise;
+    }
+    function tryExt(i) {
+      if (i >= BDAY_VOICE_EXTS.length) {
+        _bdayVoiceUrl = null;
+        return null;
+      }
+      var url = 'audio/sesli-mesaj.' + BDAY_VOICE_EXTS[i];
+      return fetch(url, { method: 'HEAD', cache: 'no-store' }).then(function (res) {
+        if (res && res.ok) {
+          _bdayVoiceUrl = url;
+          return url;
+        }
+        return tryExt(i + 1);
+      })['catch'](function () { return tryExt(i + 1); });
+    }
+    _bdayVoiceProbePromise = tryExt(0);
+    return _bdayVoiceProbePromise;
+  }
+
+  /* ── Scene: voice message (only when a recording exists) ─────────────── */
+
+  /**
+   * Builds the voice-message scene's render function bound to a known-present audio url. Not
+   * included in the scene list at all when no recording exists (bdayBuildScenes() below).
+   * @param {string} voiceUrl
+   */
+  function makeRenderSceneVoice(voiceUrl) {
+    return function renderSceneVoice(stage) {
+      var c = (CONTENT.birthday && CONTENT.birthday.voice) || {};
+      var title = c.title || 'Bir de sana söylemek istediğim bir şey var';
+      var hint = c.hint || 'Sesini aç, sonra kalbe dokun 🎧';
+      var playLabel = c.play || 'Dinle';
+      var pauseLabel = c.pause || 'Durdur';
+      var r = 32;
+      var circumference = 2 * Math.PI * r;
+
+      stage.innerHTML =
+        '<div class="bday-scene bday-scene--voice">' +
+          '<div class="bday-voice-bear">' + bearSVG({ mood: 'love', heart: true, arms: 'down', size: 104 }) + '</div>' +
+          '<h2 class="bday-voice-title">' + bdayEsc(title) + '</h2>' +
+          '<p class="bday-scene-subtitle">' + bdayEsc(hint) + '</p>' +
+          '<button type="button" class="bday-voice-play" id="bday-voice-play" aria-label="' + bdayEsc(playLabel) + '">' +
+            '<svg class="bday-voice-ring" viewBox="0 0 72 72" width="72" height="72" aria-hidden="true">' +
+              '<circle class="bday-voice-ring-track" cx="36" cy="36" r="' + r + '"/>' +
+              '<circle class="bday-voice-ring-progress" id="bday-voice-ring-progress" cx="36" cy="36" r="' + r + '"' +
+                ' style="stroke-dasharray:' + circumference.toFixed(2) + ';stroke-dashoffset:' + circumference.toFixed(2) + '"/>' +
+            '</svg>' +
+            '<span class="bday-voice-heart" id="bday-voice-heart" aria-hidden="true">💗</span>' +
+          '</button>' +
+          '<audio id="bday-voice-audio" preload="none" src="' + bdayEsc(voiceUrl) + '"></audio>' +
+          '<button type="button" class="btn btn-primary bday-continue-btn" id="bday-scene-voice-continue">Devam 💕</button>' +
+        '</div>';
+
+      /* Defensive: any lingering music-box note (in theory already stopped by the cake scene's own
+         teardown well before this scene can ever mount) is silenced the instant this scene shows,
+         so her voice never has to compete with it. */
+      stopMelody();
+
+      var audio = document.getElementById('bday-voice-audio');
+      var playBtn = document.getElementById('bday-voice-play');
+      var ringProgress = document.getElementById('bday-voice-ring-progress');
+
+      function updateRing() {
+        var dur = audio.duration;
+        var frac = (dur && isFinite(dur) && dur > 0) ? Math.min(1, audio.currentTime / dur) : 0;
+        ringProgress.style.strokeDashoffset = (circumference * (1 - frac)).toFixed(2);
+      }
+      function setPlayingUi(isPlaying) {
+        playBtn.classList.toggle('is-playing', isPlaying);
+        playBtn.setAttribute('aria-label', isPlaying ? pauseLabel : playLabel);
+      }
+      audio.addEventListener('timeupdate', updateRing);
+      audio.addEventListener('play', function () { setPlayingUi(true); });
+      audio.addEventListener('pause', function () { setPlayingUi(false); });
+      audio.addEventListener('ended', function () { setPlayingUi(false); updateRing(); });
+
+      playBtn.addEventListener('click', function () {
+        if (audio.paused) {
+          stopMelody(); /* stop the music box before her voice plays */
+          var playPromise = audio.play();
+          if (playPromise && typeof playPromise['catch'] === 'function') {
+            playPromise['catch'](function () { /* blocked/unsupported — she can just tap again */ });
+          }
+        } else {
+          audio.pause();
+        }
+      });
+
+      document.getElementById('bday-scene-voice-continue').addEventListener('click', function () { goToNextScene(); });
+
+      return function cleanup() {
+        audio.pause();
+        try { audio.currentTime = 0; } catch (e) { /* metadata not loaded yet — nothing to reset */ }
+      };
+    };
+  }
+
+  /* ── Coupon storage (JSON map over time.js's storageGet/storageSet) ──── */
+
+  var BDAY_COUPONS_KEY = 'meryem-coupons-used';
+
+  /* Preview-mode shadow, same contract as js/words.js's own: while a rehearsal is live
+     (?onizleme=dogumgunu), reads/writes to this key never touch real localStorage. Reproduced here
+     because js/time.js's TIME_PREVIEW_PROTECTED_KEYS is frozen for this package and does not know
+     this key. Seeded once from the real value, then every write during the rehearsal only updates
+     the shadow copy and vanishes when the tab closes. */
+  var _bdayCouponsShadow = null;
+
+  function bdayReadRealCoupons() {
+    try {
+      var raw = storageGet(BDAY_COUPONS_KEY);
+      var obj = raw ? JSON.parse(raw) : {};
+      return (obj && typeof obj === 'object' && Object.prototype.toString.call(obj) !== '[object Array]') ? obj : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function bdayReadCoupons() {
+    var src = isPreviewMode() ? (function () {
+      if (!_bdayCouponsShadow) _bdayCouponsShadow = bdayReadRealCoupons();
+      return _bdayCouponsShadow;
+    })() : bdayReadRealCoupons();
+    var copy = {}, k;
+    for (k in src) { if (Object.prototype.hasOwnProperty.call(src, k)) copy[k] = src[k]; }
+    return copy;
+  }
+
+  function bdayWriteCoupons(obj) {
+    if (isPreviewMode()) {
+      _bdayCouponsShadow = obj;
+      return;
+    }
+    storageSet(BDAY_COUPONS_KEY, JSON.stringify(obj));
+  }
+
+  function bdayTodayIso() {
+    var now = appNow();
+    return now.getFullYear() + '-' + bdayPad2(now.getMonth() + 1) + '-' + bdayPad2(now.getDate());
+  }
+
+  function bdayIsoToTr(iso) {
+    var parts = String(iso || '').split('-');
+    if (parts.length !== 3) return '';
+    return parts[2] + '.' + parts[1] + '.' + parts[0];
+  }
+
+  /** Marks a coupon used (idempotent — a coupon already used keeps its original date) and persists. */
+  function bdayMarkCouponUsed(id) {
+    var all = bdayReadCoupons();
+    if (all[id]) return all[id];
+    var iso = bdayTodayIso();
+    all[id] = iso;
+    bdayWriteCoupons(all);
+    return iso;
+  }
+
+  /* ── Coupon rendering (shared by the overlay scene and the 🎁-tab list) ── */
+
+  function bdayCouponItemMarkup(item, usedIso) {
+    var usedLabel = (CONTENT.birthday.coupons && CONTENT.birthday.coupons.used) || 'Kullanıldı';
+    var stampText = usedIso ? (usedLabel + ' · ' + bdayIsoToTr(usedIso)) : '';
+    return '<button type="button" class="bday-coupon' + (usedIso ? ' is-used' : '') +
+        '" data-coupon="' + bdayEsc(item.id) + '" aria-label="' + bdayEsc(item.title) + '">' +
+      '<span class="bday-coupon-emoji" aria-hidden="true">' + bdayEsc(item.emoji) + '</span>' +
+      '<span class="bday-coupon-divider" aria-hidden="true"></span>' +
+      '<span class="bday-coupon-body">' +
+        '<span class="bday-coupon-title">' + bdayEsc(item.title) + '</span>' +
+        '<span class="bday-coupon-text">' + bdayEsc(item.text) + '</span>' +
+        '<span class="bday-coupon-stamp"' + (usedIso ? '' : ' hidden') + '>' + bdayEsc(stampText) + '</span>' +
+      '</span>' +
+    '</button>';
+  }
+
+  function bdayCouponsListMarkup() {
+    var items = (CONTENT.birthday.coupons && CONTENT.birthday.coupons.items) || [];
+    var used = bdayReadCoupons();
+    return items.map(function (item) { return bdayCouponItemMarkup(item, used[item.id] || null); }).join('');
+  }
+
+  /** Stamps every on-screen instance of coupon `id` (the scene booklet AND the 🎁-tab list may
+   *  both be in the DOM at once — updating by data-coupon reaches whichever exist). */
+  function bdayApplyCouponStampToDom(id, iso) {
+    var usedLabel = (CONTENT.birthday.coupons && CONTENT.birthday.coupons.used) || 'Kullanıldı';
+    var stampText = usedLabel + ' · ' + bdayIsoToTr(iso);
+    var nodes = document.querySelectorAll('.bday-coupon[data-coupon="' + id + '"]');
+    Array.prototype.forEach.call(nodes, function (btn) {
+      btn.classList.add('is-used');
+      var stampEl = btn.querySelector('.bday-coupon-stamp');
+      if (stampEl) {
+        stampEl.textContent = stampText;
+        stampEl.hidden = false;
+      }
+    });
+  }
+
+  /** Wires every .bday-coupon inside `container` via one delegated click listener. */
+  function bdayWireCouponContainer(container) {
+    if (!container) return;
+    container.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('.bday-coupon') : null;
+      if (!btn || btn.classList.contains('is-used')) return;
+      var id = btn.getAttribute('data-coupon');
+      var items = (CONTENT.birthday.coupons && CONTENT.birthday.coupons.items) || [];
+      var item = null, i;
+      for (i = 0; i < items.length; i++) {
+        if (items[i].id === id) { item = items[i]; break; }
+      }
+      if (item) bdayOpenCouponConfirm(item, btn);
+    });
+  }
+
+  /* ── Coupon confirm dialog (in-page — never window.confirm) ──────────── */
+
+  var _bdayCouponConfirmCleanup = null;
+  var _bdayCouponConfirmReturnFocus = null;
+
+  function bdayBuildCouponConfirmDialog() {
+    var existing = document.getElementById('bday-coupon-confirm');
+    if (existing) return existing;
+    var c = CONTENT.birthday.coupons || {};
+    var el = document.createElement('div');
+    el.className = 'bday-coupon-confirm';
+    el.id = 'bday-coupon-confirm';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    el.setAttribute('aria-labelledby', 'bday-coupon-confirm-title');
+    el.hidden = true;
+    el.innerHTML =
+      '<div class="bday-coupon-confirm-backdrop" id="bday-coupon-confirm-backdrop"></div>' +
+      '<div class="bday-coupon-confirm-card">' +
+        '<p class="bday-coupon-confirm-emoji" id="bday-coupon-confirm-emoji" aria-hidden="true"></p>' +
+        '<h3 class="bday-coupon-confirm-title" id="bday-coupon-confirm-title"></h3>' +
+        '<p class="bday-coupon-confirm-text">' + bdayEsc(c.confirm || 'Bu kuponu şimdi kullanmak istiyor musun?') + '</p>' +
+        '<div class="bday-coupon-confirm-actions">' +
+          '<button type="button" class="btn btn-primary" id="bday-coupon-confirm-yes">' + bdayEsc(c.yes || 'Evet, kullanıyorum') + '</button>' +
+          '<button type="button" class="btn bday-coupon-confirm-no" id="bday-coupon-confirm-no">' + bdayEsc(c.no || 'Sonra') + '</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(el);
+    el.querySelector('#bday-coupon-confirm-backdrop').addEventListener('click', bdayCloseCouponConfirm);
+    return el;
+  }
+
+  function bdayCloseCouponConfirm() {
+    var dialog = document.getElementById('bday-coupon-confirm');
+    if (!dialog || dialog.hidden) return;
+    if (_bdayCouponConfirmCleanup) {
+      _bdayCouponConfirmCleanup();
+      _bdayCouponConfirmCleanup = null;
+    }
+    dialog.hidden = true;
+    var toFocus = _bdayCouponConfirmReturnFocus;
+    _bdayCouponConfirmReturnFocus = null;
+    if (toFocus && typeof toFocus.focus === 'function' && document.contains(toFocus)) {
+      try { toFocus.focus(); } catch (e) { /* opener gone */ }
+    }
+  }
+
+  function bdayOpenCouponConfirm(item, openerEl) {
+    var dialog = bdayBuildCouponConfirmDialog();
+    bdayCloseCouponConfirm(); /* safety: tear down a stale handler set from a previous open */
+    _bdayCouponConfirmReturnFocus = openerEl || document.activeElement;
+    document.getElementById('bday-coupon-confirm-emoji').textContent = item.emoji;
+    document.getElementById('bday-coupon-confirm-title').textContent = item.title;
+
+    var yesBtn = document.getElementById('bday-coupon-confirm-yes');
+    var noBtn = document.getElementById('bday-coupon-confirm-no');
+
+    function onYes() {
+      var iso = bdayMarkCouponUsed(item.id);
+      bdayApplyCouponStampToDom(item.id, iso);
+      bdayCloseCouponConfirm();
+    }
+    function onNo() { bdayCloseCouponConfirm(); }
+    function onKeydown(e) { if (e.key === 'Escape') bdayCloseCouponConfirm(); }
+
+    yesBtn.addEventListener('click', onYes);
+    noBtn.addEventListener('click', onNo);
+    document.addEventListener('keydown', onKeydown);
+    _bdayCouponConfirmCleanup = function () {
+      yesBtn.removeEventListener('click', onYes);
+      noBtn.removeEventListener('click', onNo);
+      document.removeEventListener('keydown', onKeydown);
+    };
+
+    dialog.hidden = false;
+    try { noBtn.focus(); } catch (e) { /* not focusable — ignore */ }
+  }
+
+  /* ── Scene: love coupons ──────────────────────────────────────────────── */
+
+  function renderSceneCoupons(stage) {
+    var c = CONTENT.birthday.coupons || {};
+    stage.innerHTML =
+      '<div class="bday-scene bday-scene--coupons">' +
+        '<h2 class="bday-coupons-title">' + bdayEsc(c.title || 'Doğum günü kuponların 🎟️') + '</h2>' +
+        '<p class="bday-scene-subtitle">' + bdayEsc(c.hint || '') + '</p>' +
+        '<div class="bday-coupon-booklet" id="bday-coupon-booklet">' + bdayCouponsListMarkup() + '</div>' +
+        '<button type="button" class="btn btn-primary bday-continue-btn" id="bday-scene-coupons-continue">Devam 💕</button>' +
+      '</div>';
+    bdayWireCouponContainer(document.getElementById('bday-coupon-booklet'));
+    document.getElementById('bday-scene-coupons-continue').addEventListener('click', function () { goToNextScene(); });
+    return null;
+  }
+
   /* ── Scene 5 (slideshow) ──────────────────────────────────────────────── */
 
   function getMemoryPhotoUrlSafe(m) {
@@ -779,7 +1121,7 @@
        (M19). */
     var photos = all.filter(function (m) { return !!getMemoryPhotoUrlSafe(m); }).reverse();
     if (photos.length === 0) {
-      goToScene(5);
+      goToNextScene();
       return null;
     }
 
@@ -842,7 +1184,7 @@
       }, 2600);
     }
 
-    document.getElementById('bday-scene4-continue').addEventListener('click', function () { goToScene(5); });
+    document.getElementById('bday-scene4-continue').addEventListener('click', function () { goToNextScene(); });
     return function cleanup() { if (timer) clearInterval(timer); };
   }
 
@@ -880,14 +1222,30 @@
     document.getElementById('bday-scene0-continue').addEventListener('click', function () {
       bdaySetAudioSession('playback');
       ensureAudioContext();
-      goToScene(1);
+      goToNextScene();
     });
     return function cleanup() { cancelType(); };
   }
 
   /* ── Scene stepper + overlay open/close ──────────────────────────────── */
 
-  var BDAY_SCENES = [renderSceneTitle, renderSceneCake, renderSceneBalloons, renderSceneGiftLetter, renderSceneSlideshow, renderSceneEnd];
+  /**
+   * The overlay's scene list, built once the voice-file probe resolves — with the voice scene
+   * spliced in right after the letter only when a recording was found; the love-coupons scene
+   * always follows (after the voice scene, or straight after the letter when there is none).
+   * @param {string|null} voiceUrl
+   */
+  function bdayBuildScenes(voiceUrl) {
+    var scenes = [renderSceneTitle, renderSceneCake, renderSceneBalloons, renderSceneGiftLetter];
+    if (voiceUrl) scenes.push(makeRenderSceneVoice(voiceUrl));
+    scenes.push(renderSceneCoupons);
+    scenes.push(renderSceneSlideshow);
+    scenes.push(renderSceneEnd);
+    return scenes;
+  }
+
+  var _bdayScenes = bdayBuildScenes(null);
+  var _bdaySceneIndex = -1;
 
   function bdayFocusEl(el) {
     if (!el) return;
@@ -929,9 +1287,17 @@
       _bdaySceneCleanup = null;
     }
     var stage = document.getElementById('bday-scene-stage');
-    if (!stage || index < 0 || index >= BDAY_SCENES.length) return;
-    var cleanup = BDAY_SCENES[index](stage);
+    if (!stage || index < 0 || index >= _bdayScenes.length) return;
+    _bdaySceneIndex = index;
+    var cleanup = _bdayScenes[index](stage);
     if (typeof cleanup === 'function') _bdaySceneCleanup = cleanup;
+  }
+
+  /** Advances one scene from wherever the stepper currently sits — every scene's own continue
+   *  button calls this instead of a hardcoded index, so bdayBuildScenes() can splice the voice
+   *  scene in or out without renumbering every other scene's click handler. */
+  function goToNextScene() {
+    goToScene(_bdaySceneIndex + 1);
   }
 
   function openBirthdaySurprise() {
@@ -956,6 +1322,11 @@
     document.body.style.overflow = 'hidden';
     document.getElementById('bday-close-btn').addEventListener('click', closeBirthdaySurprise);
 
+    /* _bdayScenes already reflects whether a voice recording exists — initBirthday() kicked off
+       the (cached) probe at load time and patches it in the background the moment it resolves, so
+       the title scene never waits on a network round-trip to appear. By the time she could ever
+       reach the scene right after the letter (several scenes and animations later), the probe has
+       long since resolved either way. */
     goToScene(0);
   }
 
@@ -964,6 +1335,7 @@
       try { _bdaySceneCleanup(); } catch (e) { /* scene already torn down */ }
       _bdaySceneCleanup = null;
     }
+    bdayCloseCouponConfirm();
     stopMicAndAnalyser();
     stopMelody();
     if (_bdayMelodyTimeoutId) { clearTimeout(_bdayMelodyTimeoutId); _bdayMelodyTimeoutId = null; }
@@ -1000,4 +1372,9 @@
      so tests/checks/birthday.mjs can prove the "sustained blow" logic with synthetic frames and
      no real microphone. */
   window.birthdayBlowDetector = makeBlowDetector;
+  /* Testing hooks only — let tests/checks/birthday.mjs force the music-box melody into a
+     still-playing state right before the voice scene mounts, so the mutant that drops the scene's
+     own defensive stopMelody() call can be proven to fail. Never referenced by product code. */
+  window.birthdayTestStartMelody = playMelody;
+  window.birthdayTestIsMelodyPlaying = function () { return _bdayMelodyOscillators.length > 0; };
 })();

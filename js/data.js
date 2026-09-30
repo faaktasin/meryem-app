@@ -7,6 +7,8 @@ const CONFIG = {
   name: 'Meryem',
   firstMeetDate: new Date('2026-03-10T00:00:00'),
   loveDate: new Date('2026-01-17T00:00:00'),
+  engagementDate: new Date('2026-07-25T00:00:00'),
+  wedding: { year: 2027, month: 7, day: null }, // Furkan sets `day` once the wedding date is fixed
   herBirthday: { month: 10, day: 4 },   // October 4
   hisBirthday: { month: 5, day: 26 },   // May 26
   mapCenter: [39.9334, 32.8597], // Ankara default

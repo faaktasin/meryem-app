@@ -81,11 +81,45 @@
   text-align: center;
 }
 
-/* ── Next-milestone line under the two since-counters ───────────────── */
+/* ── Next-milestone line under the since-counters (meet, love, engagement) ──────────── */
 
 .dts-milestone {
   margin-top: 10px;
   font-size: 0.78rem;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+/* ── Wedding card ─────────────────────────────────────
+   Two bears side by side under a small heart (bride: veil, via bearSVG's opts.veil; groom: bow
+   tie, via opts.bowtie — both js/bears.js), then either the month/year + status line (while
+   CONFIG.wedding.day is null) or an exact countdown (once it is set) — js/dates.js's
+   applyWeddingState() toggles which one is visible. */
+
+.dts-wedding-bears {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.dts-wedding-heart {
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.dts-wedding-month {
+  font-family: var(--font-script);
+  font-size: 1.2rem;
+  color: var(--rose-strong);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.dts-wedding-state {
+  font-size: 0.85rem;
   color: var(--ink-soft);
   text-align: center;
 }

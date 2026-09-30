@@ -350,6 +350,13 @@ var CONTENT = {
   },
 
   dates: {
+    /* Engagement card: days since 25 July 2026 (CONFIG.engagementDate). */
+    engagementLabel: 'Nişanımızdan beri',
+    /* Wedding card. CONFIG.wedding holds the date; while only the month is known it shows months. */
+    weddingLabel: 'Düğünümüze',
+    weddingApprox: 'yaklaşık {months} ay kaldı',          // {months} is filled in
+    weddingThisMonth: 'Bu ay evleniyoruz\u00a0💍',
+    weddingDone: 'Evlendik! Sonsuza kadar seninle\u00a0💍',
     hisToday: 'Bugün benim doğum günüm 🎉 Bir sarılma borcun var!'          // his card, on 26 May
   },
 
@@ -407,6 +414,32 @@ var CONTENT = {
         'İyi ki doğdun, iyi ki varsın, iyi ki hayatımdasın.'
       ],
       signature: 'Seni çok seven, Furkan'
+    },
+    /* Scene after the letter: his recorded voice message (audio/sesli-mesaj.*). Skipped when no file. */
+    voice: {
+      title: 'Bir de sana söylemek istediğim bir şey var',
+      hint: 'Sesini aç, sonra kalbe dokun\u00a0🎧',
+      play: 'Dinle',
+      pause: 'Durdur'
+    },
+    /* Love coupons: his offers to her. Shown as a scene in the surprise and kept on the 🎁 tab. */
+    coupons: {
+      title: 'Doğum günü kuponların\u00a0🎟️',
+      hint: 'İstediğin zaman bir kupona dokun, bana göster, gerisi bende\u00a0💌',
+      confirm: 'Bu kuponu şimdi kullanmak istiyor musun?',
+      yes: 'Evet, kullanıyorum',
+      no: 'Sonra',
+      used: 'Kullanıldı',
+      items: [
+        { id: 'hug', emoji: '🤗', title: 'Sınırsız sarılma', text: 'Ne zaman istersen, nerede istersen. Süresi yok.' },
+        { id: 'yourday', emoji: '👑', title: 'Bir gün her şey senden', text: 'Bir gün boyunca planı sen yaparsın, ben itirazsız gelirim.' },
+        { id: 'trip', emoji: '🗺️', title: 'Sürpriz bir gezi', text: 'Nereye gideceğimizi ben seçerim, sen sadece hazırlan.' },
+        { id: 'dinner', emoji: '🍽️', title: 'Bir akşam yemeği benden', text: 'Nerede istersen, ne istersen. Hesap benden.' },
+        { id: 'walk', emoji: '🌙', title: 'Uzun bir yürüyüş', text: 'El ele, acele etmeden, sadece ikimiz.' },
+        { id: 'win', emoji: '🏳️', title: 'Tartışma bitirme kartı', text: 'Bir tartışmada haklı olan sen olursun, sorgusuz sualsiz.' },
+        { id: 'letter', emoji: '💌', title: 'Bir mektup daha', text: 'Bu kuponu kullandığında sana elimle yazdığım bir mektup gelir.' },
+        { id: 'wish', emoji: '🎁', title: 'Dilediğin bir sürpriz', text: 'Ne istediğini söyle, gerisini ben hallederim.' }
+      ]
     },
     slideshow: {
       title: 'Bizim güzel anılarımız\u00a0📸'

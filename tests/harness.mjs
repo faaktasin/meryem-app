@@ -193,6 +193,7 @@ class Page {
   #forced = new Set();
   #rootId = 0;
   #dateScriptId = null;
+  #voiceAudio = null; // { ext, buffer, mime } | null — see setVoiceAudioFixture()
   touchEnabled = true;
   errors = [];
 
@@ -282,6 +283,15 @@ class Page {
           await this.send("Fetch.fulfillRequest", { requestId, responseCode: 200, responseHeaders: [{ name: "content-type", value: "image/png" }], body: BLANK_PNG_B64 });
         } else if (/nominatim/.test(url)) {
           await this.#fulfillText(requestId, "[]", "application/json");
+        } else if (this.#voiceAudio && new RegExp(`/audio/sesli-mesaj\\.${this.#voiceAudio.ext}(\\?|$)`).test(url)) {
+          // Both the birthday scene's own HEAD probe and the <audio> element's real GET land here —
+          // faked at the network level (not by placing a real file under the site's own audio/
+          // folder, which must stay absent until Furkan drops his real recording there).
+          await this.send("Fetch.fulfillRequest", {
+            requestId, responseCode: 200,
+            responseHeaders: [{ name: "content-type", value: this.#voiceAudio.mime }],
+            body: this.#voiceAudio.buffer.toString("base64"),
+          });
         } else {
           await this.send("Fetch.continueRequest", { requestId });
         }
@@ -365,6 +375,24 @@ class Page {
     })();`;
     const { identifier } = await this.send("Page.addScriptToEvaluateOnNewDocument", { source });
     this.#dateScriptId = identifier;
+  }
+
+  /**
+   * Fakes audio/sesli-mesaj.<ext> as present at the network level (both the HEAD probe and the
+   * real GET an <audio> element issues on play), using tests/fixtures/silent-voice.wav's bytes
+   * regardless of `ext` — the fixture is real, playable WAV data, which is all the birthday
+   * voice-message check needs. Pass null to go back to every extension answering a real 404
+   * (the default — matches the live site, where audio/ does not exist yet).
+   * @param {string|null} ext - 'wav' | 'mp3' | 'm4a' | 'ogg' | 'opus' | null
+   */
+  setVoiceAudioFixture(ext) {
+    if (!ext) {
+      this.#voiceAudio = null;
+      return;
+    }
+    const mimeByExt = { wav: "audio/wav", mp3: "audio/mpeg", m4a: "audio/mp4", ogg: "audio/ogg", opus: "audio/ogg" };
+    const buffer = readFileSync(join(TESTS_DIR, "fixtures", "silent-voice.wav"));
+    this.#voiceAudio = { ext, buffer, mime: mimeByExt[ext] || "application/octet-stream" };
   }
 
   /** Loads `url`, waits for load and fonts, and installs window.__app (contrast helpers). */
@@ -560,6 +588,9 @@ export async function closeServer() {
  *   opts.signedIn     default true — whether the stub auth reports a signed-in user
  *   opts.reducedMotion default false
  *   opts.mic          'deny' | 'none' | 'fake', default 'none'
+ *   opts.voiceAudio   'wav' | 'mp3' | 'm4a' | 'ogg' | 'opus' | null (default) — fakes
+ *                     audio/sesli-mesaj.<ext> as present (real playable bytes); null matches the
+ *                     live site today, where audio/ does not exist and every probe 404s
  *   opts.viewport     { width, height }, default 390x844 (mobile, touch)
  *   opts.page         which html file to open, default 'index.html'
  */
@@ -573,6 +604,7 @@ export async function openApp(page, opts = {}) {
     signedIn = true,
     reducedMotion = false,
     mic = "none",
+    voiceAudio = null,
     viewport = { width: 390, height: 844 },
     page: appPage = "index.html",
   } = opts;
@@ -582,6 +614,7 @@ export async function openApp(page, opts = {}) {
   await page.viewport(viewport.width, viewport.height, { mobile: true });
   await page.send("Emulation.setTimezoneOverride", { timezoneId: "Europe/Istanbul" });
   await page.media(reducedMotion ? [{ name: "prefers-reduced-motion", value: "reduce" }] : []);
+  page.setVoiceAudioFixture(voiceAudio);
   await page.setupNewDocumentScript({ nowIso: now, memories, signedIn, mic });
 
   if (!keepStorage) {

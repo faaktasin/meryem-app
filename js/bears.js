@@ -21,6 +21,8 @@ var _bearInstanceCounter = 0;
  * @param {string|number} [opts.arms] - 'down'|'wave'|'up'|'wide', or a 0..1 spread amount
  * @param {number} [opts.size] - rendered width in px; height follows the bear's own aspect ratio
  * @param {boolean} [opts.headOnly] - crops to just the head, for compact icon use
+ * @param {boolean} [opts.veil] - bride's veil draped behind the head, plus a small flower worn at the crown (full-body only)
+ * @param {boolean} [opts.bowtie] - a bow tie at the collar (full-body only)
  * @param {string} [opts.className] - extra class(es) on the root <svg>
  * @returns {string} SVG markup
  */
@@ -43,6 +45,10 @@ function bearSVG(opts) {
     '<stop offset="100%" stop-color="var(--bear-fur)"/>' +
     '</radialGradient></defs>';
 
+  /* Veil is the backmost layer on purpose — it drapes from behind the head down past the
+     shoulders, so it has to sit under the body/arms/head, not over them. */
+  if (opts.veil && !headOnly) svg += _bearVeil();
+
   if (!headOnly) {
     svg += '<ellipse class="kawaii-bear-body" cx="100" cy="184" rx="52" ry="42" fill="url(#' + id + '-fur)" stroke="var(--bear-stroke)" stroke-width="3"/>';
     svg += '<ellipse cx="100" cy="190" rx="30" ry="24" fill="var(--bear-light)"/>';
@@ -60,6 +66,10 @@ function bearSVG(opts) {
   svg += '<circle class="kawaii-bear-head" cx="100" cy="94" r="72" fill="url(#' + id + '-fur)" stroke="var(--bear-stroke)" stroke-width="3"/>';
 
   if (opts.hat) svg += _bearHat();
+  /* Drawn here — after the head/ears, on top of them — not with _bearVeil() above: at the crown
+     the flower's own bounds overlap the head circle's top, so drawn earlier the head would paint
+     over most of it (see _bearVeilFlower()'s own comment). */
+  if (opts.veil && !headOnly) svg += _bearVeilFlower();
 
   /* Muzzle */
   svg += '<ellipse cx="100" cy="114" rx="34" ry="26" fill="var(--bear-light)"/>';
@@ -73,6 +83,8 @@ function bearSVG(opts) {
 
   /* Nose */
   svg += '<ellipse cx="100" cy="106" rx="7" ry="5" fill="var(--bear-stroke)"/>';
+
+  if (opts.bowtie && !headOnly) svg += _bearBowtie();
 
   if (opts.heart && !headOnly) svg += _bearHeldHeart();
 
@@ -156,6 +168,46 @@ function _bearHat() {
   out += '<circle cx="18" cy="27" r="3.5" fill="var(--paper)"/>';
   out += '</g>';
   return out;
+}
+
+/**
+ * Bride's tulle veil, the fabric: a soft shape draped behind the head down past the shoulders.
+ * Drawn before the body/head, as the backmost layer, so both sit on top of it. Filled with
+ * --blush (not --paper, which is the same near-white as the card behind it and made the veil
+ * invisible — 2026-09-30 visual check, tests/checks/dates.mjs's shot review).
+ */
+function _bearVeil() {
+  return '<g class="kawaii-bear-veil">' +
+    '<path d="M62 26 C40 70 34 130 46 200 C70 190 130 190 154 200 C166 130 160 70 138 26 C118 46 82 46 62 26 Z" ' +
+    'fill="var(--blush)" stroke="var(--rose-100)" stroke-width="2.5" opacity="0.85"/>' +
+    '</g>';
+}
+
+/**
+ * Bride's small flower, worn at the top of the head. Drawn separately from _bearVeil() and much
+ * later in bearSVG() — after the head/ears, alongside the hat — so the head circle does not paint
+ * over it; drawn behind the head (with the veil fabric) it was almost entirely hidden, leaving
+ * only a sliver above the hairline (same 2026-09-30 check).
+ */
+function _bearVeilFlower() {
+  return '<g class="kawaii-bear-veil-flower" transform="translate(100,20)">' +
+    '<circle cx="-9" cy="3" r="7" fill="var(--rose-100)" stroke="var(--rose)" stroke-width="1"/>' +
+    '<circle cx="9" cy="3" r="7" fill="var(--rose-100)" stroke="var(--rose)" stroke-width="1"/>' +
+    '<circle cx="0" cy="-8" r="7" fill="var(--rose-100)" stroke="var(--rose)" stroke-width="1"/>' +
+    '<circle cx="0" cy="11" r="7" fill="var(--rose-100)" stroke="var(--rose)" stroke-width="1"/>' +
+    '<circle cx="0" cy="2" r="5.5" fill="var(--rose)"/>' +
+    '</g>';
+}
+
+/**
+ * Groom's bow tie, sitting at the collar (just under the muzzle, atop the body).
+ */
+function _bearBowtie() {
+  return '<g class="kawaii-bear-bowtie" transform="translate(100,144)">' +
+    '<path d="M-22 0 L-3 -11 L-3 11 Z" fill="var(--rose-strong)" stroke="var(--berry)" stroke-width="1.6" stroke-linejoin="round"/>' +
+    '<path d="M22 0 L3 -11 L3 11 Z" fill="var(--rose-strong)" stroke="var(--berry)" stroke-width="1.6" stroke-linejoin="round"/>' +
+    '<circle cx="0" cy="0" r="5.5" fill="var(--berry)"/>' +
+    '</g>';
 }
 
 function _bearHeldHeart() {
@@ -340,6 +392,8 @@ function bearAutoRender() {
       mood: el.getAttribute('data-bear-mood') || 'normal',
       hat: el.getAttribute('data-bear-hat') === 'true',
       heart: el.getAttribute('data-bear-heart') === 'true',
+      veil: el.getAttribute('data-bear-veil') === 'true',
+      bowtie: el.getAttribute('data-bear-bowtie') === 'true',
       arms: el.getAttribute('data-bear-arms') || 'down',
       size: Number(el.getAttribute('data-bear-size')) || 120,
       headOnly: el.getAttribute('data-bear-head-only') === 'true'

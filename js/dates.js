@@ -1,10 +1,17 @@
 /**
  * Meryem App — Tarihler (Dates) view
- * Builds the four countdown/since cards once, inside the containers index.html already provides
- * (#countdown-her-bday, #countdown-his-bday, #countdown-meet, #countdown-love), then ticks every
- * second updating existing text nodes only (never innerHTML per tick) so node identity survives
- * every tick. Reads CONFIG's dates and getElapsed()/getNextBirthdayCountdown() from js/data.js,
- * and appNow() from js/time.js. Exposes window.initDates().
+ * Builds six countdown/since cards once — the four in the containers index.html already provides
+ * (#countdown-her-bday, #countdown-his-bday, #countdown-meet, #countdown-love) plus an engagement
+ * since-card and a wedding card built entirely from script, no matching container in index.html —
+ * then ticks every second updating existing text nodes only (never innerHTML per tick) so node
+ * identity survives every tick. Reads CONFIG's dates and getElapsed()/getNextBirthdayCountdown()
+ * from js/data.js, and appNow() from js/time.js. Exposes window.initDates().
+ *
+ * Card order (her birthday, wedding, engagement, the two since-cards, his birthday last) is
+ * achieved without touching index.html's two-column markup: her/wedding/engagement stay in (or
+ * are appended to) .dates-col-birthdays, and his card is moved — via appendChild in buildHisCard,
+ * which relocates an existing node rather than cloning it — to the end of .dates-col-counters, so
+ * the flat mobile reading order comes out right without any CSS layout change.
  */
 (function () {
   'use strict';
@@ -14,6 +21,15 @@
      written for Meryem's days, not Furkan's. A small default in the app's own sweet voice. */
   /* His card on his birthday; the words live in CONTENT.dates.hisToday. */
   var HIS_TODAY_LINE = (CONTENT.dates && CONTENT.dates.hisToday) || 'Bugün benim doğum günüm 🎉';
+
+  /* Engagement/wedding card text: CONTENT.dates.* is the source (js/content.js), each with a
+     fallback here in the app's own voice, same pattern as HIS_TODAY_LINE above, in case CONTENT
+     is ever missing a key. */
+  var ENGAGEMENT_LABEL = (CONTENT.dates && CONTENT.dates.engagementLabel) || 'Nişanımızdan beri';
+  var WEDDING_LABEL = (CONTENT.dates && CONTENT.dates.weddingLabel) || 'Düğünümüze';
+  var WEDDING_APPROX = (CONTENT.dates && CONTENT.dates.weddingApprox) || 'yaklaşık {months} ay kaldı';
+  var WEDDING_THIS_MONTH = (CONTENT.dates && CONTENT.dates.weddingThisMonth) || 'Bu ay evleniyoruz 💍';
+  var WEDDING_DONE = (CONTENT.dates && CONTENT.dates.weddingDone) || 'Evlendik! 💍';
 
   var _initialized = false;
   var _refs = null;
@@ -70,6 +86,7 @@
     var card = box.parentNode; /* .card.countdown-card, per index.html */
     var label = card ? card.querySelector('.countdown-label') : null;
     if (card && card.classList) card.classList.add('dts-card-gift');
+    if (card) card.setAttribute('data-dts-card', 'her');
 
     var bearSlot = document.createElement('div');
     bearSlot.className = 'dts-bear-slot';
@@ -111,6 +128,7 @@
     var box = document.getElementById('countdown-his-bday');
     if (!box) return null;
     var card = box.parentNode;
+    card.setAttribute('data-dts-card', 'his');
 
     var bearSlot = document.createElement('div');
     bearSlot.className = 'dts-bear-slot dts-bear-slot--small';
@@ -125,6 +143,14 @@
     today.textContent = HIS_TODAY_LINE;
     card.insertBefore(today, box.nextSibling);
 
+    /* Card order (2026-09-30 brief): her birthday, wedding, engagement, the two since-cards, his
+       birthday last. His card starts as the 2nd child of .dates-col-birthdays in index.html —
+       moved here to the end of .dates-col-counters so the flat reading order (mobile: this
+       column stacks fully below the birthdays column) comes out her/wedding/engagement/meet/
+       love/his. appendChild() on an element already in the document MOVES it, it never clones. */
+    var counters = document.querySelector('.dates-col-counters');
+    if (counters) counters.appendChild(card);
+
     return {
       units: box,
       unitRefs: grabUnitRefs('his'),
@@ -137,6 +163,7 @@
     var box = document.getElementById(id);
     if (!box) return null;
     var card = box.parentNode;
+    card.setAttribute('data-dts-card', prefix);
 
     var bearSlot = document.createElement('div');
     bearSlot.className = 'dts-bear-slot dts-bear-slot--small';
@@ -152,6 +179,138 @@
     return {
       unitRefs: grabUnitRefs(prefix),
       milestone: milestone
+    };
+  }
+
+  /**
+   * Engagement since-card, built from scratch (unlike buildSinceCard, there is no matching
+   * container in index.html) and appended to the birthdays column, after her card. Same shape as
+   * the other two since-cards: a small bear, the four unit spans, and the shared next-milestone
+   * line.
+   */
+  function buildEngagementCard() {
+    var col = document.querySelector('.dates-col-birthdays');
+    if (!col) return null;
+
+    var card = document.createElement('div');
+    card.className = 'card countdown-card';
+    card.setAttribute('data-dts-card', 'engagement');
+
+    var label = document.createElement('p');
+    label.className = 'countdown-label';
+    label.textContent = ENGAGEMENT_LABEL;
+    card.appendChild(label);
+
+    var bearSlot = document.createElement('div');
+    bearSlot.className = 'dts-bear-slot dts-bear-slot--small';
+    bearSlot.innerHTML = '<span class="dts-bear" data-bear data-bear-mood="love" data-bear-head-only="true" data-bear-size="44"></span>';
+    card.appendChild(bearSlot);
+
+    var box = document.createElement('div');
+    box.className = 'countdown';
+    box.id = 'countdown-engagement';
+    box.innerHTML = unitsMarkup('engagement');
+    card.appendChild(box);
+
+    var milestone = document.createElement('p');
+    milestone.className = 'dts-milestone';
+    card.appendChild(milestone);
+
+    col.appendChild(card);
+
+    return {
+      unitRefs: grabUnitRefs('engagement'),
+      milestone: milestone
+    };
+  }
+
+  var WEDDING_MONTH_NAMES_TR = [
+    'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+    'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+  ];
+
+  /** "Temmuz 2027" from CONFIG.wedding's {year, month}. */
+  function weddingMonthLabel(w) {
+    return (WEDDING_MONTH_NAMES_TR[w.month - 1] || '') + ' ' + w.year;
+  }
+
+  /**
+   * Reads CONFIG.wedding + appNow() into one of four states:
+   *   'countdown' (wedding.day is set and still in the future) — carries `diff` in ms
+   *   'approx'    (day unset, target month still ahead)         — carries `months` (whole months
+   *               from this month to the target month, ignoring day-of-month) and `monthLabel`
+   *   'thisMonth' (day unset, this is the target month)         — carries `monthLabel`
+   *   'done'      (day unset and the target month has passed, OR day is set and has passed)
+   */
+  function computeWeddingState() {
+    var w = CONFIG.wedding;
+    var now = appNow();
+
+    if (w.day) {
+      var target = new Date(w.year, w.month - 1, w.day, 0, 0, 0);
+      var diff = target.getTime() - now.getTime();
+      if (diff > 0) return { mode: 'countdown', diff: diff };
+      return { mode: 'done' };
+    }
+
+    var monthsDiff = (w.year - now.getFullYear()) * 12 + ((w.month - 1) - now.getMonth());
+    if (monthsDiff > 0) return { mode: 'approx', months: monthsDiff, monthLabel: weddingMonthLabel(w) };
+    if (monthsDiff === 0) return { mode: 'thisMonth', monthLabel: weddingMonthLabel(w) };
+    return { mode: 'done' };
+  }
+
+  /**
+   * Wedding card, built from scratch and appended to the birthdays column, after the engagement
+   * card. Two bears side by side under a heart (bride: veil; groom: bow tie) illustrate it always;
+   * below that, either the month/year + approx-or-this-month-or-done line (day unset) or an exact
+   * days/hours/minutes/seconds countdown (day set) — applyWeddingState() below switches between
+   * them every tick.
+   */
+  function buildWeddingCard() {
+    var col = document.querySelector('.dates-col-birthdays');
+    if (!col) return null;
+
+    var card = document.createElement('div');
+    card.className = 'card countdown-card dts-card-wedding';
+    card.setAttribute('data-dts-card', 'wedding');
+
+    var label = document.createElement('p');
+    label.className = 'countdown-label';
+    label.textContent = WEDDING_LABEL;
+    card.appendChild(label);
+
+    var bears = document.createElement('div');
+    bears.className = 'dts-wedding-bears';
+    bears.innerHTML =
+      '<span class="dts-bear" data-bear data-bear-mood="happy" data-bear-veil="true" data-bear-size="60"></span>' +
+      '<span class="dts-wedding-heart" aria-hidden="true">💗</span>' +
+      '<span class="dts-bear" data-bear data-bear-mood="happy" data-bear-bowtie="true" data-bear-size="60"></span>';
+    card.appendChild(bears);
+
+    var monthLine = document.createElement('p');
+    monthLine.className = 'dts-wedding-month';
+    monthLine.hidden = true;
+    card.appendChild(monthLine);
+
+    var stateLine = document.createElement('p');
+    stateLine.className = 'dts-wedding-state';
+    stateLine.hidden = true;
+    card.appendChild(stateLine);
+
+    var units = document.createElement('div');
+    units.className = 'countdown';
+    units.id = 'countdown-wedding';
+    units.hidden = true;
+    units.innerHTML = unitsMarkup('wedding');
+    card.appendChild(units);
+
+    col.appendChild(card);
+
+    return {
+      monthLine: monthLine,
+      stateLine: stateLine,
+      units: units,
+      unitRefs: grabUnitRefs('wedding')
     };
   }
 
@@ -217,11 +376,54 @@
     }
   }
 
+  /** Reads CONFIG.wedding fresh every tick (via computeWeddingState) so setting
+   *  CONFIG.wedding.day at any point — the only field Furkan will ever need to fill in — switches
+   *  the card from the month-based line to an exact countdown on the very next tick, with no
+   *  re-render call needed. */
+  function applyWeddingState() {
+    var wedding = _refs.wedding;
+    if (!wedding) return;
+    var st = computeWeddingState();
+
+    if (st.mode === 'countdown') {
+      wedding.monthLine.hidden = true;
+      wedding.stateLine.hidden = true;
+      wedding.units.hidden = false;
+      var diff = st.diff;
+      writeUnits(wedding.unitRefs, {
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff % 86400000) / 3600000),
+        minutes: Math.floor((diff % 3600000) / 60000),
+        seconds: Math.floor((diff % 60000) / 1000)
+      });
+      return;
+    }
+
+    wedding.units.hidden = true;
+
+    if (st.mode === 'approx' || st.mode === 'thisMonth') {
+      wedding.monthLine.hidden = false;
+      wedding.monthLine.textContent = st.monthLabel;
+    } else {
+      wedding.monthLine.hidden = true;
+    }
+
+    wedding.stateLine.hidden = false;
+    if (st.mode === 'approx') {
+      wedding.stateLine.textContent = WEDDING_APPROX.replace('{months}', st.months);
+    } else if (st.mode === 'thisMonth') {
+      wedding.stateLine.textContent = WEDDING_THIS_MONTH;
+    } else {
+      wedding.stateLine.textContent = WEDDING_DONE;
+    }
+  }
+
   function tick() {
     if (!_refs) return;
 
     applyHerState(getNextBirthdayCountdown(CONFIG.herBirthday.month, CONFIG.herBirthday.day));
     applyHisState(getNextBirthdayCountdown(CONFIG.hisBirthday.month, CONFIG.hisBirthday.day));
+    applyWeddingState();
 
     if (_refs.meet) {
       var meetElapsed = getElapsed(CONFIG.firstMeetDate);
@@ -232,6 +434,11 @@
       var loveElapsed = getElapsed(CONFIG.loveDate);
       writeUnits(_refs.love.unitRefs, loveElapsed);
       _refs.love.milestone.textContent = nextMilestoneLine(loveElapsed.days);
+    }
+    if (_refs.engagement) {
+      var engagementElapsed = getElapsed(CONFIG.engagementDate);
+      writeUnits(_refs.engagement.unitRefs, engagementElapsed);
+      _refs.engagement.milestone.textContent = nextMilestoneLine(engagementElapsed.days);
     }
   }
 
@@ -246,6 +453,8 @@
     _refs = {
       her: buildHerCard(),
       his: buildHisCard(),
+      wedding: buildWeddingCard(),
+      engagement: buildEngagementCard(),
       meet: buildSinceCard('countdown-meet', 'meet', 'happy'),
       love: buildSinceCard('countdown-love', 'love', 'love')
     };

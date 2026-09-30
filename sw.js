@@ -3,7 +3,7 @@
  * Network-first strategy: always fetches latest, falls back to cache offline.
  */
 
-var CACHE_NAME = 'meryem-v8';
+var CACHE_NAME = 'meryem-v9';
 var ASSETS = [
   './',
   './index.html',
@@ -36,6 +36,8 @@ var ASSETS = [
   './img/icon-192.png',
   './img/icon-512.png',
   './img/icon-maskable-512.png'
+  /* When a voice-message recording lands at audio/sesli-mesaj.<ext>, list it here too — the
+     site-file scan in tests/checks/sw.mjs (SITE_DIRS includes "audio") enforces this. */
 ];
 
 self.addEventListener('install', function (event) {
@@ -70,6 +72,20 @@ self.addEventListener('fetch', function (event) {
       url.includes('gstatic.com/firebasejs')) {
     return;
   }
+
+  /* HEAD (the voice-message probe in birthday.js): straight to the network, and offline answer
+     from the cached GET copy of the same file. Never cache it: cache.put() rejects non-GET. */
+  if (event.request.method === 'HEAD') {
+    event.respondWith(
+      fetch(event.request).catch(function () {
+        return caches.match(event.request, { ignoreMethod: true });
+      })
+    );
+    return;
+  }
+
+  /* Anything else that is not a GET goes to the network untouched. */
+  if (event.request.method !== 'GET') return;
 
   /* Network-first for everything: try network, fall back to cache */
   event.respondWith(

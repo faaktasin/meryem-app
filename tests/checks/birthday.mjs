@@ -22,6 +22,17 @@ const THREE_MEMORIES = [
 
 const wait = (page, ms) => page.eval((n) => new Promise((r) => setTimeout(r, n)), ms);
 
+/** Scrolls `selector` into view first — the coupon booklet (scene or 🎁-tab) can push its own
+ *  entries below the 390x844 viewport's fold, where a plain page.tap() silently hits nothing
+ *  (words.mjs's own scrollIntoView precedent, applied here to every coupon tap). */
+async function tapCoupon(page, selector) {
+  await page.eval((sel) => {
+    var el = document.querySelector(sel);
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: "center", inline: "center" });
+  }, selector);
+  await page.tap(selector);
+}
+
 async function waitUntilOverlayOpen(page, timeoutMs = 3000) {
   const start = Date.now();
   let opened = false;
@@ -33,9 +44,10 @@ async function waitUntilOverlayOpen(page, timeoutMs = 3000) {
   return opened;
 }
 
-/** Advances a freshly-opened overlay from scene 0 through cake/balloons/gift+letter to the
- *  slideshow (scene 4) — the sequence every slideshow-specific check (m1, M7, M19) shares. */
-async function reachSlideshow(page) {
+/** Advances a freshly-opened overlay from scene 0 through cake/balloons/gift+letter/coupons (and
+ *  the voice scene too, when the fixture makes one present) to the slideshow — the sequence every
+ *  slideshow-specific check (m1, M7, M19) shares. */
+async function reachSlideshow(page, { hasVoice = false } = {}) {
   await waitUntilOverlayOpen(page);
   await page.tap("#bday-scene0-continue");
   await blowAllCandlesByTap(page);
@@ -51,6 +63,12 @@ async function reachSlideshow(page) {
   }
   await wait(page, 150);
   await page.tap("#bday-scene3-continue");
+  await wait(page, 150);
+  if (hasVoice) {
+    await page.tap("#bday-scene-voice-continue");
+    await wait(page, 150);
+  }
+  await page.tap("#bday-scene-coupons-continue");
   await wait(page, 300);
 }
 
@@ -453,6 +471,8 @@ export async function run({ page, check }) {
   }));
 
   await page.tap("#bday-scene3-continue");
+  await wait(page, 150);
+  await page.tap("#bday-scene-coupons-continue");
   await wait(page, 200);
   const afterLetterContinue = await page.eval(() => ({
     slideshowPresent: !!document.querySelector(".bday-scene--slideshow"),
@@ -811,9 +831,449 @@ export async function run({ page, check }) {
     ok: Object.keys(touchTargetsResult).every((k) => touchTargetsResult[k].touchAction === "manipulation" && touchTargetsResult[k].userSelect === "none"),
     detail: JSON.stringify(touchTargetsResult),
   }));
+  const voiceCouponTouchTargetsResult = await page.eval(() => {
+    var selectors = ["bday-voice-play", "bday-coupon"];
+    var out = {};
+    selectors.forEach(function (cls) {
+      var probe = document.createElement("button");
+      probe.className = cls;
+      document.body.appendChild(probe);
+      var cs = getComputedStyle(probe);
+      out[cls] = { touchAction: cs.touchAction, userSelect: cs.userSelect };
+      document.body.removeChild(probe);
+    });
+    return out;
+  });
+  await check("birthday: the voice-play heart and coupon cards also set touch-action:manipulation and disable text-select/callout", () => ({
+    ok: Object.keys(voiceCouponTouchTargetsResult).every((k) => voiceCouponTouchTargetsResult[k].touchAction === "manipulation" && voiceCouponTouchTargetsResult[k].userSelect === "none"),
+    detail: JSON.stringify(voiceCouponTouchTargetsResult),
+  }));
+
+  // 19. Voice-message scene: skipped entirely with no recording; shown, playable and stops the
+  // music box first, when one exists at audio/sesli-mesaj.* (a real 0.3s WAV fixture, faked
+  // present at the network level — see harness.mjs's setVoiceAudioFixture()).
+  await openApp(page, { now: "2026-10-04T00:05:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
+  await waitUntilOverlayOpen(page);
+  await page.tap("#bday-scene0-continue");
+  await blowAllCandlesByTap(page);
+  await page.tap("#bday-scene1-continue");
+  await wait(page, 150);
+  await page.tap("#bday-scene2-continue");
+  await wait(page, 150);
+  await page.tap("#bday-gift-open-btn");
+  await wait(page, 650);
+  for (let i = 0; i < 8; i++) {
+    await page.tap(".bday-letter");
+    await wait(page, 60);
+  }
+  await wait(page, 150);
+  await page.tap("#bday-scene3-continue");
+  await wait(page, 150);
+  const noVoiceResult = await page.eval(() => ({
+    voicePresent: !!document.querySelector(".bday-scene--voice"),
+    couponsPresent: !!document.querySelector(".bday-scene--coupons"),
+  }));
+  await check("birthday: with no recording at audio/sesli-mesaj.*, the voice scene is skipped entirely — straight to coupons", () => ({
+    ok: noVoiceResult.voicePresent === false && noVoiceResult.couponsPresent === true,
+    detail: JSON.stringify(noVoiceResult),
+  }));
+
+  await openApp(page, { now: "2026-10-04T00:05:00", signedIn: true, voiceAudio: "wav", storage: { "meryem-gate-played-year": "2026" } });
+  await waitUntilOverlayOpen(page);
+  await page.tap("#bday-scene0-continue");
+  await blowAllCandlesByTap(page);
+  await page.tap("#bday-scene1-continue");
+  await wait(page, 150);
+  await page.tap("#bday-scene2-continue");
+  await wait(page, 150);
+  await page.tap("#bday-gift-open-btn");
+  await wait(page, 650);
+  for (let i = 0; i < 8; i++) {
+    await page.tap(".bday-letter");
+    await wait(page, 60);
+  }
+  await wait(page, 150);
+  // Force the music box back on right before entering the voice scene — proves the scene's own
+  // defensive stopMelody() call, not just the (already-true) fact that earlier scenes stop it too.
+  await page.eval(() => { window.birthdayTestStartMelody(); });
+  const melodyForcedOn = await page.eval(() => window.birthdayTestIsMelodyPlaying());
+  await page.tap("#bday-scene3-continue");
+  await wait(page, 150);
+  const voiceSceneResult = await page.eval(() => {
+    var titleEl = document.querySelector(".bday-voice-title");
+    var hintEl = document.querySelector(".bday-scene--voice .bday-scene-subtitle");
+    return {
+      present: !!document.querySelector(".bday-scene--voice"),
+      titleText: titleEl ? titleEl.textContent : null,
+      expectedTitle: CONTENT.birthday.voice.title,
+      hintText: hintEl ? hintEl.textContent : null,
+      expectedHint: CONTENT.birthday.voice.hint,
+      playAriaLabel: document.getElementById("bday-voice-play").getAttribute("aria-label"),
+      expectedPlayLabel: CONTENT.birthday.voice.play,
+      audioAutoplay: document.getElementById("bday-voice-audio").autoplay,
+      melodyStillPlaying: window.birthdayTestIsMelodyPlaying(),
+    };
+  });
+  await check("birthday: the voice scene shows CONTENT.birthday.voice title/hint, a labelled play button, and no autoplay", () => ({
+    ok: voiceSceneResult.present === true && voiceSceneResult.titleText === voiceSceneResult.expectedTitle
+      && voiceSceneResult.hintText === voiceSceneResult.expectedHint && voiceSceneResult.playAriaLabel === voiceSceneResult.expectedPlayLabel
+      && voiceSceneResult.audioAutoplay === false,
+    detail: JSON.stringify(voiceSceneResult),
+  }));
+  await check("birthday: entering the voice scene stops a still-playing music box first (M1-style defensive stopMelody)", () => ({
+    ok: melodyForcedOn === true && voiceSceneResult.melodyStillPlaying === false,
+    detail: JSON.stringify({ melodyForcedOn, melodyStillPlaying: voiceSceneResult.melodyStillPlaying }),
+  }));
+
+  // The progress ring sits around the heart: same centre, and the ring fills the 96px button.
+  const voiceRing = await page.eval(() => {
+    var ring = document.querySelector(".bday-voice-ring").getBoundingClientRect();
+    var heart = document.getElementById("bday-voice-heart").getBoundingClientRect();
+    var btn = document.getElementById("bday-voice-play").getBoundingClientRect();
+    return {
+      dx: Math.abs((ring.left + ring.width / 2) - (heart.left + heart.width / 2)),
+      dy: Math.abs((ring.top + ring.height / 2) - (heart.top + heart.height / 2)),
+      ringW: ring.width, btnW: btn.width,
+    };
+  });
+  await check("birthday: the voice progress ring is centred on the heart and fills the play button", () => ({
+    ok: voiceRing.dx <= 2 && voiceRing.dy <= 3 && Math.abs(voiceRing.ringW - voiceRing.btnW) <= 1,
+    detail: JSON.stringify(voiceRing),
+  }));
+
+  await page.tap("#bday-voice-play");
+  await wait(page, 150);
+  const playingResult = await page.eval(() => ({
+    paused: document.getElementById("bday-voice-audio").paused,
+    isPlayingClass: document.getElementById("bday-voice-play").classList.contains("is-playing"),
+    ariaLabel: document.getElementById("bday-voice-play").getAttribute("aria-label"),
+    expectedPauseLabel: CONTENT.birthday.voice.pause,
+  }));
+  await check("birthday: tapping the heart button plays the recording and swaps the aria-label to CONTENT.birthday.voice.pause", () => ({
+    ok: playingResult.paused === false && playingResult.isPlayingClass === true && playingResult.ariaLabel === playingResult.expectedPauseLabel,
+    detail: JSON.stringify(playingResult),
+  }));
+
+  await page.tap("#bday-voice-play");
+  await wait(page, 150);
+  const pausedResult = await page.eval(() => ({
+    paused: document.getElementById("bday-voice-audio").paused,
+    isPlayingClass: document.getElementById("bday-voice-play").classList.contains("is-playing"),
+    ariaLabel: document.getElementById("bday-voice-play").getAttribute("aria-label"),
+    expectedPlayLabel: CONTENT.birthday.voice.play,
+  }));
+  await check("birthday: tapping the heart button again pauses it and swaps the aria-label back to CONTENT.birthday.voice.play", () => ({
+    ok: pausedResult.paused === true && pausedResult.isPlayingClass === false && pausedResult.ariaLabel === pausedResult.expectedPlayLabel,
+    detail: JSON.stringify(pausedResult),
+  }));
+
+  // A live reference stashed on window survives the scene's own markup being torn down, so the
+  // SAME <audio> element's .paused/.currentTime can be read back after it leaves the DOM —
+  // proving the scene's cleanup actually paused and released it, not just that the app moved on.
+  await page.tap("#bday-voice-play"); // resume, so leaving the scene has something real to pause/release
+  await wait(page, 150);
+  await page.eval(() => { window.__bdayVoiceAudioRef = document.getElementById("bday-voice-audio"); });
+  const preLeaveState = await page.eval(() => ({
+    continueAvailable: document.getElementById("bday-scene-voice-continue").hidden === false,
+    wasPlaying: window.__bdayVoiceAudioRef.paused === false,
+  }));
+  await page.tap("#bday-scene-voice-continue");
+  await wait(page, 150);
+  const afterLeavingVoice = await page.eval(() => ({
+    couponsPresent: !!document.querySelector(".bday-scene--coupons"),
+    audioPaused: window.__bdayVoiceAudioRef.paused === true,
+    audioReset: window.__bdayVoiceAudioRef.currentTime === 0,
+  }));
+  await check("birthday: Devam is available on the voice scene without waiting for playback to finish, and advances to coupons", () => ({
+    ok: preLeaveState.continueAvailable === true && afterLeavingVoice.couponsPresent === true,
+    detail: JSON.stringify({ preLeaveState, afterLeavingVoice }),
+  }));
+  await check("birthday: leaving the voice scene pauses and releases (resets) the audio element", () => ({
+    ok: preLeaveState.wasPlaying === true && afterLeavingVoice.audioPaused === true && afterLeavingVoice.audioReset === true,
+    detail: JSON.stringify({ preLeaveState, afterLeavingVoice }),
+  }));
+
+  // Closing the whole overlay while the voice scene is playing pauses/releases it too (not just a
+  // scene-to-scene change) — same stash-a-live-reference technique, a fresh overlay open.
+  await openApp(page, { now: "2026-10-04T00:05:00", signedIn: true, voiceAudio: "wav", storage: { "meryem-gate-played-year": "2026" } });
+  await waitUntilOverlayOpen(page);
+  await page.tap("#bday-scene0-continue");
+  await blowAllCandlesByTap(page);
+  await page.tap("#bday-scene1-continue");
+  await wait(page, 150);
+  await page.tap("#bday-scene2-continue");
+  await wait(page, 150);
+  await page.tap("#bday-gift-open-btn");
+  await wait(page, 650);
+  for (let i = 0; i < 8; i++) {
+    await page.tap(".bday-letter");
+    await wait(page, 60);
+  }
+  await wait(page, 150);
+  await page.tap("#bday-scene3-continue");
+  await wait(page, 150);
+  await page.tap("#bday-voice-play");
+  await wait(page, 150);
+  await page.eval(() => { window.__bdayVoiceAudioRef2 = document.getElementById("bday-voice-audio"); });
+  const wasPlayingBeforeClose = await page.eval(() => window.__bdayVoiceAudioRef2.paused === false);
+  await page.tap("#bday-close-btn");
+  await wait(page, 150);
+  const afterOverlayClose = await page.eval(() => ({
+    overlayHidden: document.getElementById("birthday-overlay").hidden,
+    audioPaused: window.__bdayVoiceAudioRef2.paused === true,
+  }));
+  await check("birthday: closing the whole overlay while the voice message plays also pauses/releases it", () => ({
+    ok: wasPlayingBeforeClose === true && afterOverlayClose.overlayHidden === true && afterOverlayClose.audioPaused === true,
+    detail: JSON.stringify({ wasPlayingBeforeClose, afterOverlayClose }),
+  }));
+
+  // 20. Love coupons: the booklet scene, an in-page confirm (never window.confirm/alert), a
+  // persisted stamp with today's date, "Sonra" as a no-op, preview mode's no-persist guarantee,
+  // and the always-visible 🎁-tab list.
+  await openApp(page, { now: "2026-10-04T00:05:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
+  await waitUntilOverlayOpen(page);
+  await page.tap("#bday-scene0-continue");
+  await blowAllCandlesByTap(page);
+  await page.tap("#bday-scene1-continue");
+  await wait(page, 150);
+  await page.tap("#bday-scene2-continue");
+  await wait(page, 150);
+  await page.tap("#bday-gift-open-btn");
+  await wait(page, 650);
+  for (let i = 0; i < 8; i++) {
+    await page.tap(".bday-letter");
+    await wait(page, 60);
+  }
+  await wait(page, 150);
+  await page.tap("#bday-scene3-continue");
+  await wait(page, 150);
+  const couponsSceneResult = await page.eval(() => ({
+    count: document.querySelectorAll("#bday-coupon-booklet .bday-coupon").length,
+    titleText: document.querySelector(".bday-coupons-title").textContent,
+    expectedTitle: CONTENT.birthday.coupons.title,
+  }));
+  await check("birthday: the coupons scene shows all 8 items from CONTENT.birthday.coupons.items under CONTENT.birthday.coupons.title", () => ({
+    ok: couponsSceneResult.count === 8 && couponsSceneResult.titleText === couponsSceneResult.expectedTitle,
+    detail: JSON.stringify(couponsSceneResult),
+  }));
+
+  await page.eval(() => {
+    window.__bdayConfirmCalled = false;
+    var orig = window.confirm;
+    window.confirm = function () { window.__bdayConfirmCalled = true; return orig ? orig.apply(window, arguments) : false; };
+  });
+  await tapCoupon(page, '#bday-coupon-booklet [data-coupon="hug"]');
+  await wait(page, 150);
+  const confirmDialogResult = await page.eval(() => ({
+    visible: document.getElementById("bday-coupon-confirm").hidden === false,
+    titleText: document.getElementById("bday-coupon-confirm-title").textContent,
+    textContent: document.querySelector(".bday-coupon-confirm-text").textContent,
+    expectedConfirmText: CONTENT.birthday.coupons.confirm,
+    yesLabel: document.getElementById("bday-coupon-confirm-yes").textContent,
+    noLabel: document.getElementById("bday-coupon-confirm-no").textContent,
+    expectedYes: CONTENT.birthday.coupons.yes,
+    expectedNo: CONTENT.birthday.coupons.no,
+    windowConfirmCalled: window.__bdayConfirmCalled,
+  }));
+  await check("birthday: tapping a coupon opens an in-page confirm (never window.confirm) reading CONTENT.birthday.coupons text", () => ({
+    ok: confirmDialogResult.visible === true && confirmDialogResult.titleText === "Sınırsız sarılma"
+      && confirmDialogResult.textContent === confirmDialogResult.expectedConfirmText
+      && confirmDialogResult.yesLabel === confirmDialogResult.expectedYes && confirmDialogResult.noLabel === confirmDialogResult.expectedNo
+      && confirmDialogResult.windowConfirmCalled === false,
+    detail: JSON.stringify(confirmDialogResult),
+  }));
+
+  await page.tap("#bday-coupon-confirm-no");
+  await wait(page, 150);
+  const afterNoResult = await page.eval(() => ({
+    dialogHidden: document.getElementById("bday-coupon-confirm").hidden,
+    couponUsed: document.querySelector('#bday-coupon-booklet [data-coupon="hug"]').classList.contains("is-used"),
+    stored: (function () { try { return localStorage.getItem("meryem-coupons-used"); } catch (e) { return "ERR"; } })(),
+  }));
+  await check('birthday: "Sonra" is a no-op — the dialog closes, nothing is stamped, nothing is stored', () => ({
+    ok: afterNoResult.dialogHidden === true && afterNoResult.couponUsed === false && afterNoResult.stored == null,
+    detail: JSON.stringify(afterNoResult),
+  }));
+
+  await tapCoupon(page, '#bday-coupon-booklet [data-coupon="hug"]');
+  await wait(page, 150);
+  await page.tap("#bday-coupon-confirm-yes");
+  await wait(page, 150);
+  const afterYesResult = await page.eval(() => {
+    var stampEl = document.querySelector('#bday-coupon-booklet [data-coupon="hug"] .bday-coupon-stamp');
+    var tabEl = document.querySelector('#bday-coupon-booklet-tab [data-coupon="hug"]');
+    var stored = null;
+    try { stored = JSON.parse(localStorage.getItem("meryem-coupons-used") || "{}"); } catch (e) {}
+    return {
+      dialogHidden: document.getElementById("bday-coupon-confirm").hidden,
+      isUsed: document.querySelector('#bday-coupon-booklet [data-coupon="hug"]').classList.contains("is-used"),
+      stampHidden: stampEl.hidden,
+      stampText: stampEl.textContent,
+      expectedUsedLabel: CONTENT.birthday.coupons.used,
+      tabSyncedLive: tabEl ? tabEl.classList.contains("is-used") : false,
+      stored: stored,
+    };
+  });
+  // Matches the product code exact separator: a no-break space, a middle dot, a
+  // no-break space (js/birthday.js, same convention CONTENT.js documents at its own top).
+  const expectedStampText = "Kullan\u0131ld\u0131" + "\u00a0\u00b7\u00a0" + "04.10.2026";
+  await check("birthday: \"Evet\" stamps CONTENT.birthday.coupons.used + today's date (dd.mm.yyyy) and persists {id:'YYYY-MM-DD'} via storageSet", () => ({
+    ok: afterYesResult.dialogHidden === true && afterYesResult.isUsed === true && afterYesResult.stampHidden === false
+      && afterYesResult.expectedUsedLabel === "Kullan\u0131ld\u0131" && afterYesResult.stampText === expectedStampText
+      && afterYesResult.stored && afterYesResult.stored.hug === "2026-10-04",
+    detail: JSON.stringify({ ...afterYesResult, expectedStampText }),
+  }));
+  await check("birthday: the stamp reaches the 🎁-tab list live, without needing a reload (same data-coupon id, different container)", () => ({
+    ok: afterYesResult.tabSyncedLive === true,
+    detail: JSON.stringify(afterYesResult),
+  }));
+
+  // A real close (M2's seen-year write) before reloading — otherwise the surprise auto-reopens on
+  // the next load (maybeAutoOpenBirthday(), section 3 above) and covers the 🎁-tab entirely, which
+  // is not what "stays stamped after reload" or "the tab always lists all 8" mean to exercise.
+  await page.tap("#bday-close-btn");
+  await wait(page, 150);
+
+  await openApp(page, { now: "2026-10-04T00:06:00", signedIn: true, keepStorage: true });
+  await page.tap(".nav-btn[data-tab=\"birthday-view\"]");
+  await wait(page, 150);
+  const stampAfterReload = await page.eval(() => {
+    var el = document.querySelector('#bday-coupon-booklet-tab [data-coupon="hug"] .bday-coupon-stamp');
+    return { present: !!el, hidden: el ? el.hidden : null, isUsed: !!document.querySelector('#bday-coupon-booklet-tab [data-coupon="hug"].is-used') };
+  });
+  await check("birthday: a stamped coupon stays stamped after reload (real localStorage persistence)", () => ({
+    ok: stampAfterReload.present === true && stampAfterReload.hidden === false && stampAfterReload.isUsed === true,
+    detail: JSON.stringify(stampAfterReload),
+  }));
+
+  const tabCouponsResult = await page.eval(() => {
+    var titleEl = document.querySelector(".bday-coupons-tab-title");
+    return {
+      count: document.querySelectorAll("#bday-coupon-booklet-tab .bday-coupon").length,
+      usedCount: document.querySelectorAll("#bday-coupon-booklet-tab .bday-coupon.is-used").length,
+      sectionTitle: titleEl ? titleEl.textContent : null,
+      expectedTitle: CONTENT.birthday.coupons.title,
+    };
+  });
+  await check("birthday: the 🎁 tab always lists all 8 coupons with their state under the ready card, while unlocked", () => ({
+    ok: tabCouponsResult.count === 8 && tabCouponsResult.usedCount === 1 && tabCouponsResult.sectionTitle === tabCouponsResult.expectedTitle,
+    detail: JSON.stringify(tabCouponsResult),
+  }));
+
+  // The tab's coupon list flows with the page: no inner scroll box nested inside the scrolling tab.
+  const tabBooklet = await page.eval(() => {
+    var el = document.getElementById("bday-coupon-booklet-tab");
+    var cs = getComputedStyle(el);
+    return { overflowY: cs.overflowY, maxHeight: cs.maxHeight, clientHeight: el.clientHeight, scrollHeight: el.scrollHeight };
+  });
+  await check("birthday: the 🎁 tab's coupon list is not an inner scroll box", () => ({
+    ok: tabBooklet.overflowY === "visible" && tabBooklet.maxHeight === "none" && tabBooklet.scrollHeight <= tabBooklet.clientHeight + 1,
+    detail: JSON.stringify(tabBooklet),
+  }));
+
+  await tapCoupon(page, '#bday-coupon-booklet-tab [data-coupon="hug"]');
+  await wait(page, 150);
+  const usedTapIsNoop = await page.eval(() => {
+    var dialog = document.getElementById("bday-coupon-confirm");
+    return dialog ? dialog.hidden : true;
+  });
+  await check("birthday: tapping an already-used coupon is a no-op — no confirm dialog reopens", () => ({
+    ok: usedTapIsNoop === true,
+    detail: String(usedTapIsNoop),
+  }));
+
+  // Preview mode: stamps on screen but persists nothing (the in-memory shadow), same guarantee
+  // words.js's own jar/letters already have.
+  await openApp(page, { query: "?onizleme=dogumgunu", signedIn: true, storage: {} });
+  await wait(page, 300); // let any natural gate/birthday auto-play settle first
+  await page.eval(() => {
+    var bOverlay = document.getElementById("birthday-overlay");
+    if (bOverlay) { bOverlay.hidden = true; bOverlay.innerHTML = ""; }
+    var gOverlay = document.getElementById("gate-overlay");
+    if (gOverlay) { gOverlay.hidden = true; gOverlay.innerHTML = ""; }
+    var appContent = document.getElementById("app-content");
+    if (appContent) appContent.removeAttribute("inert");
+    document.body.style.overflow = "";
+  });
+  await page.tap(".nav-btn[data-tab=\"birthday-view\"]");
+  await wait(page, 150);
+  await tapCoupon(page, '#bday-coupon-booklet-tab [data-coupon="trip"]');
+  await wait(page, 150);
+  await page.tap("#bday-coupon-confirm-yes");
+  await wait(page, 150);
+  const previewCouponResult = await page.eval(() => ({
+    isUsedOnScreen: document.querySelector('#bday-coupon-booklet-tab [data-coupon="trip"]').classList.contains("is-used"),
+    stored: (function () { try { return localStorage.getItem("meryem-coupons-used"); } catch (e) { return "ERR"; } })(),
+  }));
+  await check("birthday: preview mode stamps a coupon on screen but stores nothing (in-memory shadow)", () => ({
+    ok: previewCouponResult.isUsedOnScreen === true && previewCouponResult.stored == null,
+    detail: JSON.stringify(previewCouponResult),
+  }));
+
+  // 21. Reduced motion: the voice ring/heart-pulse and the coupon confirm's entrance animation
+  // drop out (playback and the dialog itself still work) — the same rule every other scene follows.
+  await openApp(page, { now: "2026-10-04T00:05:00", signedIn: true, voiceAudio: "wav", storage: { "meryem-gate-played-year": "2026" }, reducedMotion: true });
+  await waitUntilOverlayOpen(page);
+  await page.tap("#bday-scene0-continue");
+  await blowAllCandlesByTap(page);
+  await page.tap("#bday-scene1-continue");
+  await wait(page, 150);
+  await page.tap("#bday-scene2-continue");
+  await wait(page, 150);
+  await page.tap("#bday-gift-open-btn");
+  await wait(page, 650);
+  for (let i = 0; i < 8; i++) {
+    await page.tap(".bday-letter");
+    await wait(page, 60);
+  }
+  await wait(page, 150);
+  await page.tap("#bday-scene3-continue");
+  await wait(page, 150);
+  await page.tap("#bday-voice-play");
+  await wait(page, 150);
+  const reducedVoiceResult = await page.eval(() => ({
+    // transitionProperty, not transitionDuration: the site-wide reduced-motion reset (style.css)
+    // already forces every element's transition-duration to .01ms with !important regardless of
+    // this rule, so duration alone can't tell the two apart — property can, since only this
+    // app's own rule (transition: none) resets it away from "stroke-dashoffset".
+    ringTransitionProperty: getComputedStyle(document.getElementById("bday-voice-ring-progress")).transitionProperty,
+    heartAnimationName: getComputedStyle(document.getElementById("bday-voice-heart")).animationName,
+    isPlaying: document.getElementById("bday-voice-play").classList.contains("is-playing"),
+  }));
+  await check("birthday: reduced motion — the voice ring/heart drop their animation, and playback still works", () => ({
+    ok: reducedVoiceResult.isPlaying === true && reducedVoiceResult.ringTransitionProperty === "none" && reducedVoiceResult.heartAnimationName === "none",
+    detail: JSON.stringify(reducedVoiceResult),
+  }));
+
+  await page.tap("#bday-scene-voice-continue");
+  await wait(page, 150);
+  await tapCoupon(page, '#bday-coupon-booklet [data-coupon="hug"]');
+  await wait(page, 150);
+  const reducedConfirmResult = await page.eval(() => ({
+    visible: document.getElementById("bday-coupon-confirm").hidden === false,
+    cardAnimationName: getComputedStyle(document.querySelector(".bday-coupon-confirm-card")).animationName,
+  }));
+  await check("birthday: reduced motion — the coupon confirm dialog shows instantly, no entrance animation", () => ({
+    ok: reducedConfirmResult.visible === true && reducedConfirmResult.cardAnimationName === "none",
+    detail: JSON.stringify(reducedConfirmResult),
+  }));
 }
 
 export const mutants = [
+  {
+    id: "birthday-voice-ring-offcentre",
+    file: "css/birthday.css",
+    find: "  width: 100%;\n  height: 100%;\n  transform: rotate(-90deg);",
+    replace: "  transform: rotate(-90deg);",
+    expect: "birthday: the voice progress ring is centred on the heart and fills the play button",
+  },
+  {
+    id: "birthday-tab-coupons-inner-scroll",
+    file: "css/birthday.css",
+    find: "  max-height: none;\n  overflow: visible;\n}",
+    replace: "}",
+    expect: "birthday: the 🎁 tab's coupon list is not an inner scroll box",
+  },
   {
     id: "birthday-seen-year-guard",
     file: "js/birthday.js",
@@ -1087,6 +1547,137 @@ export const mutants = [
     replace: "",
     expect: "birthday: candle/balloon/gift/guard touch targets set touch-action:manipulation and disable text-select/callout (m4)",
   },
+  {
+    id: "birthday-voice-touch-targets-manipulation",
+    file: "css/birthday.css",
+    find: ".bday-voice-play,\n.bday-coupon {\n  -webkit-touch-callout: none;\n  -webkit-user-select: none;\n  user-select: none;\n  touch-action: manipulation;\n}",
+    replace: "",
+    expect: "birthday: the voice-play heart and coupon cards also set touch-action:manipulation and disable text-select/callout",
+  },
+  {
+    // Always including the voice scene shifts every later scene's position by one — an earlier
+    // section's reachSlideshow() (a hardcoded #bday-scene-coupons-continue tap right after the
+    // letter) hits the now-present voice scene instead and throws, crashing the whole module
+    // before this file's own dedicated "skipped entirely" check ever runs — hence this mutant's
+    // real, reliable signature is the module-level failure, not that later check by name.
+    id: "birthday-voice-scene-only-when-found",
+    file: "js/birthday.js",
+    find: "if (voiceUrl) scenes.push(makeRenderSceneVoice(voiceUrl));",
+    replace: "scenes.push(makeRenderSceneVoice(voiceUrl));",
+    expect: "birthday: module ran to the end",
+  },
+  {
+    id: "birthday-voice-stops-melody-on-mount",
+    file: "js/birthday.js",
+    find: "so her voice never has to compete with it. */\n      stopMelody();",
+    replace: "so her voice never has to compete with it. */",
+    expect: "birthday: entering the voice scene stops a still-playing music box first (M1-style defensive stopMelody)",
+  },
+  {
+    id: "birthday-voice-play-toggle-class",
+    file: "js/birthday.js",
+    find: "playBtn.classList.toggle('is-playing', isPlaying);",
+    replace: "",
+    expect: "birthday: tapping the heart button plays the recording and swaps the aria-label to CONTENT.birthday.voice.pause",
+  },
+  {
+    id: "birthday-voice-aria-label-swap",
+    file: "js/birthday.js",
+    find: "playBtn.setAttribute('aria-label', isPlaying ? pauseLabel : playLabel);",
+    replace: "playBtn.setAttribute('aria-label', playLabel);",
+    expect: "birthday: tapping the heart button plays the recording and swaps the aria-label to CONTENT.birthday.voice.pause",
+  },
+  {
+    id: "birthday-voice-no-autoplay",
+    file: "js/birthday.js",
+    find: 'id="bday-voice-audio" preload="none" src="',
+    replace: 'id="bday-voice-audio" autoplay preload="none" src="',
+    expect: "birthday: the voice scene shows CONTENT.birthday.voice title/hint, a labelled play button, and no autoplay",
+  },
+  {
+    id: "birthday-voice-cleanup-pauses-audio",
+    file: "js/birthday.js",
+    find: "return function cleanup() {\n        audio.pause();\n        try { audio.currentTime = 0; } catch (e) { /* metadata not loaded yet — nothing to reset */ }\n      };",
+    replace: "return function cleanup() {};",
+    expect: "birthday: leaving the voice scene pauses and releases (resets) the audio element",
+  },
+  {
+    id: "birthday-coupons-scene-list-from-content",
+    file: "js/birthday.js",
+    find: "return items.map(function (item) { return bdayCouponItemMarkup(item, used[item.id] || null); }).join('');",
+    replace: "return '';",
+    expect: "birthday: the coupons scene shows all 8 items from CONTENT.birthday.coupons.items under CONTENT.birthday.coupons.title",
+  },
+  {
+    id: "birthday-coupon-yes-applies-stamp",
+    file: "js/birthday.js",
+    find: "bdayApplyCouponStampToDom(item.id, iso);\n      bdayCloseCouponConfirm();",
+    replace: "bdayCloseCouponConfirm();",
+    expect: "birthday: \"Evet\" stamps CONTENT.birthday.coupons.used + today's date (dd.mm.yyyy) and persists {id:'YYYY-MM-DD'} via storageSet",
+  },
+  {
+    id: "birthday-coupon-no-is-noop",
+    file: "js/birthday.js",
+    find: "function onNo() { bdayCloseCouponConfirm(); }",
+    replace: "function onNo() { var iso = bdayMarkCouponUsed(item.id); bdayApplyCouponStampToDom(item.id, iso); bdayCloseCouponConfirm(); }",
+    expect: 'birthday: "Sonra" is a no-op — the dialog closes, nothing is stamped, nothing is stored',
+  },
+  {
+    id: "birthday-coupon-date-format-ddmmyyyy",
+    file: "js/birthday.js",
+    find: "return parts[2] + '.' + parts[1] + '.' + parts[0];",
+    replace: "return parts[0] + '.' + parts[1] + '.' + parts[2];",
+    expect: "birthday: \"Evet\" stamps CONTENT.birthday.coupons.used + today's date (dd.mm.yyyy) and persists {id:'YYYY-MM-DD'} via storageSet",
+  },
+  {
+    id: "birthday-coupon-storage-key-literal",
+    file: "js/birthday.js",
+    find: "var BDAY_COUPONS_KEY = 'meryem-coupons-used';",
+    replace: "var BDAY_COUPONS_KEY = 'meryem-coupons-used-x';",
+    expect: "birthday: \"Evet\" stamps CONTENT.birthday.coupons.used + today's date (dd.mm.yyyy) and persists {id:'YYYY-MM-DD'} via storageSet",
+  },
+  {
+    id: "birthday-coupon-preview-mode-no-persist",
+    file: "js/birthday.js",
+    find: "if (isPreviewMode()) {\n      _bdayCouponsShadow = obj;\n      return;\n    }",
+    replace: "",
+    expect: "birthday: preview mode stamps a coupon on screen but stores nothing (in-memory shadow)",
+  },
+  {
+    id: "birthday-coupon-used-tap-is-noop",
+    file: "js/birthday.js",
+    find: "if (!btn || btn.classList.contains('is-used')) return;",
+    replace: "if (!btn) return;",
+    expect: "birthday: tapping an already-used coupon is a no-op — no confirm dialog reopens",
+  },
+  {
+    id: "birthday-coupons-tab-section-under-ready-card",
+    file: "js/birthday.js",
+    find: "'<div class=\"bday-coupons-tab-section\">' +\n          '<h3 class=\"bday-coupons-tab-title\">' + bdayEsc(couponsTitle) + '</h3>' +\n          '<div class=\"bday-coupon-booklet bday-coupon-booklet--tab\" id=\"bday-coupon-booklet-tab\">' + bdayCouponsListMarkup() + '</div>' +\n        '</div>' +",
+    replace: "",
+    expect: "birthday: the 🎁 tab always lists all 8 coupons with their state under the ready card, while unlocked",
+  },
+  {
+    id: "birthday-voice-ring-reduced-motion",
+    file: "css/birthday.css",
+    find: ".bday-voice-ring-progress {\n    transition: none;\n  }",
+    replace: "",
+    expect: "birthday: reduced motion — the voice ring/heart drop their animation, and playback still works",
+  },
+  {
+    id: "birthday-voice-heart-reduced-motion",
+    file: "css/birthday.css",
+    find: ".bday-voice-play.is-playing .bday-voice-heart {\n    animation: none;\n  }",
+    replace: "",
+    expect: "birthday: reduced motion — the voice ring/heart drop their animation, and playback still works",
+  },
+  {
+    id: "birthday-coupon-confirm-reduced-motion",
+    file: "css/birthday.css",
+    find: ".bday-coupon-confirm-card {\n    animation: none;\n  }",
+    replace: "",
+    expect: "birthday: reduced motion — the coupon confirm dialog shows instantly, no entrance animation",
+  },
 ];
 
 export const shots = [
@@ -1171,6 +1762,84 @@ export const shots = [
     },
   },
   {
+    name: "scene-voice",
+    open: { signedIn: true, now: "2026-10-04T00:05:00", storage: { "meryem-gate-played-year": "2026" }, voiceAudio: "wav" },
+    act: async (page) => {
+      await waitUntilOverlayOpen(page);
+      await page.tap("#bday-scene0-continue");
+      await blowAllCandlesByTap(page);
+      await page.tap("#bday-scene1-continue");
+      await wait(page, 150);
+      await page.tap("#bday-scene2-continue");
+      await wait(page, 150);
+      await page.tap("#bday-gift-open-btn");
+      await wait(page, 700);
+      for (let i = 0; i < 8; i++) {
+        await page.tap(".bday-letter");
+        await wait(page, 60);
+      }
+      await wait(page, 150);
+      await page.tap("#bday-scene3-continue");
+      await wait(page, 200);
+      await page.tap("#bday-voice-play");
+      await wait(page, 150);
+    },
+  },
+  {
+    name: "scene-coupons",
+    open: { signedIn: true, now: "2026-10-04T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
+    act: async (page) => {
+      await waitUntilOverlayOpen(page);
+      await page.tap("#bday-scene0-continue");
+      await blowAllCandlesByTap(page);
+      await page.tap("#bday-scene1-continue");
+      await wait(page, 150);
+      await page.tap("#bday-scene2-continue");
+      await wait(page, 150);
+      await page.tap("#bday-gift-open-btn");
+      await wait(page, 700);
+      for (let i = 0; i < 8; i++) {
+        await page.tap(".bday-letter");
+        await wait(page, 60);
+      }
+      await wait(page, 150);
+      await page.tap("#bday-scene3-continue");
+      await wait(page, 200);
+    },
+  },
+  {
+    name: "coupon-confirm",
+    open: { signedIn: true, now: "2026-10-04T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
+    act: async (page) => {
+      await waitUntilOverlayOpen(page);
+      await page.tap("#bday-scene0-continue");
+      await blowAllCandlesByTap(page);
+      await page.tap("#bday-scene1-continue");
+      await wait(page, 150);
+      await page.tap("#bday-scene2-continue");
+      await wait(page, 150);
+      await page.tap("#bday-gift-open-btn");
+      await wait(page, 700);
+      for (let i = 0; i < 8; i++) {
+        await page.tap(".bday-letter");
+        await wait(page, 60);
+      }
+      await wait(page, 150);
+      await page.tap("#bday-scene3-continue");
+      await wait(page, 200);
+      await tapCoupon(page, '#bday-coupon-booklet [data-coupon="hug"]');
+      await wait(page, 150);
+    },
+  },
+  {
+    name: "tab-coupons-used",
+    open: {
+      signedIn: true, now: "2026-10-04T00:05:00",
+      storage: { "meryem-gate-played-year": "2026", "meryem-birthday-seen-year": "2026", "meryem-coupons-used": JSON.stringify({ hug: "2026-10-04", dinner: "2026-10-04" }) },
+    },
+    act: async (page) => { await page.tap(".nav-btn[data-tab=\"birthday-view\"]"); },
+  },
+  {
     name: "scene-slideshow",
     open: { signedIn: true, now: "2026-10-04T00:05:00", storage: { "meryem-gate-played-year": "2026" }, memories: THREE_MEMORIES },
     act: async (page) => {
@@ -1189,6 +1858,8 @@ export const shots = [
       }
       await wait(page, 150);
       await page.tap("#bday-scene3-continue");
+      await wait(page, 150);
+      await page.tap("#bday-scene-coupons-continue");
       await wait(page, 300);
     },
   },
@@ -1211,6 +1882,8 @@ export const shots = [
       }
       await wait(page, 150);
       await page.tap("#bday-scene3-continue");
+      await wait(page, 150);
+      await page.tap("#bday-scene-coupons-continue");
       await wait(page, 300);
     },
   },
