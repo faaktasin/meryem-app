@@ -508,9 +508,401 @@
   margin-top: 8px;
 }
 
+/* ── Stage 4: stat cards, charts, report card, log ──── */
+
+.hb-p-together { --hb-c: var(--hb-together); --hb-t: var(--hb-together-tint); }
+
+.hb-stats,
+.hb-daily,
+.hb-bars,
+.hb-mom,
+.hb-log {
+  padding: 16px 14px 14px;
+}
+
+.hb-lead {
+  font-family: var(--font-num);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.hb-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.hb-stat {
+  background: var(--hb-t);
+  border-radius: var(--radius-sm);
+  border-top: 4px solid var(--hb-c);
+  padding: 10px 4px 10px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.hb-stat-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.hb-stat-name .hb-dot {
+  flex-shrink: 0;
+}
+
+.hb-stat-heart {
+  width: 14px;
+  height: 14px;
+  fill: var(--hb-together);
+  flex-shrink: 0;
+}
+
+.hb-stat-num {
+  font-family: var(--font-num);
+  font-size: 1.85rem;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.hb-stat-sub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 2.5em;
+  text-wrap: balance;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.25;
+}
+
+.hb-streak-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.hb-hint--center {
+  text-align: center;
+  margin-top: 4px;
+}
+
+.hb-daily .hb-title,
+.hb-bars .hb-title,
+.hb-mom .hb-title,
+.hb-log .hb-title {
+  margin-bottom: 8px;
+}
+
+.hb-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  color: var(--ink-soft);
+}
+
+.hb-grid {
+  stroke: var(--hb-track);
+  stroke-width: 1;
+}
+
+.hb-axis,
+.hb-mlabel,
+.hb-myear {
+  fill: currentColor;
+  font-size: 9px;
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+
+.hb-myear {
+  font-size: 7.5px;
+}
+
+.hb-mval {
+  color: var(--ink);
+  fill: currentColor;
+  font-size: 8px;
+  font-family: var(--font-num);
+  font-weight: 600;
+}
+
+.hb-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.hb-line-meryem,
+.hb-pt-meryem { stroke: var(--hb-meryem); fill: var(--hb-meryem); }
+.hb-line-furkan,
+.hb-pt-furkan { stroke: var(--hb-furkan); fill: var(--hb-furkan); }
+.hb-line-meryem,
+.hb-line-furkan { fill: none; }
+.hb-line-furkan { stroke-dasharray: 5 3; }
+
+.hb-pt {
+  stroke: var(--paper);
+  stroke-width: 1;
+}
+
+.hb-line-sample {
+  stroke-width: 2;
+  fill: none;
+}
+
+.hb-legend--chart svg {
+  width: 24px;
+  height: 11px;
+}
+
+.hb-mbar { fill: var(--hb-c); }
+
+.hb-mom-scroll {
+  overflow-x: visible;
+}
+
+.hb-mom-scroll.is-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+}
+
+.hb-bar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hb-bar-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.hb-bar-row {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.hb-bar-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.hb-bar-who .hb-dot {
+  flex-shrink: 0;
+}
+
+.hb-bar-track {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--hb-track);
+  overflow: hidden;
+}
+
+.hb-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--hb-c);
+  transition: width 0.4s ease;
+}
+
+.hb-bar-val {
+  font-family: var(--font-num);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: right;
+}
+
+/* Report card */
+
+.hb-report {
+  padding: 18px 16px 16px;
+  text-align: center;
+  background: var(--paper);
+  border: 2px solid var(--rose-100);
+}
+
+.hb-report-top {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.hb-report-bear {
+  filter: drop-shadow(0 6px 12px var(--shadow));
+}
+
+.hb-rh {
+  position: absolute;
+  fill: var(--rose);
+}
+
+.hb-rh--1 { width: 18px; height: 18px; top: 4px; left: 22%; }
+.hb-rh--2 { width: 13px; height: 13px; top: 30px; left: 14%; fill: var(--hb-together); }
+.hb-rh--3 { width: 16px; height: 16px; top: 10px; right: 20%; fill: var(--rose-strong); }
+
+.hb-report-title {
+  margin: 6px 0 10px;
+  font-size: 1.9rem;
+}
+
+.hb-report-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.hb-report-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--paper);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.hb-ri {
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  fill: var(--rose-strong);
+}
+
+.hb-report-close {
+  font-family: var(--font-script);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--berry);
+}
+
+.hb-teaser {
+  padding: 14px 16px;
+  text-align: center;
+}
+
+.hb-teaser-text {
+  font-family: var(--font-script);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--rose-strong);
+}
+
+/* Log */
+
+.hb-log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hb-log-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 2px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--rose-100);
+  font-size: 0.85rem;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.hb-log-row:last-child {
+  border-bottom: none;
+}
+
+.hb-log-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+}
+
+.hb-log-who .hb-dot {
+  align-self: center;
+}
+
+.hb-log-sep {
+  color: var(--ink-soft);
+  white-space: pre;
+}
+
+.hb-log-when {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.hb-log-pending {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--hb-together-tint);
+  color: var(--ink);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.hb-log-toggle {
+  display: block;
+  margin: 6px auto 0;
+  min-height: 44px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hb-bar-fill {
+    transition: none;
+  }
+}
+
 /* ── Narrow phones ──────────────────────────────────── */
 
 @media (max-width: 360px) {
+  .hb-stats-grid {
+    gap: 6px;
+  }
+
+  .hb-stat-num {
+    font-size: 1.6rem;
+  }
+
+  .hb-bar-row {
+    grid-template-columns: 68px minmax(0, 1fr) 40px;
+    gap: 6px;
+  }
+
   .hb-wrap {
     padding: 12px;
   }

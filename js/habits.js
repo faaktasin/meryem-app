@@ -347,8 +347,12 @@
 
   /* `month` is the current month, `view` the month the month page shows when it is NOT the
      current one (null = follow the current month, also across midnight on the 1st). */
-  var state = { day: null, month: null, data: {}, monthsData: {}, view: null, me: null, choosing: false };
+  var state = {
+    day: null, month: null, data: {}, monthsData: {}, view: null, me: null, choosing: false,
+    allMonths: {}, log: [], logOpen: false, momPinned: true
+  };
   var subs = {};
+  var logSub = { month: null, off: null };
   var _initialized = false;
 
   /** The month the month page shows. */
@@ -384,6 +388,7 @@
       delete subs[mk];
     });
     state.data = state.monthsData[state.month] || {};
+    syncLogSubscription();
     if (typeof subscribeHabitMonth !== 'function') return;
     want.forEach(function (mk) {
       if (subs[mk]) return;
@@ -392,6 +397,26 @@
         if (mk === state.month) state.data = state.monthsData[mk];
         renderAll();
       });
+    });
+  }
+
+  /** The log listener follows the viewed month: the old one is closed before the new one opens,
+      so switching months back and forth leaves exactly one behind. */
+  function syncLogSubscription() {
+    var vm = viewedMonth();
+    if (logSub.month === vm) return;
+    if (logSub.off) {
+      try { logSub.off(); } catch (e) { /* already gone */ }
+      logSub.off = null;
+    }
+    logSub.month = vm;
+    state.log = [];
+    state.logOpen = false;
+    if (typeof subscribeHabitLog !== 'function') return;
+    logSub.off = subscribeHabitLog(vm, function (items) {
+      if (logSub.month !== vm) return;
+      state.log = items || [];
+      renderAll();
     });
   }
 
@@ -431,6 +456,13 @@
     state.me = readMe();
     wireUi();
     syncSubscriptions();
+    /* One listener over every month document, for "Aydan aya" - opened once, never per month. */
+    if (typeof subscribeHabitMonths === 'function') {
+      subscribeHabitMonths(function (months) {
+        state.allMonths = months || {};
+        renderAll();
+      });
+    }
     renderAll();
 
     /* window.__HABITS_TICK_MS is a test seam only: the suite shortens the minute so a midnight
@@ -453,7 +485,7 @@
   var LOCK_D = 'M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 0 1 6 0v3H9z';
   var RING_R = 7.5;
   var RING_LEN = 2 * Math.PI * RING_R;
-  var shown = { top: null, today: null, month: null, sheet: null };
+  var shown = { top: null, today: null, month: null, sheet: null, stats: null, mom: null, report: null, log: null };
 
   function copy() {
     return CONTENT.habits;
@@ -588,8 +620,18 @@
     '</svg>';
   }
 
+  /** The ONE place a percentage is rounded for display: cards, charts, calendar and report. */
+  function roundPct(p) {
+    return Math.round(p);
+  }
+
   function pctText(p) {
-    return p === null ? '' : String(Math.round(p));
+    return p === null ? '' : String(roundPct(p));
+  }
+
+  /** '%70', or a dash while nothing is due. */
+  function pctLabel(p) {
+    return p === null || p === undefined ? copy().noData : '%' + roundPct(p);
   }
 
   function dayCell(rec, vm, todayKey) {
@@ -646,6 +688,323 @@
         '<span class="hb-leg hb-leg-joint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + HEART_D + '"/></svg>' + escapeHtml(c.legendJoint) + '</span>' +
       '</div>' +
     '</section>';
+  }
+
+  /* ── Stage 4: cards, charts, the report card and the log ───────────────── */
+
+  /* Every number below comes from monthSummary() (or currentStreak for the live streak); the
+     views only place it. Colours are the --hb-* variables; a person's number always sits beside
+     the person's name, so colour is never the only cue. */
+
+  var LOG_LIMIT = 5;
+  var PLOT = { w: 320, h: 156, left: 30, right: 308, top: 12, bottom: 124 };
+  var MOM = { group: 54, bar: 13, gap: 3, base: 92, maxH: 72, h: 118 };
+
+  function personClass(p) {
+    return p === 'together' ? 'hb-p-together' : 'hb-p-' + p;
+  }
+
+  function monthLabel(mk) {
+    return copy().months[parseInt(mk.slice(5, 7), 10) - 1];
+  }
+
+  /** The lead of the month in whole points; a rounded gap of 0 counts as a tie. */
+  function leadInfo(s) {
+    if (!s || !s.started || !s.leader) return null;
+    var gap = roundPct(Math.abs(s.people.meryem.pct - s.people.furkan.pct));
+    if (s.leader === 'tie' || gap === 0) return { tie: true, gap: 0, who: null };
+    return { tie: false, gap: gap, who: s.leader };
+  }
+
+  function leadLine(s) {
+    var info = leadInfo(s);
+    if (!info) return '';
+    var c = copy().stats;
+    return info.tie ? c.tie : fmt(c.lead, { name: nameOf(info.who), n: info.gap });
+  }
+
+  /** The current streak on the running month, that month's longest on a past one. */
+  function streakOf(person, vm, summary, now) {
+    if (vm === monthKey(now)) return { kind: 'current', n: currentStreak(person, state.monthsData, now) };
+    return { kind: 'longest', n: summary.people[person].longest };
+  }
+
+  function dotMark(p) {
+    return '<i class="hb-dot ' + personClass(p) + '"></i>';
+  }
+
+  function heartMark(cls) {
+    return '<svg class="' + cls + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + HEART_D + '"/></svg>';
+  }
+
+  function statTile(kind, name, pct, sub) {
+    var mark = kind === 'together' ? heartMark('hb-stat-heart') : dotMark(kind);
+    return '<div class="hb-stat ' + personClass(kind) + '" data-kind="' + kind + '" data-pct="' + (pct === null ? '' : roundPct(pct)) + '">' +
+      '<div class="hb-stat-name">' + mark + '<span>' + escapeHtml(name) + '</span></div>' +
+      '<div class="hb-stat-num">' + escapeHtml(pctLabel(pct)) + '</div>' +
+      sub +
+    '</div>';
+  }
+
+  function streakHtml(person, st) {
+    var c = copy().stats;
+    return '<div class="hb-stat-sub hb-streak" data-person="' + person + '" data-kind="' + st.kind + '" data-n="' + st.n + '">' +
+      '<span class="hb-streak-n">🔥 ' + escapeHtml(fmt(c.streakDays, { n: st.n })) + '</span> ' +
+      '<span class="hb-streak-label">' + escapeHtml(st.kind === 'current' ? c.streakNow : c.streakBest) + '</span>' +
+    '</div>';
+  }
+
+  function cardsHtml(vm, summary, now) {
+    var c = copy();
+    var lead = leadLine(summary);
+    var bp = summary.birlikte.pct;
+    var mp = summary.people.meryem.pct;
+    var fp = summary.people.furkan.pct;
+    return '<section class="card hb-stats">' +
+      (lead ? '<p class="hb-lead" data-lead="' + (leadInfo(summary).tie ? 'tie' : leadInfo(summary).who) + '">' + escapeHtml(lead) + '</p>' : '') +
+      '<div class="hb-stats-grid">' +
+        statTile('meryem', nameOf('meryem'), mp, streakHtml('meryem', streakOf('meryem', vm, summary, now))) +
+        statTile('furkan', nameOf('furkan'), fp, streakHtml('furkan', streakOf('furkan', vm, summary, now))) +
+        statTile('together', c.groups.together, bp,
+          '<div class="hb-stat-sub hb-joint-count" data-n="' + summary.jointDays + '"><span class="hb-streak-n">' + escapeHtml(fmt(c.stats.jointDays, { n: summary.jointDays })) + '</span></div>') +
+      '</div>' +
+    '</section>';
+  }
+
+  /* ── The daily line chart ───────────────────────────────────────────────── */
+
+  function plotX(n, days) {
+    return PLOT.left + (days <= 1 ? 0 : (n - 1) * (PLOT.right - PLOT.left) / (days - 1));
+  }
+
+  function plotY(pct) {
+    return PLOT.top + (100 - pct) * (PLOT.bottom - PLOT.top) / 100;
+  }
+
+  function dailySvg(summary) {
+    var c = copy();
+    var days = summary.days;
+    var out = '';
+    [100, 50, 0].forEach(function (g) {
+      var y = plotY(g).toFixed(1);
+      out += '<line class="hb-grid" x1="' + PLOT.left + '" x2="' + PLOT.right + '" y1="' + y + '" y2="' + y + '"/>' +
+        '<text class="hb-axis" x="' + (PLOT.left - 5) + '" y="' + (plotY(g) + 3).toFixed(1) + '" text-anchor="end">' + g + '</text>';
+    });
+    var ticks = [1, 5, 10, 15, 20, 25];
+    if (days - 25 >= 3) ticks.push(days);
+    ticks.forEach(function (n) {
+      if (n > days) return;
+      out += '<text class="hb-axis" x="' + plotX(n, days).toFixed(1) + '" y="' + (PLOT.bottom + 14) + '" text-anchor="middle">' + n + '</text>';
+    });
+    var parts = { meryem: '', furkan: '' };
+    ['meryem', 'furkan'].forEach(function (p) {
+      var path = '';
+      var pts = '';
+      for (var i = 0; i < summary.perDay.length; i++) {
+        var rec = summary.perDay[i];
+        var v = rec[p];
+        if (v === null) continue;
+        var x = plotX(rec.n, days);
+        var y = plotY(v);
+        path += (path ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+        var attrs = ' class="hb-pt hb-pt-' + p + '" data-person="' + p + '" data-day="' + rec.key + '" data-pct="' + v.toFixed(2) + '" data-y="' + y.toFixed(1) + '"';
+        pts += p === 'meryem'
+          ? '<circle' + attrs + ' cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.8"/>'
+          : '<rect' + attrs + ' x="' + (x - 2.6).toFixed(1) + '" y="' + (y - 2.6).toFixed(1) + '" width="5.2" height="5.2"/>';
+      }
+      parts[p] = (path ? '<path class="hb-line hb-line-' + p + '" d="' + path + '"/>' : '') + pts;
+    });
+    out += parts.furkan + parts.meryem;
+    return '<svg class="hb-svg hb-daily-svg" viewBox="0 0 ' + PLOT.w + ' ' + PLOT.h + '" role="img" aria-label="' +
+      escapeHtml(fmt(c.daily.aria, { m: pctLabel(summary.people.meryem.pct), f: pctLabel(summary.people.furkan.pct) })) +
+      '" data-top="' + PLOT.top + '" data-h="' + (PLOT.bottom - PLOT.top) + '">' + out + '</svg>';
+  }
+
+  function dailyHtml(summary) {
+    var c = copy();
+    var legend = '<div class="hb-legend hb-legend--chart">' +
+      '<span class="hb-leg hb-p-meryem"><svg viewBox="0 0 22 10" aria-hidden="true"><path class="hb-line-sample hb-line-meryem" d="M1 5H21"/><circle cx="11" cy="5" r="2.8" class="hb-pt-meryem"/></svg>' + escapeHtml(nameOf('meryem')) + '</span>' +
+      '<span class="hb-leg hb-p-furkan"><svg viewBox="0 0 22 10" aria-hidden="true"><path class="hb-line-sample hb-line-furkan" d="M1 5H21"/><rect x="8.4" y="2.4" width="5.2" height="5.2" class="hb-pt-furkan"/></svg>' + escapeHtml(nameOf('furkan')) + '</span>' +
+    '</div>';
+    return '<section class="card hb-daily"><h2 class="hb-title">' + escapeHtml(c.daily.title) + '</h2>' + dailySvg(summary) + legend + '</section>';
+  }
+
+  /* ── Per-item bars ──────────────────────────────────────────────────────── */
+
+  function itemActiveIn(item, vm) {
+    var first = vm + '-01';
+    var last = vm + '-' + pad2(daysInMonth(vm));
+    if (item.since && item.since > last) return false;
+    if (item.until && item.until < first) return false;
+    return true;
+  }
+
+  function barsHtml(vm, summary) {
+    var c = copy();
+    var aria = [];
+    var rows = '';
+    summary.items.forEach(function (row) {
+      var item = null;
+      CONFIG.habits.forEach(function (h) { if (h.id === row.id) item = h; });
+      if (!item || !itemActiveIn(item, vm)) return;
+      var bars = '';
+      var said = [];
+      ['meryem', 'furkan'].forEach(function (p) {
+        if (row.owners.indexOf(p) === -1) return;
+        var v = row[p];
+        said.push(nameOf(p) + ' ' + pctLabel(v));
+        bars += '<div class="hb-bar-row ' + personClass(p) + '" data-item="' + escapeHtml(row.id) + '" data-person="' + p + '" data-pct="' + (v === null ? '' : roundPct(v)) + '">' +
+          '<span class="hb-bar-who">' + dotMark(p) + escapeHtml(nameOf(p)) + '</span>' +
+          '<span class="hb-bar-track"><span class="hb-bar-fill" style="width:' + (v === null ? 0 : Math.max(0, Math.min(100, v)).toFixed(1)) + '%"></span></span>' +
+          '<span class="hb-bar-val">' + escapeHtml(pctLabel(v)) + '</span>' +
+        '</div>';
+      });
+      aria.push(row.label + ': ' + said.join(', '));
+      rows += '<div class="hb-bar-item"><p class="hb-bar-label">' + escapeHtml(row.label) + '</p>' + bars + '</div>';
+    });
+    return '<section class="card hb-bars"><h2 class="hb-title">' + escapeHtml(c.bars.title) + '</h2>' +
+      '<div class="hb-bar-list" role="img" aria-label="' + escapeHtml(c.bars.title + '. ' + aria.join('; ')) + '">' + rows + '</div></section>';
+  }
+
+  function statsHtml(now) {
+    var vm = viewedMonth();
+    var summary = monthSummary(vm, state.monthsData[vm] || {}, now);
+    var out = cardsHtml(vm, summary, now);
+    if (summary.started) out += dailyHtml(summary) + barsHtml(vm, summary);
+    return out;
+  }
+
+  /* ── Month over month ──────────────────────────────────────────────────── */
+
+  function momHtml(now) {
+    var c = copy();
+    var list = shownMonths(now);
+    /* A short history is centred in a five-slot frame so the columns keep a friendly size. */
+    var width = Math.max(list.length, 5) * MOM.group;
+    var shift = (width - list.length * MOM.group) / 2;
+    var bars = '';
+    var aria = [];
+    list.forEach(function (mk, i) {
+      var s = monthSummary(mk, state.allMonths[mk] || {}, now);
+      var x0 = shift + i * MOM.group + 4;
+      var cols = [['meryem', s.people.meryem.pct], ['furkan', s.people.furkan.pct], ['together', s.birlikte.pct]];
+      var said = [];
+      cols.forEach(function (col, j) {
+        var x = x0 + j * (MOM.bar + MOM.gap);
+        var pct = col[1];
+        said.push((col[0] === 'together' ? c.groups.together : nameOf(col[0])) + ' ' + pctLabel(pct));
+        if (pct === null) return;
+        var h = pct * MOM.maxH / 100;
+        bars += '<rect class="hb-mbar ' + personClass(col[0]) + '" data-month="' + mk + '" data-person="' + col[0] + '" data-pct="' + roundPct(pct) + '"' +
+          ' x="' + x + '" y="' + (MOM.base - h).toFixed(1) + '" width="' + MOM.bar + '" height="' + Math.max(h, 0.5).toFixed(1) + '" rx="3"/>' +
+          '<text class="hb-mval" data-month="' + mk + '" data-person="' + col[0] + '" x="' + (x + MOM.bar / 2) + '" y="' + (MOM.base - h - 3).toFixed(1) + '" text-anchor="middle">' + roundPct(pct) + '</text>';
+      });
+      aria.push(monthLabel(mk) + ': ' + said.join(', '));
+      var cx = x0 + (3 * MOM.bar + 2 * MOM.gap) / 2;
+      var mi = parseInt(mk.slice(5, 7), 10);
+      bars += '<text class="hb-mlabel" x="' + cx + '" y="' + (MOM.base + 12) + '" text-anchor="middle">' + escapeHtml(c.monthsShort[mi - 1]) + '</text>';
+      if (i === 0 || mi === 1) {
+        bars += '<text class="hb-myear" x="' + cx + '" y="' + (MOM.base + 22) + '" text-anchor="middle">' + escapeHtml("'" + mk.slice(2, 4)) + '</text>';
+      }
+    });
+    var scrolls = list.length > 6;
+    var legend = '<div class="hb-legend hb-legend--chart">' +
+      '<span class="hb-leg hb-p-meryem">' + dotMark('meryem') + escapeHtml(nameOf('meryem')) + '</span>' +
+      '<span class="hb-leg hb-p-furkan">' + dotMark('furkan') + escapeHtml(nameOf('furkan')) + '</span>' +
+      '<span class="hb-leg hb-p-together">' + heartMark('hb-stat-heart') + escapeHtml(c.groups.together) + '</span>' +
+    '</div>';
+    return '<section class="card hb-mom"><h2 class="hb-title">' + escapeHtml(c.mom.title) + '</h2>' +
+      '<div class="hb-mom-scroll' + (scrolls ? ' is-scroll' : '') + '" data-months="' + list.length + '">' +
+      '<svg class="hb-svg hb-mom-svg" viewBox="0 0 ' + width + ' ' + MOM.h + '" role="img" aria-label="' + escapeHtml(c.mom.title + '. ' + aria.join('; ')) + '"' +
+      ' style="' + (scrolls ? 'width:' + width + 'px' : 'width:100%') + '">' +
+      '<line class="hb-grid" x1="0" x2="' + width + '" y1="' + MOM.base + '" y2="' + MOM.base + '"/>' + bars + '</svg></div>' +
+      legend + '<p class="hb-hint hb-hint--center">' + escapeHtml(c.mom.hint) + '</p></section>';
+  }
+
+  /* ── Monthly report card ───────────────────────────────────────────────── */
+
+  function closingFor(vm) {
+    var pool = copy().report.closing;
+    var m = parseMonth(vm);
+    return pool[(m.year * 12 + m.month) % pool.length];
+  }
+
+  function reportHtml(now) {
+    var c = copy();
+    var vm = viewedMonth();
+    if (vm < monthKey(now)) {
+      var s = monthSummary(vm, state.monthsData[vm] || {}, now);
+      var lead = leadLine(s);
+      var info = leadInfo(s);
+      var items = '';
+      if (lead) items += '<li class="hb-report-lead" data-lead="' + (info.tie ? 'tie' : info.who) + '">' + heartMark('hb-ri') + '<span>' + escapeHtml(lead) + '</span></li>';
+      items += '<li class="hb-report-scores">' + heartMark('hb-ri') + '<span>' +
+        escapeHtml(nameOf('meryem') + ' ' + pctLabel(s.people.meryem.pct) + ' · ' + nameOf('furkan') + ' ' + pctLabel(s.people.furkan.pct) + ' · ' + c.groups.together + ' ' + pctLabel(s.birlikte.pct)) + '</span></li>';
+      if (s.bestItem) {
+        items += '<li class="hb-report-best" data-item="' + escapeHtml(s.bestItem.id) + '">' + heartMark('hb-ri') + '<span>' +
+          escapeHtml(fmt(c.report.best, { item: s.bestItem.label, pct: pctLabel(s.bestItem.pct) })) + '</span></li>';
+      }
+      ['meryem', 'furkan'].forEach(function (p) {
+        items += '<li class="hb-report-streak" data-person="' + p + '" data-n="' + s.people[p].longest + '">' + heartMark('hb-ri') + '<span>' +
+          escapeHtml(fmt(c.report.streak, { name: nameOf(p), n: s.people[p].longest })) + '</span></li>';
+      });
+      items += '<li class="hb-report-joint" data-n="' + s.jointDays + '">' + heartMark('hb-ri') + '<span>' + escapeHtml(fmt(c.stats.jointDays, { n: s.jointDays })) + '</span></li>';
+      return '<section class="card hb-report" data-month="' + vm + '">' +
+        '<div class="hb-report-top"><div class="hb-report-bear">' + bearSVG({ mood: 'love', arms: 'wave', size: 92 }) + '</div>' +
+        '<div class="hb-report-hearts" aria-hidden="true">' + heartMark('hb-rh hb-rh--1') + heartMark('hb-rh hb-rh--2') + heartMark('hb-rh hb-rh--3') + '</div></div>' +
+        '<h2 class="hb-title hb-report-title">' + escapeHtml(fmt(c.report.title, { month: monthLabel(vm) })) + '</h2>' +
+        '<ul class="hb-report-list">' + items + '</ul>' +
+        '<p class="hb-report-close">' + escapeHtml(closingFor(vm)) + '</p>' +
+      '</section>';
+    }
+    return '<section class="card hb-teaser">' +
+      '<p class="hb-teaser-text">' + escapeHtml(c.report.teaser) + '</p></section>';
+  }
+
+  /* ── The log ("Geçmiş") ────────────────────────────────────────────────── */
+
+  function logWhen(entry) {
+    var ms = typeof habitLogMillis === 'function' ? habitLogMillis(entry) : 0;
+    if (!ms) return '';
+    var d = new Date(ms);
+    return d.getDate() + ' ' + copy().monthsShort[d.getMonth()] + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+
+  function shortLabel(id) {
+    var out = id;
+    CONFIG.habits.forEach(function (h) { if (h.id === id) out = h.label.replace(/\s*\(.*$/, ''); });
+    return out;
+  }
+
+  function logRowHtml(entry) {
+    var c = copy().log;
+    var by = entry.by === 'furkan' || entry.by === 'meryem' ? entry.by : entry.person;
+    var whose = entry.person && entry.person !== by ? ' · ' + fmt(c.box, { name: nameOf(entry.person) }) : '';
+    var pending = !entry.at;
+    return '<li class="hb-log-row ' + personClass(by) + '" data-id="' + escapeHtml(entry.id || '') + '" data-value="' + (entry.value ? '1' : '0') + '"' + (pending ? ' data-pending="1"' : '') + '>' +
+      '<span class="hb-log-who">' + dotMark(by) + escapeHtml(nameOf(by) || '') + '</span>' +
+      '<span class="hb-log-sep"> · </span>' +
+      '<span class="hb-log-what">' + escapeHtml(shortLabel(entry.item)) + ' ' + (entry.value ? '✓' : '✗ ' + escapeHtml(c.undone)) + escapeHtml(whose) + '</span>' +
+      '<span class="hb-log-sep"> · </span>' +
+      '<span class="hb-log-when">' + escapeHtml(logWhen(entry)) + '</span>' +
+      (pending ? ' <span class="hb-log-pending">' + escapeHtml(c.pending) + '</span>' : '') +
+    '</li>';
+  }
+
+  function logHtml() {
+    var c = copy().log;
+    var rows = state.log.slice();
+    var total = rows.length;
+    var cut = !state.logOpen && total > LOG_LIMIT;
+    if (cut) rows = rows.slice(0, LOG_LIMIT);
+    var body = total
+      ? '<ul class="hb-log-list">' + rows.map(logRowHtml).join('') + '</ul>'
+      : '<p class="hb-hint">' + escapeHtml(c.empty) + '</p>';
+    var toggle = total > LOG_LIMIT
+      ? '<button type="button" class="hb-link hb-log-toggle" data-act="log-toggle" aria-expanded="' + (state.logOpen ? 'true' : 'false') + '">' +
+        escapeHtml(state.logOpen ? c.less : fmt(c.all, { n: total })) + '</button>'
+      : '';
+    return '<section class="card hb-log"><h2 class="hb-title">' + escapeHtml(c.title) + '</h2>' + body + toggle + '</section>';
   }
 
   /* ── The day sheet (a bottom sheet on the shared modal shell) ──────────── */
@@ -728,6 +1087,25 @@
     setRegion('top', top, topHtml());
     setRegion('today', today, choosing || !shownMonths(now).length ? '' : todayHtml(now));
     setRegion('month', month, choosing ? '' : monthHtml(now));
+    var live = !choosing && shownMonths(now).length > 0;
+    var stats = document.getElementById('hb-stats');
+    var mom = document.getElementById('hb-mom');
+    var report = document.getElementById('hb-report');
+    var log = document.getElementById('hb-log');
+    if (stats) setRegion('stats', stats, live ? statsHtml(now) : '');
+    if (mom) {
+      var oldStrip = mom.querySelector('.hb-mom-scroll.is-scroll');
+      var keepLeft = oldStrip ? oldStrip.scrollLeft : 0;
+      var momMarkup = live ? momHtml(now) : '';
+      var momChanged = shown.mom !== momMarkup;
+      setRegion('mom', mom, momMarkup);
+      /* More than ~6 months: the newest sit at the right edge until the user scrolls away. */
+      var strip = momChanged ? mom.querySelector('.hb-mom-scroll.is-scroll') : null;
+      if (strip && !state.momPinned) strip.scrollLeft = keepLeft;
+      pinMom();
+    }
+    if (report) setRegion('report', report, live ? reportHtml(now) : '');
+    if (log) setRegion('log', log, live ? logHtml() : '');
     renderSheet();
   }
 
@@ -785,6 +1163,8 @@
         state.choosing = true;
       } else if (what === 'cancel-choose') {
         state.choosing = false;
+      } else if (what === 'log-toggle') {
+        state.logOpen = !state.logOpen;
       } else if (what === 'prev') {
         shiftMonth(-1);
         return;
@@ -799,11 +1179,30 @@
     if (day) openSheet(day.getAttribute('data-day'));
   }
 
+  /** Keeps the month-over-month strip at its newest month until the user scrolls away from it. */
+  function pinMom() {
+    var mom = document.getElementById('hb-mom');
+    var strip = mom && mom.querySelector('.hb-mom-scroll.is-scroll');
+    if (strip && state.momPinned && strip.scrollWidth > 0) strip.scrollLeft = strip.scrollWidth;
+  }
+
   function wireUi() {
     var view = document.getElementById('habits-view');
     var content = document.getElementById('habits-day-content');
+    var mom = document.getElementById('hb-mom');
     if (view) view.addEventListener('click', onClick);
     if (content) content.addEventListener('click', onClick);
+    if (mom) {
+      /* scroll events do not bubble, so listen while they travel down */
+      mom.addEventListener('scroll', function (e) {
+        var strip = e.target;
+        if (strip && strip.classList && strip.classList.contains('is-scroll')) {
+          state.momPinned = strip.scrollLeft + strip.clientWidth >= strip.scrollWidth - 4;
+        }
+      }, true);
+      /* the tab is hidden at start-up: the strip has no width until Takip is opened */
+      if (typeof ResizeObserver === 'function') new ResizeObserver(pinMom).observe(mom);
+    }
   }
 
   /* ── Contract ──────────────────────────────────────────────────────────── */
@@ -819,6 +1218,8 @@
     itemPercent: itemPercent, personPercent: personPercent, birliktePercent: birliktePercent,
     currentStreak: currentStreak, longestStreak: longestStreak,
     monthSummary: monthSummary,
+    leadLine: leadLine,
+    render: renderAll,
     checkDay: checkDay,
     state: function () {
       return { day: state.day, month: state.month, data: state.data, monthsData: state.monthsData, view: state.view, me: state.me };

@@ -118,6 +118,43 @@ const M1 = mk("2026-10", [
   ["cicek", "meryem", [1, 2, 3, 30]],
 ]);
 
+// ── stage 4 fixtures: four months for "Aydan aya", and a log of eight entries ─────────────────
+const NOV_D = mk("2026-11", [
+  ["spor", "meryem", range(1, 25)], ["spor", "furkan", range(1, 20)], ["kuran", "meryem", range(1, 30)], ["kuran", "furkan", range(1, 28)],
+  ["arapca", "meryem", range(1, 22)], ["cicek", "meryem", range(1, 10)], ["projeler", "furkan", range(1, 26)], ["erken", "furkan", [2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 16, 17, 18, 19, 20, 23, 24, 25, 26, 27, 30]],
+]);
+const DEC_D = mk("2026-12", [
+  ["spor", "meryem", range(1, 31)], ["spor", "furkan", range(1, 12)], ["kuran", "meryem", range(1, 31)], ["kuran", "furkan", range(1, 31)],
+  ["arapca", "meryem", range(1, 28)], ["cicek", "meryem", range(1, 31)], ["projeler", "furkan", range(1, 15)],
+]);
+const JAN_D = mk("2027-01", [["kuran", "meryem", [1, 2, 3, 4, 5]], ["kuran", "furkan", [1, 2, 3, 4]], ["spor", "meryem", [1, 2, 3, 4, 5]], ["spor", "furkan", [1, 2, 3]], ["arapca", "meryem", [1, 2, 3]]]);
+const MOM_MONTHS = { "2026-10": M1, "2026-11": NOV_D, "2026-12": DEC_D, "2027-01": JAN_D };
+const LE = (d, h, mi) => istanbulEpoch(2026, 10, d, h, mi);
+const logEntry = (id, extra) => ({ id, month: "2026-10", day: "2026-10-15", item: "spor", person: "furkan", value: true, by: "furkan", ...extra });
+const LOG8 = [
+  logEntry("a", { item: "arapca", person: "meryem", by: "meryem", at: { __ts: LE(15, 10, 0) }, atLocal: LE(15, 10, 0) }),
+  logEntry("b", { at: null, atLocal: LE(15, 21, 4) }),
+  logEntry("c", { item: "kuran", at: { __ts: LE(15, 8, 30) }, atLocal: LE(15, 8, 30) }),
+  logEntry("e", { item: "cicek", person: "meryem", by: "meryem", at: null, atLocal: LE(15, 9, 0) }),
+  logEntry("f", { item: "kuran", value: false, at: { __ts: LE(15, 7, 0) }, atLocal: LE(15, 7, 0) }),
+  logEntry("g", { day: "2026-10-14", at: { __ts: LE(14, 22, 10) }, atLocal: LE(14, 22, 10) }),
+  logEntry("h", { day: "2026-10-14", item: "projeler", at: { __ts: LE(14, 21, 0) }, atLocal: LE(14, 21, 0) }),
+  logEntry("i", { day: "2026-10-13", at: { __ts: LE(13, 20, 0) }, atLocal: LE(13, 20, 0) }),
+];
+const NOV_LOG = { id: "d", month: "2026-11", day: "2026-11-09", item: "kuran", person: "meryem", value: true, by: "meryem", at: { __ts: istanbulEpoch(2026, 11, 9, 20, 15) }, atLocal: istanbulEpoch(2026, 11, 9, 20, 15) };
+
+const N_CARDS = "habits: every stat card number equals its monthSummary field through the one rounding helper (15 Oct, a past month, Şubat 2027)";
+const N_LEAD = "habits: the lead line names the leader with the rounded gap, says Başa baş on a tie and is empty before anything is due";
+const N_STREAKCARD = "habits: the streak card shows the current streak on the running month and that month's longest on a past one";
+const N_DAILY = "habits: the daily chart has one point per due day up to today for each person, none after, and each y follows perDay";
+const N_BARS = "habits: the per-item bars print the item percentages per owner and a dash when nothing is due";
+const N_MOM = "habits: month over month shows every month from 2026-10 to the current with each month's summary values";
+const N_REPORT = "habits: the report card is absent on the running month, present on a past month and on the 1st for the month before";
+const N_LOGVIEW = "habits: the log lists newest first, keeps a null-at row marked bekliyor, collapses to 5 and expands";
+const N_LOGSWITCH = "habits: the log follows the viewed month and a fresh tick lands at its top";
+const N_FIT = "habits: the new cards fit 360 and 390 px wide with no horizontal page scroll";
+const N_CONTRAST2 = "habits: the words on the stat cards, charts, report card and log reach 4.5:1";
+
 const N_WEEKDAY = "habits: Erken çıkış is due Monday to Friday only and a weekend tick never counts";
 const N_FUTURE = "habits: a tick dated after today never counts, in any number";
 const N_JOINT = "habits: Birlikte counts a joint item-day only when both ticked";
@@ -441,7 +478,7 @@ export async function run({ page, check, root }) {
 
   await check("habits: initHabits keeps the current month's document and holds one habitMonths subscription", async () => {
     const st = await stateOf(page);
-    const ls = (await listeners(page)).filter((l) => l.startsWith(MONTHS));
+    const ls = (await listeners(page)).filter((l) => l.startsWith(MONTHS + "/"));
     return {
       ok: st.month === "2026-10" && st.day === "2026-10-15" && JSON.stringify(st.data) === JSON.stringify({ days: { "2026-10-14": { kuran: { furkan: true } } } }) && JSON.stringify(ls) === JSON.stringify([`${MONTHS}/2026-10`]),
       detail: JSON.stringify({ month: st.month, day: st.day, ls }),
@@ -550,7 +587,7 @@ export async function run({ page, check, root }) {
   await open(page, "2026-12-20T12:00:00", { query: "?onizleme=dogumgunu" });
   await check(N_APPNOW, async () => {
     const st = await stateOf(page);
-    const subs = (await listeners(page)).filter((l) => l.startsWith(MONTHS));
+    const subs = (await listeners(page)).filter((l) => l.startsWith(MONTHS + "/"));
     // Stage 3 also subscribes the month before (a streak crosses the 1st): 2027-09 beside 2027-10.
     return { ok: st.month === "2027-10" && st.day === "2027-10-04" && JSON.stringify(subs.slice().sort()) === JSON.stringify([`${MONTHS}/2027-09`, `${MONTHS}/2027-10`]), detail: JSON.stringify({ month: st.month, day: st.day, subs }) };
   });
@@ -571,13 +608,13 @@ export async function run({ page, check, root }) {
   await sleep(1000);
   const quiet = await events();
   const before = await stateOf(page);
-  const lsBefore = (await listeners(page)).filter((l) => l.startsWith(MONTHS));
+  const lsBefore = (await listeners(page)).filter((l) => l.startsWith(MONTHS + "/"));
   await page.advanceClock(60000); // 23:59:30 -> 00:00:30 on 1 Nov
   const fired = await until(async () => (await events()).length > 0);
   await sleep(1000);
   const evs = await events();
   const after = await stateOf(page);
-  const lsAfter = (await listeners(page)).filter((l) => l.startsWith(MONTHS));
+  const lsAfter = (await listeners(page)).filter((l) => l.startsWith(MONTHS + "/"));
 
   await check("habits: nothing fires while the day is unchanged", () => ({ ok: quiet.length === 0 && before.month === "2026-10" && before.day === "2026-10-31", detail: JSON.stringify({ quiet, before: before.day }) }));
 
@@ -615,7 +652,7 @@ export async function run({ page, check, root }) {
   await page.advanceClock(60000);
   const dayFired = await until(async () => (await events()).length > 0);
   const evs3 = await events();
-  const ls3 = (await listeners(page)).filter((l) => l.startsWith(MONTHS));
+  const ls3 = (await listeners(page)).filter((l) => l.startsWith(MONTHS + "/"));
   await check("habits: a day change inside the month fires the event and keeps the month subscription", () => ({
     ok: dayFired && evs3.length === 1 && evs3[0].day === "2026-10-15" && evs3[0].month === "2026-10" && JSON.stringify(ls3) === JSON.stringify([`${MONTHS}/2026-10`]),
     detail: JSON.stringify({ evs3, ls3 }),
@@ -848,7 +885,7 @@ export async function run({ page, check, root }) {
   // ── switching months leaks no listener ────────────────────────────────────────────────────
   await openTakip(page, "2027-01-10T12:00:00", "meryem", { habits: { months: {} } });
   await check(N_LEAK, async () => {
-    const subs = async () => (await listeners(page)).filter((l) => l.startsWith(MONTHS)).sort();
+    const subs = async () => (await listeners(page)).filter((l) => l.startsWith(MONTHS + "/")).sort();
     const base = await subs();
     let max = base.length;
     const seen = [];
@@ -857,8 +894,18 @@ export async function run({ page, check, root }) {
       for (let i = 0; i < 3; i++) { await tapIn(page, '#hb-month [data-act="next"]'); const s = await subs(); max = Math.max(max, s.length); seen.push(s.length); }
     }
     const end = await subs();
-    const ok = JSON.stringify(base) === JSON.stringify([`${MONTHS}/2026-12`, `${MONTHS}/2027-01`]) && JSON.stringify(end) === JSON.stringify(base) && max <= 4;
-    return { ok, detail: JSON.stringify({ base, end, max, seen: seen.join(",") }) };
+    // Stage 4: one more listener over the whole habitMonths collection ("Aydan aya") and one log
+    // listener that follows the viewed month - each exactly once, however often the month changes.
+    const extra = async () => { const all = await listeners(page); return { coll: all.filter((l) => l === MONTHS).length, log: all.filter((l) => l.startsWith(LOG)) }; };
+    const ex0 = await extra();
+    for (let i = 0; i < 3; i++) await tapIn(page, '#hb-month [data-act="prev"]');
+    const exPrev = await extra();
+    for (let i = 0; i < 3; i++) await tapIn(page, '#hb-month [data-act="next"]');
+    const exEnd = await extra();
+    const logOk = ex0.coll === 1 && exPrev.coll === 1 && exEnd.coll === 1 && ex0.log.length === 1 && exPrev.log.length === 1 && exEnd.log.length === 1 &&
+      ex0.log[0] === `${LOG}?month==2027-01` && exPrev.log[0] === `${LOG}?month==2026-10` && exEnd.log[0] === `${LOG}?month==2027-01`;
+    const ok = JSON.stringify(base) === JSON.stringify([`${MONTHS}/2026-12`, `${MONTHS}/2027-01`]) && JSON.stringify(end) === JSON.stringify(base) && max <= 4 && logOk;
+    return { ok, detail: JSON.stringify({ base, end, max, seen: seen.join(","), ex0, exPrev, exEnd }) };
   });
 
   // ── the previous month is subscribed (a streak crosses the 1st), without any card ─────────
@@ -866,7 +913,7 @@ export async function run({ page, check, root }) {
   await check(N_PREVSUB, async () => {
     await until(() => page.eval(() => !!window.habitsCore.state().monthsData["2026-10"]));
     const st = await stateOf(page);
-    const subs = (await listeners(page)).filter((l) => l.startsWith(MONTHS)).sort();
+    const subs = (await listeners(page)).filter((l) => l.startsWith(MONTHS + "/")).sort();
     const streak = await page.eval(() => window.habitsCore.currentStreak("furkan", window.habitsCore.state().monthsData, new Date(2026, 10, 2)));
     const ok = Object.keys(st.monthsData).sort().join() === "2026-10,2026-11" && JSON.stringify(subs) === JSON.stringify([`${MONTHS}/2026-10`, `${MONTHS}/2026-11`]) && streak === 4;
     return { ok, detail: JSON.stringify({ months: Object.keys(st.monthsData), subs, streak }) };
@@ -943,6 +990,305 @@ export async function run({ page, check, root }) {
     await sleep(200);
     const after = { days: await panelDays(page), today: await page.eval(() => document.querySelector("#hb-month .hb-day.is-today").dataset.day), title: await titleOf(page) };
     return { ok: before.days[0] === "2026-10-14" && before.today === "2026-10-14" && after.days[0] === "2026-10-15" && after.today === "2026-10-15" && after.title === "Ekim 2026", detail: JSON.stringify({ before, after }) };
+  });
+
+  // ══ Stage 4: cards, charts, the report card and the log ═════════════════════════════════════
+  const lab = (p) => (p === null ? "—" : "%" + Math.round(p)); // the test's own copy of the display rounding
+  const tilesOf = (p) => p.eval(() => {
+    const o = {};
+    document.querySelectorAll("#hb-stats .hb-stat").forEach((t) => { o[t.dataset.kind] = { num: t.querySelector(".hb-stat-num").textContent, pct: t.dataset.pct }; });
+    return o;
+  });
+  const textOf = (p, sel) => p.eval((s) => { const e = document.querySelector(s); return e ? e.textContent.replace(/\s+/g, " ").trim() : null; }, sel);
+  const goPrev = (p) => tapIn(p, '#hb-month [data-act="prev"]');
+
+  // ── the three cards ───────────────────────────────────────────────────────────────────────
+  await check(N_CARDS, async () => {
+    const cases = [
+      { now: "2026-10-15T12:00:00", day: "2026-10-15", data: { "2026-10": M1 }, month: "2026-10", back: 0 },
+      { now: "2026-11-20T12:00:00", day: "2026-11-20", data: { "2026-10": M1 }, month: "2026-10", back: 1 },
+      { now: "2027-02-10T12:00:00", day: "2027-02-10", data: { "2027-02": FEB }, month: "2027-02", back: 0 },
+    ];
+    const seen = [];
+    let ok = true;
+    for (const k of cases) {
+      await openTakip(page, k.now, "meryem", { habits: { months: k.data } });
+      for (let i = 0; i < k.back; i++) await goPrev(page);
+      const s = await core(page, "monthSummary", k.month, k.data[k.month], T(k.day));
+      const t = await tilesOf(page);
+      const want = { meryem: s.people.meryem.pct, furkan: s.people.furkan.pct, together: s.birlikte.pct };
+      for (const who of ["meryem", "furkan", "together"]) {
+        if (!t[who] || t[who].num !== lab(want[who]) || t[who].pct !== String(Math.round(want[who]))) ok = false;
+      }
+      seen.push([k.month, t.meryem && t.meryem.num, t.furkan && t.furkan.num, t.together && t.together.num]);
+    }
+    // by hand, 15 Oct: Meryem 42/60 = 70, Furkan 36/56 = 64.29, Birlikte 25/30 = 83.33
+    // (a Birlikte read from a person's own percentage would show %70). Şubat 2027 on the 10th: Furkan has 3 boxes
+    // on each of 10 days plus Erken çıkış on the 8 weekdays = 38 due, 8 ticked = 21.05; Meryem 0/40; Birlikte 0/20.
+    const hand = JSON.stringify(seen[0]) === JSON.stringify(["2026-10", "%70", "%64", "%83"]) && JSON.stringify(seen[2]) === JSON.stringify(["2027-02", "%0", "%21", "%0"]);
+    return { ok: ok && hand, detail: JSON.stringify(seen) };
+  });
+
+  // ── the lead line ─────────────────────────────────────────────────────────────────────────
+  await check(N_LEAD, async () => {
+    await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: { "2026-10": M1 } } });
+    const lead = { text: await textOf(page, "#hb-stats .hb-lead"), who: await page.eval(() => document.querySelector("#hb-stats .hb-lead").dataset.lead) };
+    await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: {} } });
+    const tie = { text: await textOf(page, "#hb-stats .hb-lead"), who: await page.eval(() => document.querySelector("#hb-stats .hb-lead").dataset.lead) };
+    const synth = async (s) => core(page, "leadLine", s);
+    const people = (m, f) => ({ meryem: { pct: m }, furkan: { pct: f } });
+    const nothing = await synth({ started: false, leader: null, people: people(null, null) });
+    const noLeader = await synth({ started: true, leader: null, people: people(50, 50) });
+    const roundedTie = await synth({ started: true, leader: "meryem", people: people(70.2, 69.8) });
+    const furkanLead = await synth({ started: true, leader: "furkan", people: people(40, 52.5) });
+    // by hand: 70 - 64.29 = 5.71 -> +6 points to Meryem; nothing ticked at all -> an exact tie
+    const ok =
+      lead.text === "Bu ay önde: Meryem (+6 puan)" && lead.who === "meryem" &&
+      tie.text === "Başa baş 💞" && tie.who === "tie" &&
+      nothing === "" && noLeader === "" && roundedTie === "Başa baş 💞" && furkanLead === "Bu ay önde: Furkan (+13 puan)";
+    return { ok, detail: JSON.stringify({ lead, tie, nothing, noLeader, roundedTie, furkanLead }) };
+  });
+
+  // ── the streak card ───────────────────────────────────────────────────────────────────────
+  await check(N_STREAKCARD, async () => {
+    await openTakip(page, "2026-11-02T10:00:00", "furkan", { habits: { months: { "2026-10": octS, "2026-11": novFull } } });
+    await until(() => page.eval(() => !!window.habitsCore.state().monthsData["2026-10"]));
+    await page.eval(() => window.habitsCore.render());
+    const read = () => page.eval(() => [...document.querySelectorAll("#hb-stats .hb-streak")].map((e) => [e.dataset.person, e.dataset.kind, +e.dataset.n, e.textContent.replace(/\s+/g, " ").trim()]));
+    const now = await read();
+    await goPrev(page);
+    const past = await read();
+    // 2 Nov: Furkan 30,31 Oct + 1,2 Nov = 4, Meryem only 2 Nov = 1 (see the streak check above).
+    // October alone: Furkan complete on 30 and 31 -> longest 2; Meryem never complete -> 0.
+    const ok =
+      JSON.stringify(now) === JSON.stringify([["meryem", "current", 1, "🔥 1 gün seri"], ["furkan", "current", 4, "🔥 4 gün seri"]]) &&
+      JSON.stringify(past) === JSON.stringify([["meryem", "longest", 0, "🔥 0 gün en uzun seri"], ["furkan", "longest", 2, "🔥 2 gün en uzun seri"]]);
+    return { ok, detail: JSON.stringify({ now, past }) };
+  });
+
+  // ── the daily chart ───────────────────────────────────────────────────────────────────────
+  await check(N_DAILY, async () => {
+    const read = () => page.eval(() => {
+      const svg = document.querySelector("#hb-stats .hb-daily-svg");
+      return {
+        role: svg.getAttribute("role"), aria: svg.getAttribute("aria-label"), top: +svg.dataset.top, h: +svg.dataset.h,
+        grid: svg.querySelectorAll("line.hb-grid").length,
+        pts: [...svg.querySelectorAll(".hb-pt")].map((e) => ({ p: e.dataset.person, d: e.dataset.day, pct: +e.dataset.pct, y: +e.dataset.y })),
+      };
+    });
+    let ok = true;
+    const notes = [];
+    for (const k of [{ now: "2026-10-15T12:00:00", day: "2026-10-15", back: 0, n: 15 }, { now: "2026-11-20T12:00:00", day: "2026-11-20", back: 1, n: 31 }]) {
+      await openTakip(page, k.now, "meryem", { habits: { months: { "2026-10": M1 } } });
+      for (let i = 0; i < k.back; i++) await goPrev(page);
+      const s = await core(page, "monthSummary", "2026-10", M1, T(k.day));
+      const c = await read();
+      for (const p of ["meryem", "furkan"]) {
+        const mine = c.pts.filter((x) => x.p === p);
+        const due = s.perDay.filter((r) => r[p] !== null);
+        const same = mine.length === due.length && mine.length === k.n && mine.every((x, i) => x.d === due[i].key && Math.abs(x.pct - due[i][p]) < 0.006 && Math.abs(x.y - (c.top + (100 - due[i][p]) * c.h / 100)) < 0.06);
+        const after = mine.filter((x) => x.d > k.day).length;
+        if (!same || after !== 0) ok = false;
+        notes.push([k.day, p, mine.length, after]);
+      }
+      if (c.role !== "img" || c.grid !== 3 || !/Meryem %/.test(c.aria) || !/Furkan %/.test(c.aria)) ok = false;
+      if (k.back === 0) {
+        // by hand (see the monthSummary check): day 6 -> 75/75, day 11 -> Furkan 33.33 / Meryem 75, day 15 -> 25/25
+        const at = (p, d) => c.pts.find((x) => x.p === p && x.d === "2026-10-" + d).pct;
+        if (Math.abs(at("furkan", "06") - 75) > 0.01 || Math.abs(at("meryem", "11") - 75) > 0.01 || Math.abs(at("furkan", "11") - 100 / 3) > 0.01 || Math.abs(at("meryem", "15") - 25) > 0.01) ok = false;
+        if (!/%70/.test(c.aria) || !/%64/.test(c.aria)) ok = false;
+      }
+    }
+    return { ok, detail: JSON.stringify(notes) };
+  });
+
+  // ── the per-item bars ─────────────────────────────────────────────────────────────────────
+  await check(N_BARS, async () => {
+    await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: { "2026-10": M1 } } });
+    const s = await core(page, "monthSummary", "2026-10", M1, T("2026-10-15"));
+    const read = () => page.eval(() => [...document.querySelectorAll("#hb-stats .hb-bar-row")].map((r) => [r.dataset.item, r.dataset.person, r.querySelector(".hb-bar-val").textContent, r.querySelector(".hb-bar-fill").style.width]));
+    const rows = await read();
+    const want = [];
+    for (const it of s.items) for (const p of ["meryem", "furkan"]) if (it.owners.includes(p)) want.push([it.id, p, lab(it[p])]);
+    const same = rows.length === want.length && rows.every((r, i) => r[0] === want[i][0] && r[1] === want[i][1] && r[2] === want[i][2]);
+    // by hand (15 Oct): spor 80 / 73, kuran 100 / 100, arapca 80, cicek 20, projeler 33, erken 45
+    const hand = JSON.stringify(rows.map((r) => r[2])) === JSON.stringify(["%80", "%73", "%100", "%100", "%80", "%20", "%33", "%45"]);
+    // nothing due: Projeleri geliştirme starting after today shows a dash and an empty bar
+    await page.eval(() => { CONFIG.habits.find((h) => h.id === "projeler").since = "2026-10-16"; window.habitsCore.render(); });
+    const dash = (await read()).find((r) => r[0] === "projeler");
+    const ok = same && hand && dash && dash[2] === "—" && /^0(%|px)?$/.test(dash[3]);
+    return { ok: !!ok, detail: JSON.stringify({ rows: rows.map((r) => r.slice(0, 3).join(":")), dash }) };
+  });
+
+  // ── month over month ──────────────────────────────────────────────────────────────────────
+  await check(N_MOM, async () => {
+    await openTakip(page, "2027-01-10T12:00:00", "meryem", { habits: { months: MOM_MONTHS } });
+    await until(() => page.eval(() => document.querySelectorAll("#hb-mom .hb-mbar").length >= 12));
+    const read = () => page.eval(() => ({
+      bars: [...document.querySelectorAll("#hb-mom .hb-mbar")].map((b) => [b.dataset.month, b.dataset.person, +b.dataset.pct]),
+      vals: [...document.querySelectorAll("#hb-mom .hb-mval")].map((t) => [t.dataset.month, t.dataset.person, t.textContent]),
+      labels: [...document.querySelectorAll("#hb-mom .hb-mlabel")].map((t) => t.textContent),
+      role: document.querySelector("#hb-mom .hb-mom-svg").getAttribute("role"), aria: document.querySelector("#hb-mom .hb-mom-svg").getAttribute("aria-label"),
+      scroll: document.querySelector("#hb-mom .hb-mom-scroll").classList.contains("is-scroll"),
+    }));
+    const got = await read();
+    const months = ["2026-10", "2026-11", "2026-12", "2027-01"];
+    const want = [];
+    for (const mk of months) {
+      const s = await core(page, "monthSummary", mk, MOM_MONTHS[mk], T("2027-01-10"));
+      want.push([mk, "meryem", Math.round(s.people.meryem.pct)], [mk, "furkan", Math.round(s.people.furkan.pct)], [mk, "together", Math.round(s.birlikte.pct)]);
+    }
+    const same = JSON.stringify(got.bars) === JSON.stringify(want) && JSON.stringify(got.vals.map((v) => [v[0], v[1], +v[2]])) === JSON.stringify(want);
+    // by hand: October is 70 / 64 / 83 (the 15 Oct figures, re-read on the 10th of January with every day due: 44/124, 39/115, ...)
+    const labels = JSON.stringify(got.labels) === JSON.stringify(["Eki", "Kas", "Ara", "Oca"]);
+    // eight months (Oct - May): a scroll strip that opens at the newest month
+    await openTakip(page, "2027-05-10T12:00:00", "meryem", { habits: { months: MOM_MONTHS } });
+    await until(() => page.eval(() => document.querySelectorAll("#hb-mom .hb-mbar").length >= 12));
+    const strip = await page.eval(() => { const e = document.querySelector("#hb-mom .hb-mom-scroll"); return { scroll: e.classList.contains("is-scroll"), months: +e.dataset.months, over: e.scrollWidth > e.clientWidth + 2, atEnd: e.scrollLeft + e.clientWidth >= e.scrollWidth - 2 }; });
+    const ok = same && labels && got.role === "img" && /Ekim: Meryem %/.test(got.aria) && got.scroll === false && strip.scroll && strip.months === 8 && strip.over && strip.atEnd;
+    return { ok, detail: JSON.stringify({ got: got.bars.length, same, labels: got.labels, strip }) };
+  });
+
+  // ── the report card ───────────────────────────────────────────────────────────────────────
+  await check(N_REPORT, async () => {
+    const report = () => page.eval(() => {
+      const r = document.querySelector("#hb-report .hb-report");
+      const t = document.querySelector("#hb-report .hb-teaser");
+      const tx = (s) => { const e = document.querySelector(s); return e ? e.textContent.replace(/\s+/g, " ").trim() : null; };
+      return {
+        report: !!r, teaser: t ? t.textContent.replace(/\s+/g, " ").trim() : null, month: r ? r.dataset.month : null,
+        title: tx("#hb-report .hb-report-title"), lead: tx("#hb-report .hb-report-lead"), best: tx("#hb-report .hb-report-best"), joint: tx("#hb-report .hb-report-joint"),
+        streaks: [...document.querySelectorAll("#hb-report .hb-report-streak")].map((e) => [e.dataset.person, +e.dataset.n]),
+        close: tx("#hb-report .hb-report-close"), bear: !!document.querySelector("#hb-report .hb-report svg.kawaii-bear"),
+        pool: CONTENT.habits.report.closing,
+      };
+    });
+    await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: { "2026-10": M1 } } });
+    const running = await report();
+    await openTakip(page, "2026-11-20T12:00:00", "meryem", { habits: { months: { "2026-10": M1 } } });
+    const novCurrent = await report();
+    await goPrev(page);
+    const past = await report();
+    await openTakip(page, "2026-11-01T08:00:00", "meryem", { habits: { months: { "2026-10": M1 } } });
+    const first = await report();
+    await goPrev(page);
+    const firstPrev = await report();
+    // by hand, October 2026 with every day due: Meryem 44/124 = 35.5, Furkan 39/115 = 33.9 -> she leads by 1.6 = +2;
+    // best item Kuran 31/62 = 50; joint days 1-10 = 10; longest streaks Furkan 1-5 = 5, Meryem 1-3 = 3.
+    // Closing line: pool[(2026*12 + 10) % pool.length], so the same month always says the same thing.
+    const closeWant = past.pool[(2026 * 12 + 10) % past.pool.length];
+    const full =
+      past.report && past.month === "2026-10" && past.title === "Ekim karnesi" && past.lead === "Bu ay önde: Meryem (+2 puan)" &&
+      past.best === "En düzenli görev: Kuran (en az 1 sayfa) (%50)" && past.joint === "10 gün ikimiz de" &&
+      JSON.stringify(past.streaks) === JSON.stringify([["meryem", 3], ["furkan", 5]]) && past.close === closeWant && past.bear;
+    const ok =
+      !running.report && running.teaser === "Ay bitince karnemiz burada 🐻" &&
+      !novCurrent.report && novCurrent.teaser !== null && full &&
+      !first.report && first.teaser !== null && firstPrev.report && firstPrev.month === "2026-10";
+    return { ok, detail: JSON.stringify({ running: running.report, novCurrent: novCurrent.report, past: { ...past, pool: undefined }, first: first.report, firstPrev: firstPrev.report }) };
+  });
+
+  // ── the log ───────────────────────────────────────────────────────────────────────────────
+  const logRows = (p) => p.eval(() => [...document.querySelectorAll("#hb-log .hb-log-row")].map((r) => ({ id: r.dataset.id, pending: r.dataset.pending === "1", text: r.textContent.replace(/\s+/g, " ").trim() })));
+  await check(N_LOGVIEW, async () => {
+    await openTakip(page, "2026-10-15T22:00:00", "meryem", { habits: { months: { "2026-10": M1 }, log: LOG8 } });
+    await until(async () => (await logRows(page)).length > 0);
+    const collapsed = await logRows(page);
+    const toggle1 = await textOf(page, "#hb-log .hb-log-toggle");
+    await tapIn(page, "#hb-log .hb-log-toggle");
+    const open = await logRows(page);
+    const toggle2 = await textOf(page, "#hb-log .hb-log-toggle");
+    await tapIn(page, "#hb-log .hb-log-toggle");
+    const again = await logRows(page);
+    // newest first by time (at, else atLocal): b 21:04 (at still empty), a 10:00, e 09:00 (empty), c 08:30, f 07:00, g, h, i
+    const byId = (rows, id) => rows.find((r) => r.id === id);
+    const ok =
+      JSON.stringify(collapsed.map((r) => r.id)) === JSON.stringify(["b", "a", "e", "c", "f"]) && toggle1 === "Tümünü gör (8)" &&
+      JSON.stringify(open.map((r) => r.id)) === JSON.stringify(["b", "a", "e", "c", "f", "g", "h", "i"]) && toggle2 === "Daha az göster" &&
+      again.length === 5 &&
+      byId(collapsed, "b").pending && byId(collapsed, "b").text === "Furkan · Spor ✓ · 15 Eki 21:04 bekliyor" &&
+      byId(collapsed, "e").pending && /bekliyor$/.test(byId(collapsed, "e").text) &&
+      !byId(collapsed, "a").pending && byId(collapsed, "a").text === "Meryem · Arapça tekrarı ✓ · 15 Eki 10:00" &&
+      /^Furkan · Kuran ✗ geri aldı · 15 Eki 07:00$/.test(byId(collapsed, "f").text) &&
+      byId(open, "g").text === "Furkan · Spor ✓ · 14 Eki 22:10";
+    return { ok, detail: JSON.stringify({ collapsed, toggle1, open: open.length, toggle2, again: again.length }).slice(0, 700) };
+  });
+
+  await check(N_LOGSWITCH, async () => {
+    await openTakip(page, "2026-11-10T12:00:00", "meryem", { habits: { months: {}, log: [...LOG8, NOV_LOG] } });
+    await until(async () => (await logRows(page)).length > 0);
+    const nov = (await logRows(page)).map((r) => r.id);
+    await goPrev(page);
+    await until(async () => (await logRows(page)).length === 5);
+    const oct = (await logRows(page)).map((r) => r.id);
+    await tapIn(page, "#hb-log .hb-log-toggle");
+    const octOpen = (await logRows(page)).length;
+    await tapIn(page, '#hb-month [data-act="next"]');
+    await until(async () => (await logRows(page)).length === 1);
+    const back = (await logRows(page)).map((r) => r.id);
+    // a tick of her own shows at the top at once
+    await tapIn(page, slot("spor", "meryem"));
+    await until(async () => (await logRows(page)).length === 2);
+    const fresh = (await logRows(page))[0];
+    return {
+      ok: JSON.stringify(nov) === JSON.stringify(["d"]) && JSON.stringify(oct) === JSON.stringify(["b", "a", "e", "c", "f"]) && octOpen === 8 && JSON.stringify(back) === JSON.stringify(["d"]) &&
+        fresh && /^Meryem · Spor ✓ · 10 Kas 12:0\d$/.test(fresh.text) && !fresh.pending,
+      detail: JSON.stringify({ nov, oct, octOpen, back, fresh }),
+    };
+  });
+
+  // ── 360 and 390 px: nothing pushes the page sideways ──────────────────────────────────────
+  await check(N_FIT, async () => {
+    const notes = [];
+    let ok = true;
+    for (const vp of [{ width: 360, height: 780 }, { width: 390, height: 844 }]) {
+      await openTakip(page, "2027-05-10T12:00:00", "meryem", { viewport: vp, habits: { months: MOM_MONTHS, log: LOG8 } });
+      await until(() => page.eval(() => document.querySelectorAll("#hb-mom .hb-mbar").length >= 12));
+      await sleep(300);
+      const m = await page.eval(() => {
+        const w = document.documentElement.clientWidth;
+        const over = [];
+        document.querySelectorAll("#habits-root *").forEach((e) => {
+          if (e.closest(".hb-mom-scroll.is-scroll")) return;
+          const r = e.getBoundingClientRect();
+          if (r.width > 0 && (r.right > w + 0.5 || r.left < -0.5)) over.push((e.className && e.className.baseVal !== undefined ? e.className.baseVal : e.className) + ":" + Math.round(r.right));
+        });
+        return { w, doc: document.documentElement.scrollWidth, body: document.body.scrollWidth, over: over.slice(0, 5) };
+      });
+      if (m.doc > m.w || m.body > m.w || m.over.length) ok = false;
+      notes.push([vp.width, m]);
+    }
+    return { ok, detail: JSON.stringify(notes) };
+  });
+
+  // ── contrast on every new surface ─────────────────────────────────────────────────────────
+  await check(N_CONTRAST2, async () => {
+    const SEL = {
+      lead: "#hb-stats .hb-lead",
+      nameM: '#hb-stats .hb-stat[data-kind="meryem"] .hb-stat-name span', numM: '#hb-stats .hb-stat[data-kind="meryem"] .hb-stat-num', streakM: '#hb-stats .hb-stat[data-kind="meryem"] .hb-streak-n', labelM: '#hb-stats .hb-stat[data-kind="meryem"] .hb-streak-label',
+      nameF: '#hb-stats .hb-stat[data-kind="furkan"] .hb-stat-name span', numF: '#hb-stats .hb-stat[data-kind="furkan"] .hb-stat-num', streakF: '#hb-stats .hb-stat[data-kind="furkan"] .hb-streak-n', labelF: '#hb-stats .hb-stat[data-kind="furkan"] .hb-streak-label',
+      nameT: '#hb-stats .hb-stat[data-kind="together"] .hb-stat-name span', numT: '#hb-stats .hb-stat[data-kind="together"] .hb-stat-num', subT: '#hb-stats .hb-joint-count .hb-streak-n',
+      dailyTitle: "#hb-stats .hb-daily .hb-title", axis: "#hb-stats .hb-daily .hb-axis", dailyLeg: "#hb-stats .hb-daily .hb-leg",
+      barsTitle: "#hb-stats .hb-bars .hb-title", barLabel: "#hb-stats .hb-bar-label", barWho: "#hb-stats .hb-bar-who", barVal: "#hb-stats .hb-bar-val",
+      momTitle: "#hb-mom .hb-title", mlabel: "#hb-mom .hb-mlabel", myear: "#hb-mom .hb-myear", mval: "#hb-mom .hb-mval", momLeg: "#hb-mom .hb-leg", momHint: "#hb-mom .hb-hint",
+      teaser: "#hb-report .hb-teaser-text",
+      logTitle: "#hb-log .hb-title", logWho: "#hb-log .hb-log-who", logWhat: "#hb-log .hb-log-what", logWhen: "#hb-log .hb-log-when", logSep: "#hb-log .hb-log-sep", pending: "#hb-log .hb-log-pending", toggle: "#hb-log .hb-log-toggle",
+    };
+    const REPORT = { title: "#hb-report .hb-report-title", item: "#hb-report .hb-report-list li span", close: "#hb-report .hb-report-close" };
+    const measure = (map) => page.eval((m) => {
+      const out = {};
+      for (const k in m) { const e = document.querySelector(m[k]); out[k] = e ? +window.__app.readable(e).toFixed(2) : "missing"; }
+      return out;
+    }, map);
+    await openTakip(page, "2026-11-20T12:00:00", "meryem", { habits: { months: { "2026-10": M1, "2026-11": novFull }, log: [...LOG8.map((e) => ({ ...e, month: "2026-11", day: "2026-11-09" })), NOV_LOG] } });
+    await until(async () => (await logRows(page)).length > 0);
+    await sleep(200);
+    const a = await measure(SEL);
+    await goPrev(page);
+    const b = await measure(REPORT);
+    const all = { ...a, ...b };
+    const bad = Object.entries(all).filter(([, v]) => v === "missing" || v < 4.5);
+    return { ok: bad.length === 0, detail: bad.length ? `below 4.5 or missing: ${JSON.stringify(bad)}` : `min ${Math.min(...Object.values(all))}` };
   });
 
   await check(N_ERR, () => ({ ok: page.errors.length === 0, detail: page.errors.slice(0, 3).join(" | ") }));
@@ -1058,9 +1404,79 @@ export const mutants = [
     replace: "",
     expect: N_LEAK,
   },
+  {
+    id: "habits-log-listener-never-closed",
+    file: "js/habits.js",
+    find: "    if (logSub.off) {\n      try { logSub.off(); } catch (e) { /* already gone */ }\n      logSub.off = null;\n    }\n",
+    replace: "",
+    expect: N_LEAK,
+  },
+  {
+    id: "habits-daily-chart-wrong-person",
+    file: "js/habits.js",
+    find: "        var v = rec[p];\n",
+    replace: "        var v = rec[p === 'meryem' ? 'furkan' : p];\n",
+    expect: N_DAILY,
+  },
+  {
+    id: "habits-daily-line-drawn-into-the-future",
+    file: "js/habits.js",
+    find: "        if (v === null) continue;\n",
+    replace: "        if (v === null) v = 0;\n",
+    expect: N_DAILY,
+  },
+  {
+    id: "habits-birlikte-card-from-person-percent",
+    file: "js/habits.js",
+    find: "    var bp = summary.birlikte.pct;\n",
+    replace: "    var bp = personPercent('meryem', vm, state.monthsData[vm] || {}, now);\n",
+    expect: N_CARDS,
+  },
+  {
+    id: "habits-report-card-on-the-running-month",
+    file: "js/habits.js",
+    find: "    if (vm < monthKey(now)) {\n",
+    replace: "    if (vm <= monthKey(now)) {\n",
+    expect: N_REPORT,
+  },
+  {
+    id: "habits-log-view-drops-null-at-rows",
+    file: "js/habits.js",
+    find: "    var rows = state.log.slice();\n",
+    replace: "    var rows = state.log.filter(function (x) { return !!x.at; });\n",
+    expect: N_LOGVIEW,
+  },
+  {
+    id: "habits-month-over-month-misses-the-first-month",
+    file: "js/habits.js",
+    find: "    var list = shownMonths(now);\n",
+    replace: "    var list = shownMonths(now).slice(1);\n",
+    expect: N_MOM,
+  },
 ];
 
+const meOpen = (now, me, extra) => ({ now, storage: { ...SHOT_STORE, "meryem-habits-me": me, "meryem-gate-played-year": now.slice(0, 4), "meryem-birthday-seen-year": now.slice(0, 4) }, ...extra });
+const scrollTo = (sel) => async (page) => { await tabAct(page); await sleep(300); await page.eval((s) => { document.querySelector(s).scrollIntoView({ block: "start" }); window.scrollBy(0, -76); }, sel); await sleep(150); };
+const S4 = { habits: { months: MOM_MONTHS, log: LOG8 } };
+const S4_NOV = { habits: { months: { "2026-10": M1, "2026-11": NOV_D }, log: [...LOG8, NOV_LOG] } };
+const P360 = { viewport: { width: 360, height: 780 } };
+
 export const shots = [
+  { name: "stats-meryem", open: meOpen(NOW_SHOT, "meryem", { habits: { months: { "2026-10": M1 }, log: LOG8 } }), act: scrollTo("#hb-stats") },
+  { name: "daily", open: meOpen(NOW_SHOT, "meryem", { habits: { months: { "2026-10": M1 }, log: LOG8 } }), act: scrollTo("#hb-stats .hb-daily") },
+  { name: "bars", open: meOpen(NOW_SHOT, "meryem", { habits: { months: { "2026-10": M1 }, log: LOG8 } }), act: scrollTo("#hb-stats .hb-bars") },
+  { name: "mom", open: meOpen("2027-01-10T12:00:00", "meryem", S4), act: scrollTo("#hb-mom") },
+  { name: "report", open: meOpen("2026-11-20T12:00:00", "meryem", S4_NOV), act: async (page) => { await tabAct(page); await tapIn(page, '#hb-month [data-act="prev"]'); await page.eval(() => { document.querySelector("#hb-report").scrollIntoView({ block: "start" }); window.scrollBy(0, -76); }); await sleep(150); } },
+  { name: "teaser", open: meOpen(NOW_SHOT, "meryem", { habits: { months: { "2026-10": M1 }, log: LOG8 } }), act: scrollTo("#hb-report") },
+  { name: "log-collapsed", open: meOpen(NOW_SHOT, "furkan", { habits: { months: { "2026-10": M1 }, log: LOG8 } }), act: scrollTo("#hb-log") },
+  { name: "log-expanded", open: meOpen(NOW_SHOT, "furkan", { habits: { months: { "2026-10": M1 }, log: LOG8 } }), act: async (page) => { await tabAct(page); await sleep(300); await tapIn(page, "#hb-log .hb-log-toggle"); await page.eval(() => { document.querySelector("#hb-log").scrollIntoView({ block: "start" }); window.scrollBy(0, -76); }); await sleep(150); } },
+  { name: "stats-360", open: meOpen(NOW_SHOT, "meryem", { ...P360, habits: { months: { "2026-10": M1 }, log: LOG8 } }), act: scrollTo("#hb-stats") },
+  { name: "daily-360", open: meOpen(NOW_SHOT, "meryem", { ...P360, habits: { months: { "2026-10": M1 }, log: LOG8 } }), act: scrollTo("#hb-stats .hb-daily") },
+  { name: "bars-360", open: meOpen(NOW_SHOT, "meryem", { ...P360, habits: { months: { "2026-10": M1 }, log: LOG8 } }), act: scrollTo("#hb-stats .hb-bars") },
+  { name: "mom-360", open: meOpen("2027-01-10T12:00:00", "meryem", { ...P360, ...S4 }), act: scrollTo("#hb-mom") },
+  { name: "mom-scroll-360", open: meOpen("2027-05-10T12:00:00", "meryem", { ...P360, ...S4 }), act: scrollTo("#hb-mom") },
+  { name: "report-360", open: meOpen("2026-11-20T12:00:00", "meryem", { ...P360, ...S4_NOV }), act: async (page) => { await tabAct(page); await tapIn(page, '#hb-month [data-act="prev"]'); await page.eval(() => { document.querySelector("#hb-report").scrollIntoView({ block: "start" }); window.scrollBy(0, -76); }); await sleep(150); } },
+  { name: "log-360", open: meOpen(NOW_SHOT, "furkan", { ...P360, habits: { months: { "2026-10": M1 }, log: LOG8 } }), act: scrollTo("#hb-log") },
   { name: "chooser", open: { now: NOW_SHOT, storage: SHOT_STORE, habits: SHOT_HABITS }, act: tabAct },
   { name: "today-meryem", open: { now: NOW_SHOT, storage: { ...SHOT_STORE, "meryem-habits-me": "meryem" }, habits: SHOT_HABITS }, act: tabAct },
   { name: "today-furkan", open: { now: NOW_SHOT, storage: { ...SHOT_STORE, "meryem-habits-me": "furkan" }, habits: SHOT_HABITS }, act: tabAct },

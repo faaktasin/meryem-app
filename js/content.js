@@ -475,6 +475,48 @@ var CONTENT = {
     },
     groups: { together: 'Birlikte', meryem: 'Meryem', furkan: 'Furkan' },
     legendJoint: 'ikimiz de',
+    noData: '—',
+    monthsShort: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'],
+    stats: {
+      lead: 'Bu ay önde: {name} (+{n} puan)',
+      tie: 'Başa baş 💞',
+      jointDays: '{n} gün ikimiz de',
+      streakDays: '{n} gün',
+      streakNow: 'seri',
+      streakBest: 'en uzun seri'
+    },
+    daily: {
+      title: 'Günlük gidiş',
+      aria: 'Günlük gidiş, ayın her günü için yüzdeler. Bu ay Meryem {m}, Furkan {f}'
+    },
+    bars: { title: 'Görev görev' },
+    mom: {
+      title: 'Aydan aya',
+      hint: 'Her ay için yüzdeler'
+    },
+    report: {
+      title: '{month} karnesi',
+      best: 'En düzenli görev: {item} ({pct})',
+      streak: '{name} en uzun seri: 🔥 {n} gün',
+      teaser: 'Ay bitince karnemiz burada 🐻',
+      closing: [
+        'Bir ay daha, birlikte 💞',
+        'Küçük adımlar, güzel bir ay oldu 🌷',
+        'Yan yana gitmek en güzeli 🐻',
+        'Gelecek ay da elele 🤍',
+        'Birlikte olunca her şey daha tatlı 🍯',
+        'Bu ayı güzelce kapattık, yenisi için hazırız ✨'
+      ]
+    },
+    log: {
+      title: 'Geçmiş',
+      empty: 'Bu ayda henüz işaret yok',
+      undone: 'geri aldı',
+      pending: 'bekliyor',
+      box: 'kutu: {name}',
+      all: 'Tümünü gör ({n})',
+      less: 'Daha az göster'
+    },
     sheetEmpty: 'Bu gün için kutu yok',
     saveError: 'Kaydedemedik, bir daha dokun\u00a0💗',
     dow: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'],
