@@ -150,7 +150,7 @@ const N_DAILY = "habits: the daily chart has one point per due day up to today f
 const N_BARS = "habits: the per-item bars print the item percentages per owner and a dash when nothing is due";
 const N_MOM = "habits: month over month shows every month from 2026-10 to the current with each month's summary values";
 const N_REPORT = "habits: the report card is absent on the running month, present on a past month and on the 1st for the month before";
-const N_LOGVIEW = "habits: the log lists newest first, keeps a null-at row marked bekliyor, collapses to 5 and expands";
+const N_LOGVIEW = "habits: the log lists newest first, keeps a null-at row marked kaydediliyor, collapses to 5 and expands";
 const N_LOGSWITCH = "habits: the log follows the viewed month and a fresh tick lands at its top";
 const N_FIT = "habits: the new cards fit 360 and 390 px wide with no horizontal page scroll";
 const N_CONTRAST2 = "habits: the words on the stat cards, charts, report card and log reach 4.5:1";
@@ -159,7 +159,19 @@ const N_LONGSTREAK = "habits: a streak older than the previous month is counted 
 const N_LEADSHOWN = "habits: the lead line is the difference of the two numbers the cards show, and Başa baş only when they read the same";
 const N_DOUBLETAP = "habits: two quick taps before the snapshot echo store true then false, in the month document and in the log";
 
-const N_WEEKDAY ="habits: Erken çıkış is due Monday to Friday only and a weekend tick never counts";
+const N_COPY = "habits: the reviewed texts - closing pool, save error, daily chart title - read as agreed, and a failed save puts the box back";
+const N_GAPS ="habits: every card on the Takip page sits 14-18 px below the one before it (360 and 390 px)";
+const N_LOGLAYOUT = "habits: a log row is two lines, the pending pill shares the time's line, no separator dangles and no cross glyph";
+const N_SCORELINE = "habits: each Name %n of the report's score line is one unbreakable unit, and the best item prints its short name";
+const N_STREAKTILE = "habits: the streak tile holds its number and label on two clean lines at 360 px, and a 0-day streak has no flame";
+const N_BOTTOM = "habits: the last card clears the Sürpriz bubble by at least 16 px (360, 390 and 412 px)";
+const N_MOMCUE = "habits: the month strip shows an edge cue only when its months overflow";
+const N_LEGENDGAP = "habits: every legend label sits the same distance from its mark (calendar, daily line, month over month)";
+const N_LOCKEDTICK = "habits: a ticked partner box looks different from your own tick, with the check still visible and its name legible";
+const N_SHEETSTICKY = "habits: the day sheet keeps its title and close button in view while the rows scroll";
+const N_TARGETS = "habits: every control inside Takip and its day sheet is at least 44 x 44 px (360, 390 and 412 px)";
+
+const N_WEEKDAY = "habits: Erken çıkış is due Monday to Friday only and a weekend tick never counts";
 const N_FUTURE = "habits: a tick dated after today never counts, in any number";
 const N_JOINT = "habits: Birlikte counts a joint item-day only when both ticked";
 const N_PERSON = "habits: person percentages are per person (15 Oct)";
@@ -1047,9 +1059,9 @@ export async function run({ page, check, root }) {
     const furkanLead = await synth({ started: true, leader: "furkan", people: people(40, 52.5) });
     // by hand: 70 - 64.29 = 5.71 -> +6 points to Meryem; nothing ticked at all -> an exact tie
     const ok =
-      lead.text === "Bu ay önde: Meryem (+6 puan)" && lead.who === "meryem" &&
+      lead.text === "Önde: Meryem (+6 puan)" && lead.who === "meryem" &&
       tie.text === "Başa baş 💞" && tie.who === "tie" &&
-      nothing === "" && noLeader === "" && roundedTie === "Başa baş 💞" && furkanLead === "Bu ay önde: Furkan (+13 puan)";
+      nothing === "" && noLeader === "" && roundedTie === "Başa baş 💞" && furkanLead === "Önde: Furkan (+13 puan)";
     return { ok, detail: JSON.stringify({ lead, tie, nothing, noLeader, roundedTie, furkanLead }) };
   });
 
@@ -1066,7 +1078,7 @@ export async function run({ page, check, root }) {
     // October alone: Furkan complete on 30 and 31 -> longest 2; Meryem never complete -> 0.
     const ok =
       JSON.stringify(now) === JSON.stringify([["meryem", "current", 1, "🔥 1 gün seri"], ["furkan", "current", 4, "🔥 4 gün seri"]]) &&
-      JSON.stringify(past) === JSON.stringify([["meryem", "longest", 0, "🔥 0 gün en uzun seri"], ["furkan", "longest", 2, "🔥 2 gün en uzun seri"]]);
+      JSON.stringify(past) === JSON.stringify([["meryem", "longest", 0, "0 gün en uzun seri"], ["furkan", "longest", 2, "🔥 2 gün en uzun seri"]]);
     return { ok, detail: JSON.stringify({ now, past }) };
   });
 
@@ -1182,8 +1194,8 @@ export async function run({ page, check, root }) {
     // Closing line: pool[(2026*12 + 10) % pool.length], so the same month always says the same thing.
     const closeWant = past.pool[(2026 * 12 + 10) % past.pool.length];
     const full =
-      past.report && past.month === "2026-10" && past.title === "Ekim karnesi" && past.lead === "Bu ay önde: Meryem (+1 puan)" &&
-      past.best === "En düzenli görev: Kuran (en az 1 sayfa) (%50)" && past.joint === "10 gün ikimiz de" &&
+      past.report && past.month === "2026-10" && past.title === "Ekim karnesi" && past.lead === "Önde: Meryem (+1 puan)" &&
+      past.best === "En düzenli görev: Kuran (%50)" && past.joint === "10 gün ikimiz de" &&
       JSON.stringify(past.streaks) === JSON.stringify([["meryem", 3], ["furkan", 5]]) && past.close === closeWant && past.bear;
     const ok =
       !running.report && running.teaser === "Ay bitince karnemiz burada 🐻" &&
@@ -1210,11 +1222,11 @@ export async function run({ page, check, root }) {
       JSON.stringify(collapsed.map((r) => r.id)) === JSON.stringify(["b", "a", "e", "c", "f"]) && toggle1 === "Tümünü gör (8)" &&
       JSON.stringify(open.map((r) => r.id)) === JSON.stringify(["b", "a", "e", "c", "f", "g", "h", "i"]) && toggle2 === "Daha az göster" &&
       again.length === 5 &&
-      byId(collapsed, "b").pending && byId(collapsed, "b").text === "Furkan · Spor ✓ · 15 Eki 21:04 bekliyor" &&
-      byId(collapsed, "e").pending && /bekliyor$/.test(byId(collapsed, "e").text) &&
-      !byId(collapsed, "a").pending && byId(collapsed, "a").text === "Meryem · Arapça tekrarı ✓ · 15 Eki 10:00" &&
-      /^Furkan · Kuran ✗ geri aldı · 15 Eki 07:00$/.test(byId(collapsed, "f").text) &&
-      byId(open, "g").text === "Furkan · Spor ✓ · 14 Eki 22:10";
+      byId(collapsed, "b").pending && byId(collapsed, "b").text === "Furkan · Spor ✓ 15 Eki 21:04 kaydediliyor" &&
+      byId(collapsed, "e").pending && /kaydediliyor$/.test(byId(collapsed, "e").text) &&
+      !byId(collapsed, "a").pending && byId(collapsed, "a").text === "Meryem · Arapça tekrarı ✓ 15 Eki 10:00" &&
+      /^Furkan · Kuran geri aldı 15 Eki 07:00$/.test(byId(collapsed, "f").text) &&
+      byId(open, "g").text === "Furkan · Spor ✓ 14 Eki 22:10";
     return { ok, detail: JSON.stringify({ collapsed, toggle1, open: open.length, toggle2, again: again.length }).slice(0, 700) };
   });
 
@@ -1236,7 +1248,7 @@ export async function run({ page, check, root }) {
     const fresh = (await logRows(page))[0];
     return {
       ok: JSON.stringify(nov) === JSON.stringify(["d"]) && JSON.stringify(oct) === JSON.stringify(["b", "a", "e", "c", "f"]) && octOpen === 8 && JSON.stringify(back) === JSON.stringify(["d"]) &&
-        fresh && /^Meryem · Spor ✓ · 10 Kas 12:0\d$/.test(fresh.text) && !fresh.pending,
+        fresh && /^Meryem · Spor ✓ 10 Kas 12:0\d$/.test(fresh.text) && !fresh.pending,
       detail: JSON.stringify({ nov, oct, octOpen, back, fresh }),
     };
   });
@@ -1367,6 +1379,233 @@ export async function run({ page, check, root }) {
     };
   });
 
+  // ── layout (stage 6), read from the painted page ─────────────────────────────────────────────
+  const LOGZ = [...LOG8, logEntry("z", { item: "projeler", person: "meryem", value: false, at: null, atLocal: LE(15, 21, 30) })];
+  const openFull = (vp, now, extra) => openTakip(page, now || "2026-10-15T12:00:00", "meryem", { viewport: vp, habits: { months: { "2026-10": M1 }, log: LOGZ }, ...(extra || {}) });
+  const settleLog = async () => { await until(async () => (await logRows(page)).length > 0); await sleep(250); };
+
+  await check(N_GAPS, async () => {
+    const notes = [];
+    let ok = true;
+    for (const vp of [{ width: 360, height: 780 }, { width: 390, height: 844 }]) {
+      await openFull(vp);
+      await settleLog();
+      const gaps = await page.eval(() => {
+        const cards = [...document.querySelectorAll("#habits-root .card")].filter((c) => c.getBoundingClientRect().height > 0);
+        const out = [];
+        for (let i = 1; i < cards.length; i++) out.push([cards[i - 1].className.split(" ")[1] || "card", cards[i].className.split(" ")[1] || "card", +(cards[i].getBoundingClientRect().top - cards[i - 1].getBoundingClientRect().bottom).toFixed(2)]);
+        return out;
+      });
+      // today, month, stats, daily, bars, mom, teaser, log: seven gaps, each 16 px (a measured 14-18 passes)
+      if (gaps.length < 7 || gaps.some((g) => g[2] < 14 || g[2] > 18)) ok = false;
+      notes.push([vp.width, gaps.map((g) => `${g[0]}>${g[1]}:${g[2]}`).join(" ")]);
+    }
+    return { ok, detail: JSON.stringify(notes) };
+  });
+
+  await check(N_LOGLAYOUT, async () => {
+    await openFull({ width: 360, height: 780 });
+    await settleLog();
+    await tapIn(page, "#hb-log .hb-log-toggle"); // every row, the pending ones included
+    const rows = await page.eval(() => [...document.querySelectorAll("#hb-log .hb-log-row")].map((r) => {
+      const top = (s) => { const e = r.querySelector(s); return e ? e.getBoundingClientRect().top : null; };
+      const what = r.querySelector(".hb-log-what");
+      const firstLine = what.getClientRects()[0].top;
+      const pill = r.querySelector(".hb-log-pending");
+      const when = r.querySelector(".hb-log-when");
+      return {
+        id: r.dataset.id, text: r.textContent, pill: pill ? pill.getBoundingClientRect().top : null, when: when.getBoundingClientRect().top,
+        sepAligned: Math.abs(r.querySelector(".hb-log-sep").getBoundingClientRect().top - firstLine) < 3,
+        whenBelowMain: when.getBoundingClientRect().top > r.querySelector(".hb-log-main").getBoundingClientRect().bottom - 1,
+        pillH: pill ? pill.getBoundingClientRect().height : null, whenH: when.getBoundingClientRect().height,
+        seps: r.querySelectorAll(".hb-log-sep").length, top: top(".hb-log-who"),
+      };
+    }));
+    const pills = rows.filter((x) => x.pill !== null);
+    const ok = rows.length === 9 && pills.length === 3 && pills.every((x) => Math.abs(x.pill - x.when) < 0.6 && Math.abs(x.pillH - x.whenH) < 0.6) &&
+      rows.every((x) => x.sepAligned && x.whenBelowMain && !/✗/.test(x.text) && x.seps === 1);
+    return { ok, detail: JSON.stringify(rows.map((x) => [x.id, x.pill, x.when, x.sepAligned, x.whenBelowMain])) };
+  });
+
+  await check(N_SCORELINE, async () => {
+    await openFull({ width: 360, height: 780 }, "2026-11-20T12:00:00");
+    await settleLog();
+    await goPrev(page);
+    const got = await page.eval(() => {
+      const spans = [...document.querySelectorAll("#hb-report .hb-report-scores .hb-nw")];
+      return spans.map((s) => ({ t: s.textContent, lines: s.getClientRects().length, ws: getComputedStyle(s).whiteSpace }));
+    });
+    const best = await textOf(page, "#hb-report .hb-report-best");
+    return { ok: got.length === 3 && got.every((x) => x.lines === 1 && x.ws === "nowrap" && /^\S+ %\d+$/.test(x.t)) && /^En düzenli görev: [^()]*\(%\d+\)$/.test(best), detail: JSON.stringify({ got, best }) };
+  });
+
+  await check(N_STREAKTILE, async () => {
+    await openTakip(page, "2026-11-02T10:00:00", "furkan", { viewport: { width: 360, height: 780 }, habits: { months: { "2026-10": octS, "2026-11": novFull } } });
+    await until(() => page.eval(() => !!window.habitsCore.state().monthsData["2026-10"]));
+    await page.eval(() => window.habitsCore.render());
+    const read = () => page.eval(() => [...document.querySelectorAll("#hb-stats .hb-stat")].filter((t) => t.querySelector(".hb-streak")).map((t) => {
+      const n = t.querySelector(".hb-streak-n");
+      const l = t.querySelector(".hb-streak-label");
+      return { n: n.textContent, label: l.textContent, w: +t.getBoundingClientRect().width.toFixed(1), nLines: n.getClientRects().length, lLines: l.getClientRects().length, stacked: l.getBoundingClientRect().top >= n.getBoundingClientRect().bottom - 1, inside: l.getBoundingClientRect().right <= t.getBoundingClientRect().right && n.getBoundingClientRect().right <= t.getBoundingClientRect().right };
+    }));
+    const now = await read();
+    await goPrev(page);
+    const past = await read();
+    // 2 Nov: Meryem 1 day, Furkan 4 days -> flames; October's longest for Meryem is 0 -> no flame
+    const ok =
+      now.length === 2 && now.every((x) => x.nLines === 1 && x.lLines === 1 && x.stacked && x.inside && x.w > 90 && x.w < 110) && now[0].n === "🔥 1 gün" && now[1].n === "🔥 4 gün" &&
+      past[0].n === "0 gün" && !/🔥/.test(past[0].n) && past[1].n === "🔥 2 gün" && past.every((x) => x.nLines === 1 && x.lLines === 1 && x.stacked && x.inside);
+    return { ok, detail: JSON.stringify({ now, past }) };
+  });
+
+  await check(N_BOTTOM, async () => {
+    const notes = [];
+    let ok = true;
+    for (const w of [360, 390, 412]) {
+      await openFull({ width: w, height: 780 });
+      await settleLog();
+      const m = await page.eval(() => {
+        window.scrollTo(0, document.documentElement.scrollHeight);
+        const last = [...document.querySelectorAll("#habits-root .card")].filter((c) => c.getBoundingClientRect().height > 0).pop().getBoundingClientRect();
+        const b = document.querySelector(".nav-gift-bubble").getBoundingClientRect();
+        // the raised circle is 52 px wide with a 4 px ring, centred on the 22 px icon box (css/style.css)
+        const ringTop = b.top + b.height / 2 - 26 - 4;
+        return { cardBottom: +last.bottom.toFixed(1), ringTop: +ringTop.toFixed(1), clear: +(ringTop - last.bottom).toFixed(1) };
+      });
+      if (m.clear < 16) ok = false;
+      notes.push([w, m.clear]);
+    }
+    return { ok, detail: JSON.stringify(notes) };
+  });
+
+  await check(N_MOMCUE, async () => {
+    await openTakip(page, "2027-05-10T12:00:00", "meryem", { viewport: { width: 360, height: 780 }, habits: { months: MOM_MONTHS } });
+    await until(() => page.eval(() => document.querySelectorAll("#hb-mom .hb-mbar").length >= 12));
+    const long = await page.eval(() => { const e = document.querySelector("#hb-mom .hb-mom-scroll"); return { scroll: e.classList.contains("is-scroll"), bg: getComputedStyle(e).backgroundImage }; });
+    await openTakip(page, "2027-01-10T12:00:00", "meryem", { viewport: { width: 360, height: 780 }, habits: { months: MOM_MONTHS } });
+    await until(() => page.eval(() => document.querySelectorAll("#hb-mom .hb-mbar").length >= 12));
+    const short = await page.eval(() => { const e = document.querySelector("#hb-mom .hb-mom-scroll"); return { scroll: e.classList.contains("is-scroll"), bg: getComputedStyle(e).backgroundImage }; });
+    return { ok: long.scroll && /gradient/.test(long.bg) && !short.scroll && short.bg === "none", detail: JSON.stringify({ long: long.bg.slice(0, 80), short }) };
+  });
+
+  await check(N_LEGENDGAP, async () => {
+    const notes = [];
+    let ok = true;
+    for (const w of [360, 390]) {
+      await openTakip(page, "2027-01-10T12:00:00", "meryem", { viewport: { width: w, height: 780 }, habits: { months: MOM_MONTHS } });
+      await until(() => page.eval(() => document.querySelectorAll("#hb-mom .hb-mbar").length >= 12));
+      const gaps = await page.eval(() => [...document.querySelectorAll("#habits-root .hb-leg")].map((l) => {
+        const mark = l.firstElementChild;
+        // the painted edge of the mark: an svg's own drawing (its path, circle or rect), not its box
+        const parts = mark.tagName.toLowerCase() === "svg" ? [...mark.children] : [mark];
+        const right = Math.max(...parts.map((p) => p.getBoundingClientRect().right));
+        const text = [...l.childNodes].filter((n) => n.nodeType === 3).pop();
+        const r = document.createRange();
+        r.selectNodeContents(text);
+        return +(r.getBoundingClientRect().left - right).toFixed(2);
+      }));
+      // calendar legend 3 + daily legend 2 + month-over-month legend 3; the marks differ in shape,
+      // so the gaps agree to 1.3 px (the widened heart used to leave a 2 px larger gap)
+      if (gaps.length !== 8 || Math.max(...gaps) - Math.min(...gaps) > 1.3) ok = false;
+      notes.push([w, gaps.join(",")]);
+    }
+    return { ok, detail: JSON.stringify(notes) };
+  });
+
+  await check(N_LOCKEDTICK, async () => {
+    await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: { "2026-10": { days: { "2026-10-15": { spor: { furkan: true, meryem: true }, kuran: { meryem: true } } } } } } });
+    const got = await page.eval(() => {
+      const parse = window.__app.parse;
+      const pick = (p, item) => {
+        const b = document.querySelector(`#hb-today .hb-heart[data-item="${item}"][data-person="${p}"]`);
+        const cs = getComputedStyle(b);
+        const shape = getComputedStyle(b.querySelector(".hb-heart-shape"));
+        const check = getComputedStyle(b.querySelector(".hb-heart-check"));
+        const name = b.parentElement.querySelector(".hb-box-name");
+        return { on: b.classList.contains("is-on"), locked: b.classList.contains("is-locked"), bg: cs.backgroundColor, fill: shape.fill, checkStroke: check.stroke, checkOpacity: check.opacity, nameContrast: +window.__app.readable(name).toFixed(2),
+          checkVsShape: parse(shape.fill) ? +window.__app.contrast(parse(check.stroke), parse(shape.fill)).toFixed(2) : 0 };
+      };
+      return { own: pick("meryem", "spor"), ownOff: pick("meryem", "arapca"), partner: pick("furkan", "spor"), partnerOff: pick("furkan", "kuran") };
+    });
+    const { own, ownOff, partner, partnerOff } = got;
+    // yours: a solid disc with a white heart; the partner's: the same pale disc as an empty partner box,
+    // with a coloured heart inside - so a partner tick never looks like one of your own
+    const ok = own.on && !own.locked && partner.on && partner.locked && own.bg !== ownOff.bg && partner.bg === partnerOff.bg && partner.fill !== partnerOff.fill && partner.checkOpacity === "1" && partner.checkVsShape >= 3 && partner.nameContrast >= 4.5;
+    return { ok, detail: JSON.stringify(got) };
+  });
+
+  await check(N_SHEETSTICKY, async () => {
+    await openTakip(page, "2026-10-15T12:00:00", "meryem", { viewport: { width: 390, height: 520 }, habits: { months: { "2026-10": M1 } } });
+    await tapIn(page, '#hb-month .hb-day[data-day="2026-10-12"]');
+    await sleep(350);
+    const info = await page.eval(() => {
+      const modal = document.querySelector("#habits-day-modal .modal");
+      const before = { scrolls: modal.scrollHeight > modal.clientHeight + 40 };
+      modal.scrollTop = modal.scrollHeight;
+      const m = modal.getBoundingClientRect();
+      const h = document.querySelector("#habits-day-modal .modal-header").getBoundingClientRect();
+      const c = document.querySelector("#habits-day-modal .modal-close").getBoundingClientRect();
+      const t = document.getElementById("habits-day-title").getBoundingClientRect();
+      return { ...before, scrollTop: modal.scrollTop, modalTop: m.top, headerTop: h.top, closeIn: c.top >= m.top - 0.5 && c.bottom <= m.bottom, titleIn: t.top >= m.top - 0.5 && t.bottom <= m.bottom };
+    });
+    const closes = await page.eval(() => { document.querySelector("#habits-day-modal .modal-close").click(); return !document.getElementById("habits-day-modal").classList.contains("open"); });
+    return { ok: info.scrolls && info.scrollTop > 20 && Math.abs(info.headerTop - info.modalTop) < 1.5 && info.closeIn && info.titleIn && closes, detail: JSON.stringify(info) };
+  });
+
+  await check(N_TARGETS, async () => {
+    const notes = [];
+    let ok = true;
+    const disabled = [];
+    for (const w of [360, 390, 412]) {
+      await openFull({ width: w, height: 780 });
+      await settleLog();
+      await tapIn(page, '#hb-month .hb-day[data-day="2026-10-12"]');
+      await sleep(350);
+      const small = await page.eval(() => {
+        const out = [];
+        const sel = "#habits-view button, #habits-view [role=button], #habits-view a[href], #habits-day-modal button, #habits-day-modal [role=button]";
+        document.querySelectorAll(sel).forEach((e) => {
+          const r = e.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) return;
+          const tag = e.tagName.toLowerCase() + "." + String(e.className).split(" ")[0] + (e.dataset.act ? "[" + e.dataset.act + "]" : "");
+          if (r.width < 43.99 || r.height < 43.99) out.push([tag, +r.width.toFixed(2), +r.height.toFixed(2), e.disabled === true]);
+        });
+        return { small: out, total: document.querySelectorAll(sel).length };
+      });
+      small.small.filter((x) => x[3]).forEach((x) => disabled.push([w, x[0]]));
+      if (small.small.some((x) => !x[3]) || small.total < 30) ok = false;
+      notes.push([w, small.total, small.small]);
+      await page.eval(() => closeModal("habits-day-modal"));
+    }
+    return { ok, detail: JSON.stringify({ notes, disabled }) };
+  });
+
+  // ── copy (stage 6) ───────────────────────────────────────────────────────────────────────────
+  await check(N_COPY, async () => {
+    await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: { "2026-10": M1 } } });
+    const read = await page.eval(() => ({
+      pool: CONTENT.habits.report.closing,
+      title: document.querySelector("#hb-stats .hb-daily .hb-title").textContent,
+      aria: document.querySelector("#hb-stats .hb-daily-svg").getAttribute("aria-label"),
+      bars: document.querySelector("#hb-stats .hb-bars .hb-title").textContent,
+    }));
+    // a write that fails: the toast says what to do, and the box does not stay lit
+    await page.eval(() => { window.setHabitTick = () => Promise.reject(new Error("offline")); });
+    const sel = slot("cicek", "meryem");
+    await tapIn(page, sel);
+    await until(() => page.eval(() => !!document.querySelector(".toast")), 2000);
+    const toast = await page.eval(() => (document.querySelector(".toast") || {}).textContent || null);
+    await sleep(150);
+    const lit = await page.eval((s) => document.querySelector(s).classList.contains("is-on"), sel);
+    const st = await stateOf(page);
+    const joined = read.pool.join(" | ");
+    const ok =
+      read.pool.includes("Gelecek ay da el ele 🤍") && read.pool.includes("Küçük adımlarla bir ay daha 🌷") && !/elele|güzel bir ay/.test(joined) &&
+      read.title === "Gün gün" && /^Gün gün, ayın/.test(read.aria) && read.bars === "Görev görev" &&
+      toast === "Kaydedemedik, bir daha dokunalım 💗" && lit === false && st.pending === 0;
+    return { ok, detail: JSON.stringify({ title: read.title, aria: read.aria.slice(0, 30), toast, lit, pending: st.pending }) };
+  });
+
   await check(N_ERR, () => ({ ok: page.errors.length === 0, detail: page.errors.slice(0, 3).join(" | ") }));
 }
 
@@ -1472,6 +1711,181 @@ export const mutants = [
     find: "    var gap = Math.abs(shownM - shownF);\n",
     replace: "    var gap = roundPct(Math.abs(s.people.meryem.pct - s.people.furkan.pct));\n",
     expect: N_LEADSHOWN,
+  },
+  {
+    id: "habits-stats-cards-touch",
+    file: "css/habits.css",
+    find: "#hb-stats {\n  display: flex;",
+    replace: "#hb-stats {\n  display: block;",
+    expect: N_GAPS,
+  },
+  {
+    id: "habits-log-row-back-to-one-line",
+    file: "css/habits.css",
+    find: ".hb-log-row {\n  padding: 8px 0;",
+    replace: ".hb-log-row {\n  display: flex;\n  flex-wrap: wrap;\n  align-items: baseline;\n  padding: 8px 0;",
+    expect: N_LOGLAYOUT,
+  },
+  {
+    id: "habits-log-pill-taller-than-the-time",
+    file: "css/habits.css",
+    find: "  padding: 0 8px;\n  line-height: 20px;",
+    replace: "  padding: 0 8px;\n  line-height: 32px;",
+    expect: N_LOGLAYOUT,
+  },
+  {
+    id: "habits-log-undo-keeps-the-cross",
+    file: "js/habits.js",
+    find: "(entry.value ? '✓' : escapeHtml(c.undone))",
+    replace: "(entry.value ? '✓' : '✗ ' + escapeHtml(c.undone))",
+    expect: N_LOGLAYOUT,
+  },
+  {
+    id: "habits-score-line-wraps-inside-a-name",
+    file: "css/habits.css",
+    find: ".hb-nw {\n  white-space: nowrap;",
+    replace: ".hb-nw {\n  white-space: normal;",
+    expect: N_SCORELINE,
+  },
+  {
+    id: "habits-report-best-uses-the-long-label",
+    file: "js/habits.js",
+    find: "item: shortLabel(s.bestItem.id)",
+    replace: "item: s.bestItem.label",
+    expect: N_SCORELINE,
+  },
+  {
+    id: "habits-flame-on-a-zero-streak",
+    file: "js/habits.js",
+    find: "(st.n > 0 ? '🔥 ' : '')",
+    replace: "'🔥 '",
+    expect: N_STREAKTILE,
+  },
+  {
+    id: "habits-streak-label-runs-on-with-the-number",
+    file: "css/habits.css",
+    find: ".hb-stat-sub {\n  display: flex;\n  flex-direction: column;",
+    replace: ".hb-stat-sub {\n  display: block;\n  flex-direction: column;",
+    expect: N_STREAKTILE,
+  },
+  {
+    id: "habits-no-room-below-the-last-card",
+    file: "css/habits.css",
+    find: "  padding-bottom: calc(var(--nav-h) + 24px);",
+    replace: "  padding-bottom: var(--nav-h);",
+    expect: N_BOTTOM,
+  },
+  {
+    id: "habits-month-strip-cue-on-a-short-strip",
+    file: "css/habits.css",
+    find: ".hb-mom-scroll {\n  overflow-x: visible;",
+    replace: ".hb-mom-scroll {\n  background: linear-gradient(red, red);\n  overflow-x: visible;",
+    expect: N_MOMCUE,
+  },
+  {
+    id: "habits-month-strip-without-a-cue",
+    file: "css/habits.css",
+    find: "  background:\n    linear-gradient(to right, var(--paper) 30%",
+    replace: "  background: none;\n  --cue-off:\n    linear-gradient(to right, var(--paper) 30%",
+    expect: N_MOMCUE,
+  },
+  {
+    id: "habits-legend-heart-stretched",
+    file: "css/habits.css",
+    find: ".hb-legend--chart .hb-stat-heart {\n  width: 12px;\n  height: 12px;",
+    replace: ".hb-legend--chart .hb-stat-heart {\n  width: 24px;\n  height: 11px;",
+    expect: N_LEGENDGAP,
+  },
+  {
+    id: "habits-locked-tick-looks-like-your-own",
+    file: "css/habits.css",
+    find: ".hb-heart.is-locked.is-on {\n  background: var(--hb-t);",
+    replace: ".hb-heart.is-locked.is-on {\n  background: var(--hb-c);",
+    expect: N_LOCKEDTICK,
+  },
+  {
+    id: "habits-sheet-header-scrolls-away",
+    file: "css/habits.css",
+    find: "  position: sticky;\n  top: -24px;",
+    replace: "  position: static;\n  top: -24px;",
+    expect: N_SHEETSTICKY,
+  },
+  {
+    id: "habits-change-link-small-again",
+    file: "css/habits.css",
+    find: "  min-height: 44px;\n  min-width: 44px;\n  border: none;",
+    replace: "  min-height: 0;\n  min-width: 0;\n  border: none;",
+    expect: N_TARGETS,
+  },
+  {
+    id: "habits-sheet-close-small-again",
+    file: "css/habits.css",
+    find: "  width: 44px;\n  height: 44px;\n  margin: -10px -14px -10px 0;",
+    replace: "  width: auto;\n  height: auto;\n  margin: 0;",
+    expect: N_TARGETS,
+  },
+  {
+    id: "habits-calendar-days-narrow-at-360",
+    file: "css/habits.css",
+    find: "  .hb-cal {\n    gap: 2px;",
+    replace: "  .hb-cal {\n    gap: 3px;",
+    expect: N_TARGETS,
+  },
+  {
+    id: "habits-copy-elele",
+    file: "js/content.js",
+    find: "'Gelecek ay da el ele 🤍'",
+    replace: "'Gelecek ay da elele 🤍'",
+    expect: N_COPY,
+  },
+  {
+    id: "habits-copy-claims-a-good-month",
+    file: "js/content.js",
+    find: "'Küçük adımlarla bir ay daha 🌷'",
+    replace: "'Küçük adımlar, güzel bir ay oldu 🌷'",
+    expect: N_COPY,
+  },
+  {
+    id: "habits-copy-save-error-old-words",
+    file: "js/content.js",
+    find: "bir daha dokunalım\\u00a0💗",
+    replace: "bir daha dokun\\u00a0💗",
+    expect: N_COPY,
+  },
+  {
+    id: "habits-copy-daily-title-old-words",
+    file: "js/content.js",
+    find: "title: 'Gün gün',",
+    replace: "title: 'Günlük gidiş',",
+    expect: N_COPY,
+  },
+  {
+    id: "habits-copy-daily-aria-old-words",
+    file: "js/content.js",
+    find: "aria: 'Gün gün, ayın",
+    replace: "aria: 'Günlük gidiş, ayın",
+    expect: N_COPY,
+  },
+  {
+    id: "habits-copy-pending-old-word",
+    file: "js/content.js",
+    find: "pending: 'kaydediliyor'",
+    replace: "pending: 'bekliyor'",
+    expect: N_LOGVIEW,
+  },
+  {
+    id: "habits-copy-lead-says-this-month",
+    file: "js/content.js",
+    find: "lead: 'Önde: {name}",
+    replace: "lead: 'Bu ay önde: {name}",
+    expect: N_LEAD,
+  },
+  {
+    id: "habits-failed-save-leaves-the-box-lit",
+    file: "js/habits.js",
+    find: "      delete pending[pendingKey];\n      renderAll();\n",
+    replace: "",
+    expect: N_COPY,
   },
   {
     id: "habits-next-tap-read-from-the-snapshot",
