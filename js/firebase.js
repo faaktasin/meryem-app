@@ -154,6 +154,70 @@ function deleteTodoFromFirestore(id) {
   return userCollection('todos').doc(id).delete();
 }
 
+/* ── Firestore: Takip / habits (user-scoped) ────────── */
+
+/* habitMonths/{YYYY-MM}: { days: { 'YYYY-MM-DD': { <itemId>: { <person>: true|false } } } }
+   habitLog/{auto}: { at, atLocal, month, day, item, person, value, by } — append-only. */
+
+/** Live month document. `cb` gets the document's data, or {} while the month has no ticks yet. */
+function subscribeHabitMonth(monthKey, cb) {
+  return userCollection('habitMonths').doc(monthKey).onSnapshot(function (snap) {
+    cb(snap && snap.exists ? snap.data() : {});
+  });
+}
+
+/** Live view of every month document, as an object keyed by 'YYYY-MM' (month-over-month chart). */
+function subscribeHabitMonths(cb) {
+  return userCollection('habitMonths').onSnapshot(function (snapshot) {
+    var months = {};
+    snapshot.forEach(function (doc) { months[doc.id] = doc.data(); });
+    cb(months);
+  });
+}
+
+/** One person's tick (or untick, value=false) on one day. A merge write: the other person's
+    tick and the other days of the month are never touched. */
+function setHabitTick(monthKey, day, itemId, person, value) {
+  var who = {};
+  who[person] = value;
+  var item = {};
+  item[itemId] = who;
+  var days = {};
+  days[day] = item;
+  return userCollection('habitMonths').doc(monthKey).set({ days: days }, { merge: true });
+}
+
+/** Appends a log entry; `at` is the server's clock, `atLocal` (the caller's) is kept as it is. */
+function addHabitLog(entry) {
+  entry.at = firebase.firestore.FieldValue.serverTimestamp();
+  return userCollection('habitLog').add(entry);
+}
+
+/** Milliseconds a log entry happened at: `at`, or `atLocal` while `at` is still empty (a tick
+    made offline has no server time until it syncs). */
+function habitLogMillis(item) {
+  if (item.at && typeof item.at.toMillis === 'function') return item.at.toMillis();
+  var local = item.atLocal;
+  if (typeof local === 'number') return local;
+  var parsed = typeof local === 'string' ? Date.parse(local) : NaN;
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+/** Live log of one month, newest first. Filtered on `month` only and sorted here, so an entry
+    whose server time is not set yet is still listed. */
+function subscribeHabitLog(monthKey, cb) {
+  return userCollection('habitLog').where('month', '==', monthKey).onSnapshot(function (snapshot) {
+    var items = [];
+    snapshot.forEach(function (doc) {
+      var data = doc.data();
+      data.id = doc.id;
+      items.push(data);
+    });
+    items.sort(function (a, b) { return habitLogMillis(b) - habitLogMillis(a); });
+    cb(items);
+  });
+}
+
 /* ── Photo Validation ───────────────────────────────── */
 
 function isValidPhotoUrl(str) {

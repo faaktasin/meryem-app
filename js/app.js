@@ -72,7 +72,7 @@ function showTab(id) {
  * js/dates.js, js/words.js, js/gate.js, js/birthday.js, most of these are silently skipped.
  */
 function initFeatures() {
-  var names = ['initToday', 'initDates', 'initWords', 'initBirthday', 'initMemoriesSwitch'];
+  var names = ['initToday', 'initDates', 'initWords', 'initBirthday', 'initMemoriesSwitch', 'initHabits'];
   names.forEach(function (name) {
     if (typeof window[name] === 'function') {
       try {

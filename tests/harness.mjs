@@ -317,7 +317,7 @@ class Page {
    * ticking), stubs navigator.serviceWorker.register, seeds window.__STUB_MEMORIES /
    * __STUB_SIGNED_IN for the firebase stub, and applies the requested mic behaviour.
    */
-  async setupNewDocumentScript({ nowIso, memories, signedIn, mic }) {
+  async setupNewDocumentScript({ nowIso, memories, signedIn, mic, stubDb, habitsTickMs }) {
     if (this.#dateScriptId) {
       await this.send("Page.removeScriptToEvaluateOnNewDocument", { identifier: this.#dateScriptId });
       this.#dateScriptId = null;
@@ -327,6 +327,8 @@ class Page {
       var RealDate = Date;
       if (NOW_ISO) {
         var OFFSET = new RealDate(NOW_ISO).getTime() - RealDate.now();
+        /* Moves the injected clock forward without waiting (midnight roll-over checks). */
+        window.__advanceClock = function (ms) { OFFSET += ms; };
         function FakeDate() {
           if (arguments.length === 0) return new RealDate(RealDate.now() + OFFSET);
           var args = Array.prototype.slice.call(arguments);
@@ -340,6 +342,8 @@ class Page {
       }
 
       window.__STUB_MEMORIES = ${JSON.stringify(memories || [])};
+      window.__STUB_DB = ${JSON.stringify(stubDb || {})};
+      ${habitsTickMs ? `window.__HABITS_TICK_MS = ${Number(habitsTickMs)};` : ""}
       window.__STUB_SIGNED_IN = ${signedIn ? "true" : "false"};
 
       var MIC = ${JSON.stringify(mic || "none")};
@@ -481,6 +485,20 @@ class Page {
     await this.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
   }
 
+  /** Moves the injected clock (openApp's `now`) forward by `ms` without waiting. */
+  advanceClock(ms) {
+    return this.eval((n) => {
+      if (typeof window.__advanceClock !== "function") throw new Error("advanceClock needs openApp({ now })");
+      window.__advanceClock(n);
+      return true;
+    }, ms);
+  }
+
+  /** A JSON copy of the Firestore stub's whole in-memory database ({ collection path: { id: data } }). */
+  stubDb() {
+    return this.eval(() => JSON.parse(JSON.stringify(window.__STUB_DB)));
+  }
+
   /** Every key/value currently in localStorage. */
   storageDump() {
     return this.eval(() => {
@@ -563,6 +581,19 @@ export async function launch() {
   }
 }
 
+/** The stub database for openApp's `habits` option: collection paths under the stub user. */
+function habitsSeed(habits) {
+  if (!habits) return {};
+  const db = {};
+  if (habits.months) db["users/test-uid/habitMonths"] = habits.months;
+  if (habits.log) {
+    const log = {};
+    habits.log.forEach((entry, i) => { log[entry.id || `seedlog${i}`] = Object.fromEntries(Object.entries(entry).filter(([k]) => k !== "id")); });
+    db["users/test-uid/habitLog"] = log;
+  }
+  return db;
+}
+
 let _server = null;
 async function ownServer() {
   if (!_server) _server = await serve(APP_ROOT);
@@ -591,6 +622,10 @@ export async function closeServer() {
  *   opts.voiceAudio   'wav' | 'mp3' | 'm4a' | 'ogg' | 'opus' | null (default) — fakes
  *                     audio/sesli-mesaj.<ext> as present (real playable bytes); null matches the
  *                     live site today, where audio/ does not exist and every probe 404s
+ *   opts.habits       { months: { 'YYYY-MM': { days: {...} } }, log: [ {...entry} ] } seeded into the
+ *                     Firestore stub's habitMonths / habitLog before the app loads. A log entry's
+ *                     `at` is null or { __ts: <ms> } (a server timestamp)
+ *   opts.habitsTickMs shortens js/habits.js's minute timer (the window.__HABITS_TICK_MS seam)
  *   opts.viewport     { width, height }, default 390x844 (mobile, touch)
  *   opts.page         which html file to open, default 'index.html'
  */
@@ -605,6 +640,8 @@ export async function openApp(page, opts = {}) {
     reducedMotion = false,
     mic = "none",
     voiceAudio = null,
+    habits = null,
+    habitsTickMs = 0,
     viewport = { width: 390, height: 844 },
     page: appPage = "index.html",
   } = opts;
@@ -615,7 +652,7 @@ export async function openApp(page, opts = {}) {
   await page.send("Emulation.setTimezoneOverride", { timezoneId: "Europe/Istanbul" });
   await page.media(reducedMotion ? [{ name: "prefers-reduced-motion", value: "reduce" }] : []);
   page.setVoiceAudioFixture(voiceAudio);
-  await page.setupNewDocumentScript({ nowIso: now, memories, signedIn, mic });
+  await page.setupNewDocumentScript({ nowIso: now, memories, signedIn, mic, stubDb: habitsSeed(habits), habitsTickMs });
 
   if (!keepStorage) {
     await page.goto(server.base + "__blank.html");
