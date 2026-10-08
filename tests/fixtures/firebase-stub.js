@@ -18,6 +18,9 @@
  *   toDate(); with window.__STUB_TS_NULL = true it resolves to null instead (a write made offline,
  *   whose server time has not arrived yet).
  *   window.__stubListeners() lists the paths that currently have an open onSnapshot.
+ *   window.__STUB_ECHO_DELAY_MS = n delays the snapshot that follows a WRITE by n ms (the write
+ *   itself lands in the database at once; the first snapshot after a subscribe is not delayed), so
+ *   a test can act again before the echo arrives.
  *
  * Two collections stay exactly as they were before this file had a database, because the existing
  * checks were written against that: 'memories' (served read-only from window.__STUB_MEMORIES, one
@@ -109,12 +112,12 @@
 
   function notify(colPath) {
     _listeners.slice().forEach(function (l) {
-      if (l.active && l.colPath === colPath) schedule(l);
+      if (l.active && l.colPath === colPath) schedule(l, window.__STUB_ECHO_DELAY_MS || 0);
     });
   }
 
-  function schedule(l) {
-    setTimeout(function () { if (l.active) l.emit(); }, 0);
+  function schedule(l, delay) {
+    setTimeout(function () { if (l.active) l.emit(); }, delay || 0);
   }
 
   function addListener(colPath, label, emit) {

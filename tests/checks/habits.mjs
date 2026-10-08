@@ -155,7 +155,11 @@ const N_LOGSWITCH = "habits: the log follows the viewed month and a fresh tick l
 const N_FIT = "habits: the new cards fit 360 and 390 px wide with no horizontal page scroll";
 const N_CONTRAST2 = "habits: the words on the stat cards, charts, report card and log reach 4.5:1";
 
-const N_WEEKDAY = "habits: Erken çıkış is due Monday to Friday only and a weekend tick never counts";
+const N_LONGSTREAK = "habits: a streak older than the previous month is counted whole on a fresh load (92 on 1 Jan 2027, 152 on 1 Mar 2027)";
+const N_LEADSHOWN = "habits: the lead line is the difference of the two numbers the cards show, and Başa baş only when they read the same";
+const N_DOUBLETAP = "habits: two quick taps before the snapshot echo store true then false, in the month document and in the log";
+
+const N_WEEKDAY ="habits: Erken çıkış is due Monday to Friday only and a weekend tick never counts";
 const N_FUTURE = "habits: a tick dated after today never counts, in any number";
 const N_JOINT = "habits: Birlikte counts a joint item-day only when both ticked";
 const N_PERSON = "habits: person percentages are per person (15 Oct)";
@@ -1173,12 +1177,12 @@ export async function run({ page, check, root }) {
     const first = await report();
     await goPrev(page);
     const firstPrev = await report();
-    // by hand, October 2026 with every day due: Meryem 44/124 = 35.5, Furkan 39/115 = 33.9 -> she leads by 1.6 = +2;
+    // by hand, October 2026 with every day due: Meryem 44/124 = 35.48 (card 35), Furkan 39/115 = 33.91 (card 34) -> the cards differ by +1;
     // best item Kuran 31/62 = 50; joint days 1-10 = 10; longest streaks Furkan 1-5 = 5, Meryem 1-3 = 3.
     // Closing line: pool[(2026*12 + 10) % pool.length], so the same month always says the same thing.
     const closeWant = past.pool[(2026 * 12 + 10) % past.pool.length];
     const full =
-      past.report && past.month === "2026-10" && past.title === "Ekim karnesi" && past.lead === "Bu ay önde: Meryem (+2 puan)" &&
+      past.report && past.month === "2026-10" && past.title === "Ekim karnesi" && past.lead === "Bu ay önde: Meryem (+1 puan)" &&
       past.best === "En düzenli görev: Kuran (en az 1 sayfa) (%50)" && past.joint === "10 gün ikimiz de" &&
       JSON.stringify(past.streaks) === JSON.stringify([["meryem", 3], ["furkan", 5]]) && past.close === closeWant && past.bear;
     const ok =
@@ -1291,6 +1295,78 @@ export async function run({ page, check, root }) {
     return { ok: bad.length === 0, detail: bad.length ? `below 4.5 or missing: ${JSON.stringify(bad)}` : `min ${Math.min(...Object.values(all))}` };
   });
 
+  // ══ Stage 6: fixes from the two verifiers ═════════════════════════════════════════════════════
+  // ── N1: a streak older than the previous month, on a fresh load ──────────────────────────────
+  // Every item ticked by its owners on every day (a weekend tick of Erken çıkış is ignored, which is
+  // harmless: it is not due then). Perfect from 1 Oct 2026.
+  const perfectMonth = (month, lastDay) => {
+    const last = lastDay || new Date(+month.slice(0, 4), +month.slice(5, 7), 0).getDate();
+    const d = range(1, last);
+    return mk(month, [["spor", "furkan", d], ["spor", "meryem", d], ["kuran", "furkan", d], ["kuran", "meryem", d], ["arapca", "meryem", d], ["cicek", "meryem", d], ["projeler", "furkan", d], ["erken", "furkan", d]]);
+  };
+  const streakNumbers = (p) => p.eval(() => [...document.querySelectorAll("#hb-stats .hb-streak")].map((e) => [e.dataset.person, e.dataset.kind, +e.dataset.n, e.textContent.replace(/\s+/g, " ").trim()]));
+  await check(N_LONGSTREAK, async () => {
+    // A) today Fri 1 Jan 2027 09:00, October-December perfect, today still open:
+    //    31 (Oct) + 30 (Nov) + 31 (Dec) = 92. The two listened months (Nov, Dec) alone give 61.
+    const A = { "2026-10": perfectMonth("2026-10"), "2026-11": perfectMonth("2026-11"), "2026-12": perfectMonth("2026-12") };
+    await openTakip(page, "2027-01-01T09:00:00", "meryem", { habits: { months: A } });
+    const a = await until(async () => { const r = await streakNumbers(page); return r.length === 2 && r.every((x) => x[2] === 92) ? r : null; });
+    // B) today Mon 1 Mar 2027 09:00, October through 1 March perfect (today ticked too):
+    //    Oct 31 + Nov 30 + Dec 31 + Jan 31 + Feb 28 + 1 Mar = 152. Only Feb and Mar are listened to: 29.
+    const B = { ...A, "2027-01": perfectMonth("2027-01"), "2027-02": perfectMonth("2027-02"), "2027-03": perfectMonth("2027-03", 1) };
+    await openTakip(page, "2027-03-01T09:00:00", "meryem", { habits: { months: B } });
+    const b = await until(async () => { const r = await streakNumbers(page); return r.length === 2 && r.every((x) => x[2] === 152) ? r : null; });
+    const ok = !!a && !!b && a.every((x) => x[1] === "current" && /92 gün/.test(x[3])) && b.every((x) => x[1] === "current" && /152 gün/.test(x[3]));
+    return { ok, detail: JSON.stringify({ a: a || (await streakNumbers(page)), b }) };
+  });
+
+  // ── N2: the lead line is the difference of the two numbers the cards show ───────────────────
+  await check(N_LEADSHOWN, async () => {
+    const synth = (m, f, leader) => core(page, "leadLine", { started: true, leader, people: { meryem: { pct: m }, furkan: { pct: f } } });
+    // by hand: 77.6 / 37.4 print 78 and 37, the cards differ by 41 (the unrounded gap 40.2 would say 40).
+    const wide = await synth(77.6, 37.4, "meryem");
+    // 80.6 / 80.4 print 81 and 80: +1, not "Başa baş" (the unrounded gap 0.2 would round to 0).
+    const one = await synth(80.6, 80.4, "meryem");
+    // 12.5 / 50 print 13 and 50: +37 (the unrounded gap 37.5 would say 38).
+    const half = await synth(12.5, 50, "furkan");
+    // 70.4 / 69.6 print 70 and 70: a tie although the unrounded gap is 0.8.
+    const tie = await synth(70.4, 69.6, "meryem");
+    // on the screen: the line's number is the difference of the two tiles.
+    await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: { "2026-10": M1 } } });
+    const dom = await page.eval(() => {
+      const t = (k) => +document.querySelector(`#hb-stats .hb-stat[data-kind="${k}"]`).dataset.pct;
+      const lead = document.querySelector("#hb-stats .hb-lead");
+      return { m: t("meryem"), f: t("furkan"), n: +(/\+(\d+)/.exec(lead.textContent) || [0, -1])[1] };
+    });
+    const num = (s) => +(/\+(\d+)/.exec(s) || [0, -1])[1];
+    const ok = num(wide) === 41 && num(one) === 1 && !/Başa baş/.test(one) && num(half) === 37 && /Furkan/.test(half) && /Başa baş/.test(tie) && dom.n === Math.abs(dom.m - dom.f);
+    return { ok, detail: JSON.stringify({ wide, one, half, tie, dom }) };
+  });
+
+  // ── N3: two quick taps before the snapshot echo ──────────────────────────────────────────────
+  await check(N_DOUBLETAP, async () => {
+    await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: {} } });
+    await page.eval(() => { window.__STUB_ECHO_DELAY_MS = 700; });
+    const sel = slot("spor", "meryem");
+    await page.eval((s) => document.querySelector(s).scrollIntoView({ block: "center" }), sel);
+    await sleep(80);
+    await page.tap(sel);
+    await page.tap(sel); // the snapshot of the first tap is still on its way
+    const shownBetween = await page.eval((s) => document.querySelector(s).classList.contains("is-on"), sel);
+    await until(async () => (await stateOf(page)).pending === 0, 3000);
+    await sleep(200);
+    const db = await page.stubDb();
+    const box = (((db[MONTHS] || {})["2026-10"] || {}).days || {})["2026-10-15"];
+    const log = Object.values(db[LOG] || {}).map((x) => x.value);
+    const shownAfter = await page.eval((s) => document.querySelector(s).classList.contains("is-on"), sel);
+    const st = await stateOf(page);
+    await page.eval(() => { window.__STUB_ECHO_DELAY_MS = 0; });
+    return {
+      ok: box && box.spor.meryem === false && JSON.stringify(log) === JSON.stringify([true, false]) && shownBetween === false && shownAfter === false && st.pending === 0,
+      detail: JSON.stringify({ box, log, shownBetween, shownAfter, pending: st.pending }),
+    };
+  });
+
   await check(N_ERR, () => ({ ok: page.errors.length === 0, detail: page.errors.slice(0, 3).join(" | ") }));
 }
 
@@ -1379,9 +1455,30 @@ export const mutants = [
   {
     id: "habits-joint-heart-on-single-tick",
     file: "js/habits.js",
-    find: "    return isTicked(md, key, item, 'furkan') && isTicked(md, key, item, 'meryem');",
-    replace: "    return isTicked(md, key, item, 'furkan') || isTicked(md, key, item, 'meryem');",
+    find: "    return tickedOn(item, key, 'furkan') && tickedOn(item, key, 'meryem');",
+    replace: "    return tickedOn(item, key, 'furkan') || tickedOn(item, key, 'meryem');",
     expect: N_HEART,
+  },
+  {
+    id: "habits-streak-fed-only-the-listened-months",
+    file: "js/habits.js",
+    find: "n: currentStreak(person, streakMonths(), now)",
+    replace: "n: currentStreak(person, state.monthsData, now)",
+    expect: N_LONGSTREAK,
+  },
+  {
+    id: "habits-lead-gap-from-unrounded-percentages",
+    file: "js/habits.js",
+    find: "    var gap = Math.abs(shownM - shownF);\n",
+    replace: "    var gap = roundPct(Math.abs(s.people.meryem.pct - s.people.furkan.pct));\n",
+    expect: N_LEADSHOWN,
+  },
+  {
+    id: "habits-next-tap-read-from-the-snapshot",
+    file: "js/habits.js",
+    find: "    var value = !tickedOn(item, key, person);\n",
+    replace: "    var value = !isTicked(monthDataOf(key), key, item, person);\n",
+    expect: N_DOUBLETAP,
   },
   {
     id: "habits-navigator-offers-next-month",

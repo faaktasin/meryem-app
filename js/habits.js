@@ -352,6 +352,10 @@
     allMonths: {}, log: [], logOpen: false, momPinned: true
   };
   var subs = {};
+  /* The value a tap INTENDS for a box until a snapshot confirms it: 'day|item|person' -> {day,
+     item, person, value}. A second tap before the snapshot arrives reads this, not the stale
+     snapshot, so two quick taps write true and then false, never true twice. */
+  var pending = {};
   var logSub = { month: null, off: null };
   var _initialized = false;
 
@@ -395,9 +399,29 @@
       subs[mk] = subscribeHabitMonth(mk, function (data) {
         state.monthsData[mk] = data || {};
         if (mk === state.month) state.data = state.monthsData[mk];
+        dropConfirmed(mk);
         renderAll();
       });
     });
+  }
+
+  /** A pending tap is forgotten once the month's snapshot shows the value it intended. */
+  function dropConfirmed(mk) {
+    Object.keys(pending).forEach(function (k) {
+      var p = pending[k];
+      if (p.day.slice(0, 7) !== mk) return;
+      if (isTicked(state.monthsData[mk], p.day, p.item, p.person) === p.value) delete pending[k];
+    });
+  }
+
+  /** Every month the streak may reach: the all-months listener, with the fresher live month
+      documents laid over it (a streak that began months ago must not be cut at the previous
+      month). */
+  function streakMonths() {
+    var out = {};
+    Object.keys(state.allMonths).forEach(function (k) { out[k] = state.allMonths[k]; });
+    Object.keys(state.monthsData).forEach(function (k) { out[k] = state.monthsData[k]; });
+    return out;
   }
 
   /** The log listener follows the viewed month: the old one is closed before the new one opens,
@@ -519,14 +543,16 @@
     return state.monthsData[key.slice(0, 7)] || {};
   }
 
+  /** What the box shows: the value a tap intends while its snapshot is on the way, else the data. */
   function tickedOn(item, key, person) {
+    var p = pending[key + '|' + item.id + '|' + person];
+    if (p) return p.value;
     return isTicked(monthDataOf(key), key, item, person);
   }
 
   /** The joint heart: lit only when BOTH of them ticked. */
   function bothOn(item, key) {
-    var md = monthDataOf(key);
-    return isTicked(md, key, item, 'furkan') && isTicked(md, key, item, 'meryem');
+    return tickedOn(item, key, 'furkan') && tickedOn(item, key, 'meryem');
   }
 
   function dueItems(key, now) {
@@ -708,12 +734,16 @@
     return copy().months[parseInt(mk.slice(5, 7), 10) - 1];
   }
 
-  /** The lead of the month in whole points; a rounded gap of 0 counts as a tie. */
+  /** The lead of the month, taken from the two numbers the cards SHOW: the gap is the difference
+      of the two rounded percentages, a tie is exactly "both cards read the same", and the leader
+      is the card with the higher shown number. */
   function leadInfo(s) {
     if (!s || !s.started || !s.leader) return null;
-    var gap = roundPct(Math.abs(s.people.meryem.pct - s.people.furkan.pct));
-    if (s.leader === 'tie' || gap === 0) return { tie: true, gap: 0, who: null };
-    return { tie: false, gap: gap, who: s.leader };
+    var shownM = roundPct(s.people.meryem.pct);
+    var shownF = roundPct(s.people.furkan.pct);
+    var gap = Math.abs(shownM - shownF);
+    if (gap === 0) return { tie: true, gap: 0, who: null };
+    return { tie: false, gap: gap, who: shownM > shownF ? 'meryem' : 'furkan' };
   }
 
   function leadLine(s) {
@@ -725,7 +755,7 @@
 
   /** The current streak on the running month, that month's longest on a past one. */
   function streakOf(person, vm, summary, now) {
-    if (vm === monthKey(now)) return { kind: 'current', n: currentStreak(person, state.monthsData, now) };
+    if (vm === monthKey(now)) return { kind: 'current', n: currentStreak(person, streakMonths(), now) };
     return { kind: 'longest', n: summary.people[person].longest };
   }
 
@@ -1122,10 +1152,15 @@
     if (!isDue(item, dateOf(key), now)) return;
     var month = key.slice(0, 7);
     var value = !tickedOn(item, key, person);
+    var pendingKey = key + '|' + itemId + '|' + person;
     var failed = function () {
+      delete pending[pendingKey];
+      renderAll();
       if (typeof showToast === 'function') showToast(copy().saveError);
     };
     if (typeof setHabitTick !== 'function' || typeof addHabitLog !== 'function') return;
+    pending[pendingKey] = { day: key, item: itemId, person: person, value: value };
+    renderAll();
     try {
       setHabitTick(month, key, itemId, person, value).catch(failed);
       addHabitLog({ month: month, day: key, item: itemId, person: person, value: value, by: state.me, atLocal: now.toISOString() }).catch(failed);
@@ -1222,7 +1257,7 @@
     render: renderAll,
     checkDay: checkDay,
     state: function () {
-      return { day: state.day, month: state.month, data: state.data, monthsData: state.monthsData, view: state.view, me: state.me };
+      return { day: state.day, month: state.month, data: state.data, monthsData: state.monthsData, view: state.view, me: state.me, pending: Object.keys(pending).length };
     }
   };
 })();
