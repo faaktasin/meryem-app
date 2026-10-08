@@ -778,8 +778,9 @@
 
   function streakHtml(person, st) {
     var c = copy().stats;
+    /* The flame only marks a streak that exists: no fire on 0 days. */
     return '<div class="hb-stat-sub hb-streak" data-person="' + person + '" data-kind="' + st.kind + '" data-n="' + st.n + '">' +
-      '<span class="hb-streak-n">🔥 ' + escapeHtml(fmt(c.streakDays, { n: st.n })) + '</span> ' +
+      '<span class="hb-streak-n">' + (st.n > 0 ? '🔥 ' : '') + escapeHtml(fmt(c.streakDays, { n: st.n })) + '</span> ' +
       '<span class="hb-streak-label">' + escapeHtml(st.kind === 'current' ? c.streakNow : c.streakBest) + '</span>' +
     '</div>';
   }
@@ -968,11 +969,13 @@
       var info = leadInfo(s);
       var items = '';
       if (lead) items += '<li class="hb-report-lead" data-lead="' + (info.tie ? 'tie' : info.who) + '">' + heartMark('hb-ri') + '<span>' + escapeHtml(lead) + '</span></li>';
+      /* Each "Name %n" is one unbreakable unit, so a line break never strands the number. */
+      var score = function (name, pct) { return '<span class="hb-nw">' + escapeHtml(name + ' ' + pctLabel(pct)) + '</span>'; };
       items += '<li class="hb-report-scores">' + heartMark('hb-ri') + '<span>' +
-        escapeHtml(nameOf('meryem') + ' ' + pctLabel(s.people.meryem.pct) + ' · ' + nameOf('furkan') + ' ' + pctLabel(s.people.furkan.pct) + ' · ' + c.groups.together + ' ' + pctLabel(s.birlikte.pct)) + '</span></li>';
+        score(nameOf('meryem'), s.people.meryem.pct) + ' · ' + score(nameOf('furkan'), s.people.furkan.pct) + ' · ' + score(c.groups.together, s.birlikte.pct) + '</span></li>';
       if (s.bestItem) {
         items += '<li class="hb-report-best" data-item="' + escapeHtml(s.bestItem.id) + '">' + heartMark('hb-ri') + '<span>' +
-          escapeHtml(fmt(c.report.best, { item: s.bestItem.label, pct: pctLabel(s.bestItem.pct) })) + '</span></li>';
+          escapeHtml(fmt(c.report.best, { item: shortLabel(s.bestItem.id), pct: pctLabel(s.bestItem.pct) })) + '</span></li>';
       }
       ['meryem', 'furkan'].forEach(function (p) {
         items += '<li class="hb-report-streak" data-person="' + p + '" data-n="' + s.people[p].longest + '">' + heartMark('hb-ri') + '<span>' +
@@ -1011,13 +1014,18 @@
     var by = entry.by === 'furkan' || entry.by === 'meryem' ? entry.by : entry.person;
     var whose = entry.person && entry.person !== by ? ' · ' + fmt(c.box, { name: nameOf(entry.person) }) : '';
     var pending = !entry.at;
+    /* Two lines: who and what on the first, the time (and the pending pill) on the second, so no
+       separator dangles at a line end and the pill never sits alone. */
     return '<li class="hb-log-row ' + personClass(by) + '" data-id="' + escapeHtml(entry.id || '') + '" data-value="' + (entry.value ? '1' : '0') + '"' + (pending ? ' data-pending="1"' : '') + '>' +
-      '<span class="hb-log-who">' + dotMark(by) + escapeHtml(nameOf(by) || '') + '</span>' +
-      '<span class="hb-log-sep"> · </span>' +
-      '<span class="hb-log-what">' + escapeHtml(shortLabel(entry.item)) + ' ' + (entry.value ? '✓' : '✗ ' + escapeHtml(c.undone)) + escapeHtml(whose) + '</span>' +
-      '<span class="hb-log-sep"> · </span>' +
-      '<span class="hb-log-when">' + escapeHtml(logWhen(entry)) + '</span>' +
-      (pending ? ' <span class="hb-log-pending">' + escapeHtml(c.pending) + '</span>' : '') +
+      '<div class="hb-log-main">' +
+        '<span class="hb-log-who">' + dotMark(by) + escapeHtml(nameOf(by) || '') + '</span>' +
+        '<span class="hb-log-sep"> · </span>' +
+        '<span class="hb-log-what">' + escapeHtml(shortLabel(entry.item)) + ' ' + (entry.value ? '✓' : escapeHtml(c.undone)) + escapeHtml(whose) + '</span>' +
+      '</div> ' +
+      '<div class="hb-log-meta">' +
+        '<span class="hb-log-when">' + escapeHtml(logWhen(entry)) + '</span>' +
+        (pending ? ' <span class="hb-log-pending">' + escapeHtml(c.pending) + '</span>' : '') +
+      '</div>' +
     '</li>';
   }
 

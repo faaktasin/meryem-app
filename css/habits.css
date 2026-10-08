@@ -41,6 +41,23 @@
   display: none;
 }
 
+/* The raised Sürpriz bubble stands about 30 px above the bar: the last card clears it by 16+. */
+#habits-view {
+  padding-bottom: calc(var(--nav-h) + 24px);
+}
+
+/* The stat, daily and bar cards share one container: they get the page's 16 px between cards. */
+#hb-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* A name and its percentage never break apart across lines. */
+.hb-nw {
+  white-space: nowrap;
+}
+
 .hb-title {
   font-family: var(--font-script);
   font-size: 1.6rem;
@@ -68,9 +85,14 @@
 }
 
 .hb-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
   border: none;
   background: none;
-  padding: 6px 4px;
+  padding: 0 8px;
   font-size: inherit;
   color: var(--rose-strong);
   text-decoration: underline;
@@ -267,9 +289,21 @@
   transform: none;
 }
 
+/* A ticked partner box must not read as your own tick: the disc stays on the pale tint, and only
+   the heart inside is filled with the person's colour (the check stays white on it). Your own
+   ticked box is a solid disc with a white heart. */
 .hb-heart.is-locked.is-on {
-  background: var(--hb-c);
+  background: var(--hb-t);
   border-style: dashed;
+}
+
+.hb-heart.is-locked.is-on .hb-heart-shape {
+  fill: var(--hb-c);
+  stroke: var(--hb-c);
+}
+
+.hb-heart.is-locked.is-on .hb-heart-check {
+  stroke: var(--paper);
 }
 
 .hb-lock {
@@ -322,7 +356,7 @@
 /* ── Month page ─────────────────────────────────────── */
 
 .hb-month {
-  padding: 16px 12px 14px;
+  padding: 16px 10px 14px;
 }
 
 .hb-nav {
@@ -492,6 +526,27 @@
   font-size: 1.4rem;
 }
 
+/* The title and the close button stay in view while the rows scroll: the header sticks to the top
+   of the scrolling .modal (its 24 px padding is pulled in with negative margins). */
+#habits-day-modal .modal-header {
+  position: sticky;
+  top: -24px; /* sticky offsets count from inside the scroller's padding: -24 puts it at the very top */
+  z-index: 1;
+  margin: -24px -24px 8px;
+  padding: 24px 24px 12px;
+  background: var(--paper);
+}
+
+/* The close button is 44x44 to touch; the glyph sits exactly where it did (negative margins). */
+#habits-day-modal .modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px -14px -10px 0;
+}
+
 .hb-sheet-group + .hb-sheet-group {
   margin-top: 14px;
 }
@@ -587,6 +642,12 @@
   line-height: 1.25;
 }
 
+/* .hb-stat-sub is a flex column: the number and the label are two items, two lines. */
+.hb-streak-n,
+.hb-streak-label {
+  white-space: nowrap;
+}
+
 .hb-streak-label {
   font-size: 0.68rem;
   font-weight: 600;
@@ -668,6 +729,13 @@
   height: 11px;
 }
 
+/* The Birlikte heart is a mark like the dots, not a line sample: it must not inherit the 24 px
+   width above, or the gap before its label grows. */
+.hb-legend--chart .hb-stat-heart {
+  width: 12px;
+  height: 12px;
+}
+
 .hb-mbar { fill: var(--hb-c); }
 
 .hb-mom-scroll {
@@ -678,6 +746,13 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 4px;
+  /* An edge cue where more months are hidden: a soft shadow on each side that is scrolled away
+     from, gone again at the end of the strip (the "local" covers hide it there). */
+  background:
+    linear-gradient(to right, var(--paper) 30%, rgba(255, 253, 251, 0)) left center / 28px 100% no-repeat local,
+    linear-gradient(to left, var(--paper) 30%, rgba(255, 253, 251, 0)) right center / 28px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(74, 44, 54, 0.28), rgba(74, 44, 54, 0)) left center / 12px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(74, 44, 54, 0.28), rgba(74, 44, 54, 0)) right center / 12px 100% no-repeat scroll;
 }
 
 .hb-bar-list {
@@ -829,15 +904,39 @@
 }
 
 .hb-log-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: 2px;
   padding: 8px 0;
   border-bottom: 1px dashed var(--rose-100);
   font-size: 0.85rem;
   color: var(--ink);
   line-height: 1.4;
+}
+
+/* Line 1: who and what (it may wrap on a narrow phone, with no separator at a line end).
+   Line 2: the time and, while the server has not answered, the pill. Both sit on one 20 px line. */
+.hb-log-main {
+  display: flex;
+  align-items: baseline;
+  column-gap: 2px;
+}
+
+/* The name and the separator never wrap; a long item wraps inside its own box beside them, so a
+   "·" can never be left at the end of a line. */
+.hb-log-who,
+.hb-log-sep {
+  flex-shrink: 0;
+}
+
+.hb-log-what {
+  min-width: 0;
+}
+
+.hb-log-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  padding-left: 17px;
+  line-height: 20px;
 }
 
 .hb-log-row:last-child {
@@ -866,8 +965,8 @@
 }
 
 .hb-log-pending {
-  margin-left: 6px;
-  padding: 1px 8px;
+  padding: 0 8px;
+  line-height: 20px;
   border-radius: var(--radius-pill);
   background: var(--hb-together-tint);
   color: var(--ink);
@@ -907,12 +1006,13 @@
     padding: 12px;
   }
 
+  /* 360 px: the grid has 324 px, so seven days at gap 2 are 44.3 px wide (a thumb-sized target). */
   .hb-month {
-    padding: 14px 8px 12px;
+    padding: 14px 6px 12px;
   }
 
   .hb-cal {
-    gap: 3px;
+    gap: 2px;
   }
 
   .hb-row-label {
