@@ -14,6 +14,7 @@ var ASSETS = [
   './css/bugun.css',
   './css/dates.css',
   './css/gate.css',
+  './css/habits.css',
   './css/style.css',
   './css/words.css',
   './js/app.js',

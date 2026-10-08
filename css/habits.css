@@ -1,0 +1,529 @@
+/**
+ * Meryem App - Takip (habit tracker) styling
+ * Prefix: hb-. Reuses tokens and the .card / .modal shells from css/style.css. The day sheet is
+ * the shared .modal-overlay (z-index 2000 in the ladder at the top of style.css), so nothing here
+ * sets a z-index of its own.
+ *
+ * Three person colours, picked in the app's rose world and run through the dataviz palette
+ * validator (light surface): lightness band, chroma floor, colour-blind separation (worst
+ * adjacent pair 11.8 on the deutan simulation) and normal-vision separation all PASS.
+ *   Meryem  #C93A6E  rose-strong, 4.80:1 on the paper ground
+ *   Furkan  #0A8CB5  sea blue,    3.81:1
+ *   Birlikte #A86B00 amber,       4.34:1
+ * Colours only ever mark a shape (a heart, a ring, a dot) that also sits beside the person's name;
+ * text stays in the ink tokens, on the light tints (ink on any tint is above 10:1).
+ */
+
+:root {
+  --hb-meryem: #C93A6E;
+  --hb-meryem-tint: #FFE3EA;
+  --hb-furkan: #0A8CB5;
+  --hb-furkan-tint: #DDF1F8;
+  --hb-together: #A86B00;
+  --hb-together-tint: #FBEBCB;
+  --hb-track: #EADFE3;
+}
+
+.hb-p-meryem { --hb-c: var(--hb-meryem); --hb-t: var(--hb-meryem-tint); }
+.hb-p-furkan { --hb-c: var(--hb-furkan); --hb-t: var(--hb-furkan-tint); }
+
+.hb-wrap {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+  padding-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hb-wrap > div:empty {
+  display: none;
+}
+
+.hb-title {
+  font-family: var(--font-script);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--rose-strong);
+  line-height: 1.1;
+}
+
+.hb-hint {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
+/* ── Who am I ───────────────────────────────────────── */
+
+.hb-me {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  text-align: right;
+}
+
+.hb-me-name {
+  color: var(--ink);
+}
+
+.hb-link {
+  border: none;
+  background: none;
+  padding: 6px 4px;
+  font-size: inherit;
+  color: var(--rose-strong);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.hb-choose {
+  text-align: center;
+  padding: 24px 20px;
+  background: linear-gradient(135deg, var(--paper), var(--blush));
+}
+
+.hb-choose-bear {
+  display: flex;
+  justify-content: center;
+  filter: drop-shadow(0 6px 14px var(--shadow));
+}
+
+.hb-choose-title {
+  font-family: var(--font-script);
+  font-size: 2.1rem;
+  color: var(--rose-strong);
+  margin-top: 6px;
+}
+
+.hb-choose-sub {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  margin: 6px 0 18px;
+}
+
+.hb-choose-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.hb-choose-btn {
+  min-height: 64px;
+  border-radius: var(--radius);
+  border: 2px solid var(--hb-c);
+  background: var(--hb-t);
+  color: var(--ink);
+  font-family: var(--font-num);
+  font-size: 1.15rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.hb-choose-btn:active {
+  transform: scale(0.96);
+}
+
+.hb-choose .hb-link {
+  margin-top: 14px;
+}
+
+/* ── Today's panel and the rows (shared with the day sheet) ─ */
+
+.hb-today {
+  padding: 18px 16px 12px;
+}
+
+.hb-today-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.hb-today-date {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.hb-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.hb-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 10px 10px 12px;
+  border-radius: var(--radius-sm);
+  border-left: 5px solid var(--hb-rowc, var(--rose-100));
+  background: var(--hb-rowt, var(--cream));
+}
+
+.hb-g-together { --hb-rowc: var(--hb-together); --hb-rowt: var(--hb-together-tint); }
+.hb-g-meryem { --hb-rowc: var(--hb-meryem); --hb-rowt: var(--hb-meryem-tint); }
+.hb-g-furkan { --hb-rowc: var(--hb-furkan); --hb-rowt: var(--hb-furkan-tint); }
+
+.hb-row-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+.hb-boxes {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.hb-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  position: relative;
+}
+
+.hb-box-name {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+/* The heart button: an outlined heart in the person's colour; ticked = filled with a check. */
+.hb-heart {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid var(--hb-c);
+  background: var(--paper);
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.hb-heart:active {
+  transform: scale(0.92);
+}
+
+.hb-heart-svg {
+  width: 30px;
+  height: 30px;
+}
+
+.hb-heart-shape {
+  fill: none;
+  stroke: var(--hb-c);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  transition: fill 0.2s;
+}
+
+.hb-heart-check {
+  fill: none;
+  stroke: var(--hb-c);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.hb-heart.is-on {
+  background: var(--hb-c);
+}
+
+.hb-heart.is-on .hb-heart-shape {
+  fill: var(--paper);
+  stroke: var(--paper);
+}
+
+.hb-heart.is-on .hb-heart-check {
+  opacity: 1;
+}
+
+/* Locked: the partner's box. Still shows whether it is ticked, but dashed, flat and with a lock. */
+.hb-heart.is-locked {
+  border-style: dashed;
+  cursor: default;
+  background: var(--hb-t);
+}
+
+.hb-heart.is-locked:active {
+  transform: none;
+}
+
+.hb-heart.is-locked.is-on {
+  background: var(--hb-c);
+  border-style: dashed;
+}
+
+.hb-lock {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 20px;
+  height: 20px;
+  padding: 3px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 1px solid var(--rose-100);
+  fill: var(--ink-soft);
+}
+
+.hb-heart:focus-visible,
+.hb-day:focus-visible,
+.hb-nav-btn:focus-visible,
+.hb-choose-btn:focus-visible,
+.hb-link:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* The joint heart between the two boxes of a shared item: lit only when both ticked. */
+.hb-joint {
+  align-self: flex-start;
+  margin-top: 12px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+}
+
+.hb-joint svg {
+  width: 24px;
+  height: 24px;
+  fill: var(--paper);
+  stroke: var(--hb-together);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  transition: fill 0.25s, transform 0.25s;
+}
+
+.hb-joint.is-on svg {
+  fill: var(--hb-together);
+  transform: scale(1.12);
+}
+
+/* ── Month page ─────────────────────────────────────── */
+
+.hb-month {
+  padding: 16px 12px 14px;
+}
+
+.hb-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.hb-nav-title {
+  font-family: var(--font-script);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--rose-strong);
+  text-align: center;
+  flex: 1;
+}
+
+.hb-nav-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--rose-100);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hb-nav-btn:disabled {
+  color: var(--ink-soft);
+  opacity: 0.4;
+  cursor: default;
+}
+
+.hb-cal {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.hb-dow {
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  padding-bottom: 2px;
+}
+
+.hb-day {
+  position: relative;
+  min-height: 54px;
+  border-radius: 10px;
+  border: 1px solid var(--rose-100);
+  background: var(--paper);
+  padding: 4px 2px 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--ink);
+  font-family: var(--font-num);
+  cursor: pointer;
+}
+
+.hb-day.is-blank {
+  border: none;
+  background: none;
+  cursor: default;
+}
+
+/* A day that has not come yet: lighter ground, no border, no rings, not a button. */
+.hb-day.is-future {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: default;
+}
+
+.hb-day.is-today {
+  border: 2px solid var(--rose-strong);
+  background: var(--blush);
+}
+
+.hb-day-n {
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.hb-day-heart {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 11px;
+  height: 11px;
+  fill: var(--hb-together);
+}
+
+.hb-rings {
+  display: flex;
+  gap: 2px;
+}
+
+.hb-ring {
+  width: 16px;
+  height: 16px;
+}
+
+.hb-ring-track {
+  fill: none;
+  stroke: var(--hb-track);
+  stroke-width: 3;
+}
+
+.hb-ring-fill {
+  fill: none;
+  stroke: var(--hb-c);
+  stroke-width: 3;
+}
+
+.hb-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 16px;
+  margin-top: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.hb-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.hb-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 3px solid var(--hb-c);
+}
+
+.hb-leg-joint svg {
+  width: 13px;
+  height: 13px;
+  fill: var(--hb-together);
+}
+
+.hb-soon {
+  text-align: center;
+}
+
+.hb-soon-bear {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+/* ── Day sheet ──────────────────────────────────────── */
+
+#habits-day-title {
+  font-size: 1.4rem;
+}
+
+.hb-sheet-group + .hb-sheet-group {
+  margin-top: 14px;
+}
+
+.hb-group-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+
+.hb-row--sheet + .hb-row--sheet {
+  margin-top: 8px;
+}
+
+/* ── Narrow phones ──────────────────────────────────── */
+
+@media (max-width: 360px) {
+  .hb-wrap {
+    padding: 12px;
+  }
+
+  .hb-month {
+    padding: 14px 8px 12px;
+  }
+
+  .hb-cal {
+    gap: 3px;
+  }
+
+  .hb-row-label {
+    font-size: 0.88rem;
+  }
+}

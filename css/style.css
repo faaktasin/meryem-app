@@ -302,7 +302,7 @@ button, input, textarea {
   -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid var(--rose-100);
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   align-items: stretch;
 }
 
@@ -320,7 +320,22 @@ button, input, textarea {
   font-weight: 600;
   cursor: pointer;
   height: var(--nav-content-h);
+  /* Six columns: a grid item defaults to min-width:auto and would let a long label push its
+     column wider than 1fr. 0 keeps all six equal; the label is then clipped by nothing because
+     the font steps down below (a 360 px phone has 60 px per column). */
+  min-width: 0;
   transition: color 0.2s, transform 0.15s;
+}
+
+@media (max-width: 360px) {
+  .nav-btn {
+    font-size: 0.62rem;
+  }
+}
+
+/* The check inside the Takip heart is cut out of it in the bar's own ground colour. */
+.nav-check {
+  stroke: var(--paper);
 }
 
 .nav-btn svg {

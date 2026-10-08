@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="css/words.css">
   <link rel="stylesheet" href="css/gate.css">
   <link rel="stylesheet" href="css/birthday.css">
+  <link rel="stylesheet" href="css/habits.css">
 </head>
 <body>
 
@@ -96,6 +97,15 @@
         <div class="todo-list" id="todo-list"></div>
       </div>
 
+    </div>
+  </section>
+
+  <!-- Takip (habit tracker) -->
+  <section id="habits-view" class="view">
+    <div id="habits-root" class="hb-wrap">
+      <div id="hb-top"></div>
+      <div id="hb-today"></div>
+      <div id="hb-month"></div>
     </div>
   </section>
 
@@ -215,6 +225,17 @@
     </div>
   </div>
 
+  <!-- Takip day sheet (opened with openModal from js/habits.js) -->
+  <div class="modal-overlay" id="habits-day-modal" role="dialog" aria-modal="true" aria-labelledby="habits-day-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="habits-day-title"></h2>
+        <button class="modal-close" data-close-modal="habits-day-modal" aria-label="Kapat">&times;</button>
+      </div>
+      <div id="habits-day-content"></div>
+    </div>
+  </div>
+
   <!-- Fixed bottom navigation — inside app-content so it is hidden with the rest of the app
        while signed out (position:fixed makes its DOM placement irrelevant to layout, but a
        sibling of app-content stayed visually covered-yet-present under the login screen, and so
@@ -223,6 +244,10 @@
     <button class="nav-btn is-active" data-tab="today-view">
       <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
       <span>Bugün</span>
+    </button>
+    <button class="nav-btn" data-tab="habits-view">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/><path class="nav-check" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M8 12.3l2.7 2.7 5.2-5.6"/></svg>
+      <span>Takip</span>
     </button>
     <button class="nav-btn" data-tab="words-view">
       <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>

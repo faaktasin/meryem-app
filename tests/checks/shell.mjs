@@ -1,7 +1,7 @@
 /**
  * meryem-app tests — checks/shell.mjs
  *
- * Covers the foundation this build delivers: auth screens, header/bottom-nav shell, the five
+ * Covers the foundation this build delivers: auth screens, header/bottom-nav shell, the six
  * views and the memories gallery/map subview switch, the gate-replay button's default hidden
  * state, no console errors across a sign-in + tab tour, the three fonts, the floating-hearts fx
  * layer under normal and reduced motion, and the appNow()/isPreviewMode() clock contract.
@@ -12,8 +12,11 @@ import { openApp } from "../harness.mjs";
 
 export const name = "shell";
 
+const NAV_COLUMNS = "shell: every nav label sits inside its own column - six equal columns on one row, idle and selected, at 360 and 390 px";
+
 const TABS = [
   { id: "today-view", tab: "today-view" },
+  { id: "habits-view", tab: "habits-view" },
   { id: "words-view", tab: "words-view" },
   { id: "memories-view", tab: "memories-view" },
   { id: "dates-view", tab: "dates-view" },
@@ -485,6 +488,8 @@ export async function run({ page, check, root }) {
     { name: "390x844 idle", viewport: { width: 390, height: 844 }, select: false },
     { name: "390x844 selected", viewport: { width: 390, height: 844 }, select: true },
     { name: "412x915 idle", viewport: { width: 412, height: 915 }, select: false },
+    { name: "360x780 idle", viewport: { width: 360, height: 780 }, select: false },
+    { name: "360x780 selected", viewport: { width: 360, height: 780 }, select: true },
   ];
   const giftResults = [];
   for (const c of giftCases) {
@@ -537,6 +542,45 @@ export async function run({ page, check, root }) {
     ok: giftResults.every((r) => r.startsPink && Math.abs(r.dx) <= 1.5 && Math.abs(r.dy) <= 1.5 && r.w >= 44 && r.h >= 44),
     detail: JSON.stringify(giftResults),
   }));
+
+  // Six columns in the bottom bar: every label must sit inside its own column, all six buttons on
+  // one row and equal in width, with each tab idle and selected in turn, on the narrowest phone
+  // (360 px: 60 px a column) and the usual one. Read from the laid-out boxes: a label's box is as
+  // wide as its text, so a label that does not fit shows up as a box wider than its column.
+  const navGeom = [];
+  for (const width of [360, 390]) {
+    await openApp(page, { signedIn: true, viewport: { width, height: 780 } });
+    await page.eval(() => new Promise((r) => setTimeout(r, 200)));
+    for (const sel of [null, ...TABS.map((t) => t.tab)]) {
+      if (sel) await page.tap(`.nav-btn[data-tab="${sel}"]`);
+      await page.eval(() => new Promise((r) => setTimeout(r, 120)));
+      const g = await page.eval(() => {
+        var navBox = document.querySelector(".bottom-nav").getBoundingClientRect();
+        var btns = Array.prototype.slice.call(document.querySelectorAll(".bottom-nav .nav-btn"));
+        return {
+          navWidth: navBox.width,
+          cols: btns.map((b) => {
+            var r = b.getBoundingClientRect();
+            var l = b.querySelector(":scope > span:last-child").getBoundingClientRect();
+            return { text: b.querySelector(":scope > span:last-child").textContent, left: r.left, right: r.right, top: r.top, width: r.width, labelLeft: l.left, labelRight: l.right, labelWidth: l.width };
+          }),
+        };
+      });
+      const colW = g.navWidth / 6;
+      const bad = [];
+      if (g.cols.length !== 6) bad.push(`${g.cols.length} buttons`);
+      g.cols.forEach((c, i) => {
+        if (Math.abs(c.width - colW) > 0.6) bad.push(`${c.text} column ${c.width.toFixed(1)} px, want ${colW.toFixed(1)}`);
+        if (Math.abs(c.top - g.cols[0].top) > 0.6) bad.push(`${c.text} on another row (top ${c.top.toFixed(1)})`);
+        if (c.labelLeft < c.left - 0.01 || c.labelRight > c.right + 0.01) bad.push(`${c.text} label ${c.labelLeft.toFixed(1)}..${c.labelRight.toFixed(1)} leaves its column ${c.left.toFixed(1)}..${c.right.toFixed(1)}`);
+      });
+      navGeom.push({ width, selected: sel || "none", bad });
+    }
+  }
+  await check(NAV_COLUMNS, () => {
+    const failing = navGeom.filter((n) => n.bad.length);
+    return { ok: failing.length === 0 && navGeom.length === 14, detail: failing.length ? JSON.stringify(failing.slice(0, 2)) : `${navGeom.length} nav states at 360 and 390 px` };
+  });
 
   // A phone in dark mode may repaint the pastel page dark (Chrome's auto dark theme, Samsung
   // Internet's website dark theme). `color-scheme: only light`, in the head meta and on <html>,
@@ -697,6 +741,13 @@ export const mutants = [
     expect: "shell: body text reaches 4.5:1 contrast (message label, todo/gallery empty state, nav labels, countdown unit label, auth subtitle, inactive segment button)",
   },
   {
+    id: "shell-nav-grid-back-to-five-columns",
+    file: "css/style.css",
+    find: "  grid-template-columns: repeat(6, 1fr);\n  align-items: stretch;",
+    replace: "  grid-template-columns: repeat(5, 1fr);\n  align-items: stretch;",
+    expect: NAV_COLUMNS,
+  },
+  {
     id: "shell-local-ref-missing",
     file: "index.html",
     find: 'src="js/gate.js"',
@@ -734,6 +785,7 @@ export const shots = [
       await page.eval(() => new Promise((r) => setTimeout(r, 500)));
     },
   },
+  { name: "nav-360", open: { signedIn: true, viewport: { width: 360, height: 780 } }, act: async (page) => { await page.tap('.nav-btn[data-tab="dates-view"]'); } },
   { name: "dates", open: { signedIn: true }, act: async (page) => { await page.tap('.nav-btn[data-tab="dates-view"]'); } },
   { name: "birthday-empty", open: { signedIn: true }, act: async (page) => { await page.tap('.nav-btn[data-tab="birthday-view"]'); } },
   { name: "bears", open: { signedIn: true, page: "tests/fixtures/bears.html" } },
