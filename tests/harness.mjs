@@ -610,8 +610,8 @@ export async function closeServer() {
 
 /**
  * Opens the app in `page`, fully configured for a deterministic test:
- *   opts.now         ISO local datetime string; injects a Date offset (never freezes) so
- *                     appNow() lands there and keeps ticking. Omit for real time.
+ *   opts.now         ISO local datetime string (default 2026-09-20T10:00:00, see below); injects a Date offset (never freezes) so
+ *                     appNow() lands there and keeps ticking.
  *   opts.query        query string appended to the app URL, e.g. '?onizleme=dogumgunu'
  *   opts.storage      object seeded into localStorage before load (via a same-origin blank page)
  *   opts.keepStorage  true: reload without clearing storage first ("next open" tests)
@@ -631,7 +631,12 @@ export async function closeServer() {
  */
 export async function openApp(page, opts = {}) {
   const {
-    now = null,
+    /* The default clock is a FIXED date (Sunday 20 Sep 2026, 10:00 Europe/Istanbul), before the
+       birthday gate on 4 Oct. On the real clock the gate auto-opens in every fresh profile once
+       that date passes and swallows the taps of the memories, shell, today and words checks (18
+       FAILs measured on 2026-10-08). A green suite must never depend on the day it is run; a check
+       that needs "after the gate" or a Takip date (they start 2026-10-01) passes its own `now`. */
+    now = "2026-09-20T10:00:00",
     query = "",
     storage = null,
     keepStorage = false,
