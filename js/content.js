@@ -478,7 +478,7 @@ var CONTENT = {
     noData: '—',
     monthsShort: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'],
     stats: {
-      lead: 'Bu ay önde: {name} (+{n} puan)',
+      lead: 'Önde: {name} (+{n} puan)',
       tie: 'Başa baş 💞',
       jointDays: '{n} gün ikimiz de',
       streakDays: '{n} gün',
@@ -486,8 +486,8 @@ var CONTENT = {
       streakBest: 'en uzun seri'
     },
     daily: {
-      title: 'Günlük gidiş',
-      aria: 'Günlük gidiş, ayın her günü için yüzdeler. Bu ay Meryem {m}, Furkan {f}'
+      title: 'Gün gün',
+      aria: 'Gün gün, ayın her günü için yüzdeler. Bu ay Meryem {m}, Furkan {f}'
     },
     bars: { title: 'Görev görev' },
     mom: {
@@ -501,9 +501,9 @@ var CONTENT = {
       teaser: 'Ay bitince karnemiz burada 🐻',
       closing: [
         'Bir ay daha, birlikte 💞',
-        'Küçük adımlar, güzel bir ay oldu 🌷',
+        'Küçük adımlarla bir ay daha 🌷',
         'Yan yana gitmek en güzeli 🐻',
-        'Gelecek ay da elele 🤍',
+        'Gelecek ay da el ele 🤍',
         'Birlikte olunca her şey daha tatlı 🍯',
         'Bu ayı güzelce kapattık, yenisi için hazırız ✨'
       ]
@@ -512,13 +512,13 @@ var CONTENT = {
       title: 'Geçmiş',
       empty: 'Bu ayda henüz işaret yok',
       undone: 'geri aldı',
-      pending: 'bekliyor',
+      pending: 'kaydediliyor',
       box: 'kutu: {name}',
       all: 'Tümünü gör ({n})',
       less: 'Daha az göster'
     },
     sheetEmpty: 'Bu gün için kutu yok',
-    saveError: 'Kaydedemedik, bir daha dokun\u00a0💗',
+    saveError: 'Kaydedemedik, bir daha dokunalım\u00a0💗',
     dow: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'],
     days: ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'],
     months: ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'],
