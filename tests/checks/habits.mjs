@@ -78,6 +78,27 @@ async function open(page, now, extra = {}) {
   await until(() => page.eval(() => !!(window.habitsCore && window.habitsCore.state().month)));
 }
 
+/** Opens the app on the Takip tab. `me` seeds the stored identity (null = a fresh device). */
+async function openTakip(page, now, me, extra = {}) {
+  const y = now.slice(0, 4);
+  const storage = { "meryem-gate-played-year": y, "meryem-birthday-seen-year": y };
+  if (me) storage["meryem-habits-me"] = me;
+  await openApp(page, { now, storage, ...extra });
+  await until(() => page.eval(() => !!(window.habitsCore && window.habitsCore.state().month)));
+  await sleep(150);
+  await page.tap('.nav-btn[data-tab="habits-view"]');
+  await page.settle();
+  await sleep(200);
+}
+
+/** Scrolls the element to the middle of the screen, then taps it for real. */
+async function tapIn(page, sel) {
+  await page.eval((s) => document.querySelector(s).scrollIntoView({ block: "center" }), sel);
+  await sleep(60);
+  await page.tap(sel);
+  await sleep(250);
+}
+
 const stateOf = (page) => page.eval(() => window.habitsCore.state());
 const listeners = (page) => page.eval(() => window.__stubListeners());
 
@@ -103,6 +124,22 @@ const N_JOINT = "habits: Birlikte counts a joint item-day only when both ticked"
 const N_PERSON = "habits: person percentages are per person (15 Oct)";
 const N_STREAK = "habits: the current streak runs across the month boundary (30 Oct to 2 Nov)";
 const N_APPNOW = "habits: the tracked month follows appNow() (rehearsal clock), not the raw Date";
+const N_ME = "habits: Ben kimim? appears once on a fresh device, is remembered and can be changed";
+const N_LOCK = "habits: your own boxes are tappable, the partner's are locked and a tap on them writes nothing";
+const N_TICK = "habits: a tick writes the month document and a log entry with by, an untick writes false";
+const N_HEART = "habits: the joint heart lights only when both ticked (today's panel and the calendar)";
+const N_WEEKEND = "habits: Erken çıkış is absent on a Saturday in today's panel and undue in the day sheet";
+const N_NAV = "habits: the navigator lists exactly the months from 2026-10 to the current and none after";
+const N_FUTURE_DAY = "habits: a future day is dimmed and not tappable, today and past days open the day sheet";
+const N_SHEET = "habits: a past day's sheet groups Birlikte / Meryem / Furkan and its edit lands in that day's month document";
+const N_PASTMONTH = "habits: a past month can be browsed and a tick there lands in that month's document and log";
+const N_LEAK = "habits: switching months back and forth leaves no listener behind";
+const N_PREVSUB = "habits: the previous month is subscribed too, so a streak crosses the 1st without any card";
+const N_SOON = "habits: before the start date the page says 1 Ekim'de başlıyoruz and shows no box";
+const N_RINGS = "habits: calendar rings follow each person's day percentage and the heart marks the joint days";
+const N_CONTRAST = "habits: the words on the tinted rows and the calendar reach 4.5:1";
+const N_ROLL = "habits: midnight with the Takip tab open moves today's panel to the new day and month";
+const N_ERR = "habits: no page errors on the Takip screens";
 const N_LOG = "habits: subscribeHabitLog lists newest first and keeps an entry whose server time is still empty";
 
 export async function run({ page, check, root }) {
@@ -514,7 +551,8 @@ export async function run({ page, check, root }) {
   await check(N_APPNOW, async () => {
     const st = await stateOf(page);
     const subs = (await listeners(page)).filter((l) => l.startsWith(MONTHS));
-    return { ok: st.month === "2027-10" && st.day === "2027-10-04" && JSON.stringify(subs) === JSON.stringify([`${MONTHS}/2027-10`]), detail: JSON.stringify({ month: st.month, day: st.day, subs }) };
+    // Stage 3 also subscribes the month before (a streak crosses the 1st): 2027-09 beside 2027-10.
+    return { ok: st.month === "2027-10" && st.day === "2027-10-04" && JSON.stringify(subs.slice().sort()) === JSON.stringify([`${MONTHS}/2027-09`, `${MONTHS}/2027-10`]), detail: JSON.stringify({ month: st.month, day: st.day, subs }) };
   });
 
   // ── 12. the day boundary with the app open ────────────────────────────────────────────────
@@ -548,8 +586,8 @@ export async function run({ page, check, root }) {
     detail: JSON.stringify({ evs, after: { day: after.day, month: after.month } }),
   }));
 
-  await check("habits: at the month change the subscription moves to the new month and its data replaces the old", () => ({
-    ok: JSON.stringify(lsBefore) === JSON.stringify([`${MONTHS}/2026-10`]) && JSON.stringify(lsAfter) === JSON.stringify([`${MONTHS}/2026-11`]) &&
+  await check("habits: at the month change the subscription moves to the new month (keeping the month before it) and its data replaces the old", () => ({
+    ok: JSON.stringify(lsBefore) === JSON.stringify([`${MONTHS}/2026-10`]) && JSON.stringify(lsAfter.slice().sort()) === JSON.stringify([`${MONTHS}/2026-10`, `${MONTHS}/2026-11`]) &&
       JSON.stringify(before.data) === JSON.stringify(OCT) && JSON.stringify(after.data) === JSON.stringify(NOV),
     detail: JSON.stringify({ lsBefore, lsAfter }),
   }));
@@ -582,7 +620,344 @@ export async function run({ page, check, root }) {
     ok: dayFired && evs3.length === 1 && evs3[0].day === "2026-10-15" && evs3[0].month === "2026-10" && JSON.stringify(ls3) === JSON.stringify([`${MONTHS}/2026-10`]),
     detail: JSON.stringify({ evs3, ls3 }),
   }));
+
+  // ══ Stage 3: the screens ═══════════════════════════════════════════════════════════════════
+  // Fixed clocks again. Calendar facts: 2026-10-15 is a Thursday, 10-17 a Saturday, 10-12 a Monday;
+  // 2027-02-01 is a Monday (no blank cells before it), 2026-10-01 a Thursday (3 blank cells).
+  const NOW3 = "2026-10-15T12:00:00";
+  const slot = (item, person) => `#hb-today .hb-heart[data-item="${item}"][data-person="${person}"]`;
+  const titleOf = (p) => p.eval(() => (document.querySelector("#hb-month .hb-nav-title") || {}).textContent || null);
+
+  // ── identity ──────────────────────────────────────────────────────────────────────────────
+  await openTakip(page, NOW3, null, { habits: { months: { "2026-10": M1 } } });
+  await check(N_ME, async () => {
+    const a = await page.eval(() => ({
+      who: [...document.querySelectorAll('#hb-top [data-act="choose"]')].map((b) => b.dataset.who),
+      bear: !!document.querySelector("#hb-top .hb-choose svg"),
+      hearts: document.querySelectorAll("#hb-today .hb-heart").length,
+      days: document.querySelectorAll("#hb-month .hb-day").length,
+      stored: localStorage.getItem("meryem-habits-me"),
+    }));
+    await tapIn(page, '#hb-top [data-who="furkan"]');
+    const b = await page.eval(() => ({
+      stored: localStorage.getItem("meryem-habits-me"),
+      line: (document.querySelector("#hb-top .hb-me") || {}).textContent || null,
+      chooser: !!document.querySelector("#hb-top .hb-choose"),
+      hearts: document.querySelectorAll("#hb-today .hb-heart").length,
+    }));
+    await openTakip(page, NOW3, null, { keepStorage: true, habits: { months: { "2026-10": M1 } } });
+    const c = await page.eval(() => ({ chooser: !!document.querySelector("#hb-top .hb-choose"), line: (document.querySelector("#hb-top .hb-me") || {}).textContent || null }));
+    await tapIn(page, '#hb-top [data-act="change"]');
+    const d = await page.eval(() => ({ chooser: !!document.querySelector("#hb-top .hb-choose"), cancel: !!document.querySelector('#hb-top [data-act="cancel-choose"]'), hearts: document.querySelectorAll("#hb-today .hb-heart").length }));
+    await tapIn(page, '#hb-top [data-who="meryem"]');
+    const e = await page.eval(() => ({ stored: localStorage.getItem("meryem-habits-me"), line: (document.querySelector("#hb-top .hb-me") || {}).textContent || null }));
+    const ok =
+      JSON.stringify(a.who) === JSON.stringify(["meryem", "furkan"]) && a.bear && a.hearts === 0 && a.days === 0 && a.stored === null &&
+      b.stored === "furkan" && /Furkan/.test(b.line) && !b.chooser && b.hearts > 0 &&
+      !c.chooser && /Furkan/.test(c.line) &&
+      d.chooser && d.cancel && d.hearts === 0 &&
+      e.stored === "meryem" && /Meryem/.test(e.line);
+    return { ok, detail: JSON.stringify({ a, b, c, d, e }) };
+  });
+
+  // ── own boxes tappable, partner's locked ──────────────────────────────────────────────────
+  await openTakip(page, NOW3, "meryem", { habits: { months: {} } });
+  await check(N_LOCK, async () => {
+    const info = await page.eval(() => {
+      const q = (i, p) => document.querySelector(`#hb-today .hb-heart[data-item="${i}"][data-person="${p}"]`);
+      const own = q("spor", "meryem");
+      const other = q("spor", "furkan");
+      const pro = q("projeler", "furkan");
+      return {
+        own: own.getAttribute("aria-disabled"), ownLock: !!own.querySelector(".hb-lock"),
+        other: other.getAttribute("aria-disabled"), otherLock: !!other.querySelector(".hb-lock"),
+        pro: pro.getAttribute("aria-disabled"), arapca: q("arapca", "meryem").getAttribute("aria-disabled"),
+      };
+    });
+    const before = JSON.stringify(await page.stubDb());
+    await tapIn(page, slot("spor", "furkan"));
+    await tapIn(page, slot("projeler", "furkan"));
+    await sleep(300);
+    const after = JSON.stringify(await page.stubDb());
+    const onAfter = await page.eval(() => document.querySelectorAll("#hb-today .hb-heart.is-on").length);
+    const ok = info.own === null && !info.ownLock && info.other === "true" && info.otherLock && info.pro === "true" && info.arapca === null && before === after && onAfter === 0;
+    return { ok, detail: JSON.stringify({ info, unchanged: before === after, onAfter, db: after.slice(0, 200) }) };
+  });
+
+  // ── tick and untick: the month document, the log, the snapshot ────────────────────────────
+  await check(N_TICK, async () => {
+    await tapIn(page, slot("spor", "meryem"));
+    const on = await until(() => page.eval((s) => { const b = document.querySelector(s); return b.classList.contains("is-on") && b.getAttribute("aria-pressed") === "true"; }, slot("spor", "meryem")));
+    let db = await page.stubDb();
+    const doc = (db[MONTHS] || {})["2026-10"];
+    let log = Object.values(db[LOG] || {});
+    const e1 = log[0] || {};
+    await tapIn(page, slot("spor", "meryem"));
+    const off = await until(() => page.eval((s) => !document.querySelector(s).classList.contains("is-on"), slot("spor", "meryem")));
+    db = await page.stubDb();
+    const doc2 = (db[MONTHS] || {})["2026-10"];
+    log = Object.values(db[LOG] || {});
+    const values = log.map((x) => x.value).sort();
+    const local = Date.parse(e1.atLocal);
+    const ok =
+      on && off && doc && doc.days["2026-10-15"].spor.meryem === true && !("furkan" in doc.days["2026-10-15"].spor) &&
+      e1.by === "meryem" && e1.person === "meryem" && e1.item === "spor" && e1.value === true && e1.month === "2026-10" && e1.day === "2026-10-15" &&
+      typeof e1.atLocal === "string" && Math.abs(local - istanbulEpoch(2026, 10, 15, 12, 0)) < 120000 &&
+      doc2.days["2026-10-15"].spor.meryem === false && log.length === 2 && JSON.stringify(values) === JSON.stringify([false, true]) && log.every((x) => x.by === "meryem");
+    return { ok, detail: JSON.stringify({ on, off, doc, doc2, log }).slice(0, 500) };
+  });
+
+  // ── the joint heart ───────────────────────────────────────────────────────────────────────
+  // 12: spor+kuran both -> a joint day. 13: spor both, kuran only Furkan -> not. 14: spor only
+  // Meryem. 15: spor only Furkan (not both), kuran both. Meryem ticking her spor on the 15th
+  // makes the 15th joint as well.
+  const JH = { days: {
+    "2026-10-12": { spor: { furkan: true, meryem: true }, kuran: { furkan: true, meryem: true } },
+    "2026-10-13": { spor: { furkan: true, meryem: true }, kuran: { furkan: true } },
+    "2026-10-14": { spor: { meryem: true } },
+    "2026-10-15": { spor: { furkan: true }, kuran: { furkan: true, meryem: true } },
+  } };
+  await openTakip(page, NOW3, "meryem", { habits: { months: { "2026-10": JH } } });
+  await check(N_HEART, async () => {
+    const read = () => page.eval(() => ({
+      spor: document.querySelector('#hb-today .hb-row[data-item="spor"] .hb-joint').classList.contains("is-on"),
+      kuran: document.querySelector('#hb-today .hb-row[data-item="kuran"] .hb-joint').classList.contains("is-on"),
+      joint: [...document.querySelectorAll("#hb-month .hb-day.is-joint")].map((d) => d.dataset.day),
+      hearts: document.querySelectorAll("#hb-month .hb-day-heart").length,
+    }));
+    const a = await read();
+    await tapIn(page, slot("spor", "meryem"));
+    await until(() => page.eval(() => document.querySelector('#hb-today .hb-row[data-item="spor"] .hb-joint').classList.contains("is-on")));
+    const b = await read();
+    const ok =
+      a.spor === false && a.kuran === true && JSON.stringify(a.joint) === JSON.stringify(["2026-10-12"]) && a.hearts === 1 &&
+      b.spor === true && b.kuran === true && JSON.stringify(b.joint) === JSON.stringify(["2026-10-12", "2026-10-15"]) && b.hearts === 2;
+    return { ok, detail: JSON.stringify({ a, b }) };
+  });
+
+  // ── Erken çıkış on a weekend ──────────────────────────────────────────────────────────────
+  await openTakip(page, "2026-10-17T12:00:00", "furkan", { habits: { months: {} } });
+  await check(N_WEEKEND, async () => {
+    const itemsOf = (root) => page.eval((r) => [...new Set([...document.querySelectorAll(`${r} .hb-heart`)].map((b) => b.dataset.item))], root);
+    const sat = await itemsOf("#hb-today");
+    await tapIn(page, '#hb-month .hb-day[data-day="2026-10-10"]');
+    const satSheet = await itemsOf("#habits-day-modal");
+    await page.eval(() => closeModal("habits-day-modal"));
+    await sleep(200);
+    await tapIn(page, '#hb-month .hb-day[data-day="2026-10-09"]');
+    const friSheet = await itemsOf("#habits-day-modal");
+    await page.eval(() => closeModal("habits-day-modal"));
+    const ok =
+      JSON.stringify(sat) === JSON.stringify(["spor", "kuran", "arapca", "cicek", "projeler"]) &&
+      !satSheet.includes("erken") && satSheet.length === 5 && friSheet.includes("erken") && friSheet.length === 6;
+    return { ok, detail: JSON.stringify({ sat, satSheet, friSheet }) };
+  });
+
+  // ── the navigator ─────────────────────────────────────────────────────────────────────────
+  await openTakip(page, "2027-02-10T12:00:00", "meryem", { habits: { months: {} } });
+  await check(N_NAV, async () => {
+    const nextOff = () => page.eval(() => document.querySelector('#hb-month [data-act="next"]').disabled);
+    const prevOff = () => page.eval(() => document.querySelector('#hb-month [data-act="prev"]').disabled);
+    const first = { title: await titleOf(page), nextOff: await nextOff(), cells: await page.eval(() => ({ blank: document.querySelectorAll("#hb-month .hb-day.is-blank").length, days: document.querySelectorAll("#hb-month .hb-day:not(.is-blank)").length })) };
+    await page.tap('#hb-month [data-act="next"]'); // disabled: nothing happens
+    await sleep(150);
+    const stay = await titleOf(page);
+    const titles = [];
+    const months = [];
+    for (let i = 0; i < 8; i++) {
+      titles.push(await titleOf(page));
+      months.push(await page.eval(() => document.querySelector("#hb-month .hb-nav").dataset.month));
+      if (await prevOff()) break;
+      await tapIn(page, '#hb-month [data-act="prev"]');
+    }
+    const last = { prevOff: await prevOff(), nextOff: await nextOff(), cells: await page.eval(() => ({ blank: document.querySelectorAll("#hb-month .hb-day.is-blank").length, days: document.querySelectorAll("#hb-month .hb-day:not(.is-blank)").length })) };
+    const ok =
+      first.title === "Şubat 2027" && first.nextOff === true && stay === "Şubat 2027" && first.cells.blank === 0 && first.cells.days === 28 &&
+      JSON.stringify(titles) === JSON.stringify(["Şubat 2027", "Ocak 2027", "Aralık 2026", "Kasım 2026", "Ekim 2026"]) &&
+      JSON.stringify(months) === JSON.stringify(["2027-02", "2027-01", "2026-12", "2026-11", "2026-10"]) &&
+      last.prevOff === true && last.nextOff === false && last.cells.blank === 3 && last.cells.days === 31;
+    return { ok, detail: JSON.stringify({ first, stay, titles, last }) };
+  });
+
+  // ── future days, today, the sheet ─────────────────────────────────────────────────────────
+  await openTakip(page, NOW3, "meryem", { habits: { months: {} } });
+  await check(N_FUTURE_DAY, async () => {
+    const info = await page.eval(() => {
+      const d = (k) => document.querySelector(`#hb-month .hb-day[data-day="${k}"]`);
+      const future = [];
+      for (let n = 16; n <= 31; n++) { const el = d("2026-10-" + n); future.push(el.tagName + ":" + el.classList.contains("is-future") + ":" + el.getAttribute("aria-disabled") + ":" + el.querySelectorAll(".hb-ring").length); }
+      return { future, past: d("2026-10-01").tagName, today: d("2026-10-15").tagName, todayMark: d("2026-10-15").classList.contains("is-today"), marks: document.querySelectorAll("#hb-month .hb-day.is-today").length };
+    });
+    await tapIn(page, '#hb-month .hb-day[data-day="2026-10-16"]');
+    const closed = await page.eval(() => !document.getElementById("habits-day-modal").classList.contains("open"));
+    await tapIn(page, '#hb-month .hb-day[data-day="2026-10-15"]');
+    const opened = await page.eval(() => ({ open: document.getElementById("habits-day-modal").classList.contains("open"), title: document.getElementById("habits-day-title").textContent }));
+    await page.eval(() => closeModal("habits-day-modal"));
+    const ok =
+      info.future.every((f) => f === "DIV:true:true:0") && info.past === "BUTTON" && info.today === "BUTTON" && info.todayMark && info.marks === 1 &&
+      closed && opened.open && opened.title === "15 Ekim Perşembe";
+    return { ok, detail: JSON.stringify({ info, closed, opened }) };
+  });
+
+  // ── the day sheet of a past day ───────────────────────────────────────────────────────────
+  await openTakip(page, NOW3, "meryem", { habits: { months: {} } });
+  await check(N_SHEET, async () => {
+    await tapIn(page, '#hb-month .hb-day[data-day="2026-10-12"]');
+    const head = await page.eval(() => ({
+      title: document.getElementById("habits-day-title").textContent,
+      groups: [...document.querySelectorAll("#habits-day-modal .hb-group-title")].map((g) => g.textContent),
+      rows: [...document.querySelectorAll("#habits-day-modal .hb-row")].map((r) => r.dataset.item),
+      lockedPartner: document.querySelector('#habits-day-modal [data-item="projeler"][data-person="furkan"]').getAttribute("aria-disabled"),
+    }));
+    const before = JSON.stringify(await page.stubDb());
+    await tapIn(page, '#habits-day-modal [data-item="projeler"][data-person="furkan"]');
+    await sleep(200);
+    const untouched = before === JSON.stringify(await page.stubDb());
+    await tapIn(page, '#habits-day-modal [data-item="arapca"][data-person="meryem"]');
+    const on = await until(() => page.eval(() => document.querySelector('#habits-day-modal [data-item="arapca"][data-person="meryem"]').classList.contains("is-on")));
+    const db = await page.stubDb();
+    const doc = (db[MONTHS] || {})["2026-10"];
+    const log = Object.values(db[LOG] || {});
+    const cell = await page.eval(() => document.querySelector('#hb-month .hb-day[data-day="2026-10-12"]').dataset.pm);
+    await page.eval(() => closeModal("habits-day-modal"));
+    const ok =
+      head.title === "12 Ekim Pazartesi" && JSON.stringify(head.groups) === JSON.stringify(["Birlikte", "Meryem", "Furkan"]) &&
+      JSON.stringify(head.rows) === JSON.stringify(["spor", "kuran", "arapca", "cicek", "projeler", "erken"]) && head.lockedPartner === "true" && untouched &&
+      on && doc.days["2026-10-12"].arapca.meryem === true && !doc.days["2026-10-15"] && log.length === 1 && log[0].day === "2026-10-12" && log[0].month === "2026-10" && log[0].by === "meryem" &&
+      cell === "25";
+    return { ok, detail: JSON.stringify({ head, untouched, on, doc, log, cell }).slice(0, 600) };
+  });
+
+  // ── a past month ──────────────────────────────────────────────────────────────────────────
+  await openTakip(page, "2026-11-10T12:00:00", "meryem", { habits: { months: {} } });
+  await check(N_PASTMONTH, async () => {
+    await tapIn(page, '#hb-month [data-act="prev"]');
+    const title = await titleOf(page);
+    await tapIn(page, '#hb-month .hb-day[data-day="2026-10-20"]');
+    await tapIn(page, '#habits-day-modal [data-item="spor"][data-person="meryem"]');
+    await until(() => page.eval(() => document.querySelector('#habits-day-modal [data-item="spor"][data-person="meryem"]').classList.contains("is-on")));
+    const db = await page.stubDb();
+    const octDoc = (db[MONTHS] || {})["2026-10"];
+    const novDoc = (db[MONTHS] || {})["2026-11"];
+    const log = Object.values(db[LOG] || {});
+    await page.eval(() => closeModal("habits-day-modal"));
+    const ok = title === "Ekim 2026" && octDoc && octDoc.days["2026-10-20"].spor.meryem === true && (!novDoc || !novDoc.days) && log.length === 1 && log[0].month === "2026-10" && log[0].day === "2026-10-20";
+    return { ok, detail: JSON.stringify({ title, octDoc, novDoc, log }).slice(0, 400) };
+  });
+
+  // ── switching months leaks no listener ────────────────────────────────────────────────────
+  await openTakip(page, "2027-01-10T12:00:00", "meryem", { habits: { months: {} } });
+  await check(N_LEAK, async () => {
+    const subs = async () => (await listeners(page)).filter((l) => l.startsWith(MONTHS)).sort();
+    const base = await subs();
+    let max = base.length;
+    const seen = [];
+    for (let round = 0; round < 3; round++) {
+      for (let i = 0; i < 3; i++) { await tapIn(page, '#hb-month [data-act="prev"]'); const s = await subs(); max = Math.max(max, s.length); seen.push(s.length); }
+      for (let i = 0; i < 3; i++) { await tapIn(page, '#hb-month [data-act="next"]'); const s = await subs(); max = Math.max(max, s.length); seen.push(s.length); }
+    }
+    const end = await subs();
+    const ok = JSON.stringify(base) === JSON.stringify([`${MONTHS}/2026-12`, `${MONTHS}/2027-01`]) && JSON.stringify(end) === JSON.stringify(base) && max <= 4;
+    return { ok, detail: JSON.stringify({ base, end, max, seen: seen.join(",") }) };
+  });
+
+  // ── the previous month is subscribed (a streak crosses the 1st), without any card ─────────
+  await openTakip(page, "2026-11-02T10:00:00", "furkan", { habits: { months: { "2026-10": octS, "2026-11": novFull } } });
+  await check(N_PREVSUB, async () => {
+    await until(() => page.eval(() => !!window.habitsCore.state().monthsData["2026-10"]));
+    const st = await stateOf(page);
+    const subs = (await listeners(page)).filter((l) => l.startsWith(MONTHS)).sort();
+    const streak = await page.eval(() => window.habitsCore.currentStreak("furkan", window.habitsCore.state().monthsData, new Date(2026, 10, 2)));
+    const ok = Object.keys(st.monthsData).sort().join() === "2026-10,2026-11" && JSON.stringify(subs) === JSON.stringify([`${MONTHS}/2026-10`, `${MONTHS}/2026-11`]) && streak === 4;
+    return { ok, detail: JSON.stringify({ months: Object.keys(st.monthsData), subs, streak }) };
+  });
+
+  // ── before the start, and the rings ───────────────────────────────────────────────────────
+  await openTakip(page, "2026-09-20T10:00:00", "meryem", { habits: { months: {} } });
+  await check(N_SOON, async () => {
+    const info = await page.eval(() => ({ text: document.getElementById("hb-month").textContent, hearts: document.querySelectorAll("#habits-root .hb-heart").length, days: document.querySelectorAll("#habits-root .hb-day").length, today: document.getElementById("hb-today").children.length }));
+    return { ok: /1 Ekim'de başlıyoruz/.test(info.text) && info.hearts === 0 && info.days === 0 && info.today === 0, detail: JSON.stringify(info) };
+  });
+
+  await openTakip(page, NOW3, "meryem", { habits: { months: { "2026-10": M1 } } });
+  await check(N_RINGS, async () => {
+    const info = await page.eval(() => {
+      const d = (k) => document.querySelector(`#hb-month .hb-day[data-day="${k}"]`);
+      const fill = (k, p) => { const c = d(k).querySelector(`.hb-p-${p} .hb-ring-fill`); return c ? parseFloat(c.getAttribute("stroke-dasharray")) : null; };
+      return {
+        d6: [d("2026-10-06").dataset.pm, d("2026-10-06").dataset.pf, fill("2026-10-06", "meryem"), fill("2026-10-06", "furkan")],
+        d11: [d("2026-10-11").dataset.pm, d("2026-10-11").dataset.pf],
+        d15: [d("2026-10-15").dataset.pm, d("2026-10-15").dataset.pf],
+        joint: [...document.querySelectorAll("#hb-month .hb-day.is-joint")].map((x) => x.dataset.day),
+      };
+    });
+    const len = 2 * Math.PI * 7.5;
+    const wantJoint = range(1, 10).map((n) => `2026-10-${pad(n)}`);
+    const ok =
+      info.d6[0] === "75" && info.d6[1] === "75" && Math.abs(info.d6[2] - 0.75 * len) < 0.05 && Math.abs(info.d6[3] - 0.75 * len) < 0.05 &&
+      info.d11[0] === "75" && info.d11[1] === "33" && info.d15[0] === "25" && info.d15[1] === "25" && JSON.stringify(info.joint) === JSON.stringify(wantJoint);
+    return { ok, detail: JSON.stringify(info) };
+  });
+
+  // ── contrast of the words on their grounds ────────────────────────────────────────────────
+  await check(N_CONTRAST, async () => {
+    const got = await page.eval(() => {
+      const pick = (sel) => document.querySelector(sel);
+      const sels = {
+        me: "#hb-top .hb-me", title: "#hb-today .hb-title", date: "#hb-today .hb-today-date", hint: "#hb-today .hb-hint",
+        rowTogether: '#hb-today .hb-row[data-item="spor"] .hb-row-label', nameTogether: '#hb-today .hb-row[data-item="spor"] .hb-box-name',
+        rowMeryem: '#hb-today .hb-row[data-item="arapca"] .hb-row-label', nameMeryem: '#hb-today .hb-row[data-item="arapca"] .hb-box-name',
+        rowFurkan: '#hb-today .hb-row[data-item="projeler"] .hb-row-label', nameFurkan: '#hb-today .hb-row[data-item="projeler"] .hb-box-name',
+        navTitle: "#hb-month .hb-nav-title", dow: "#hb-month .hb-dow", dayN: '#hb-month .hb-day[data-day="2026-10-06"] .hb-day-n',
+        todayN: '#hb-month .hb-day.is-today .hb-day-n', futureN: '#hb-month .hb-day.is-future .hb-day-n', legend: "#hb-month .hb-leg",
+      };
+      const out = {};
+      for (const k in sels) out[k] = +window.__app.readable(pick(sels[k])).toFixed(2);
+      return out;
+    });
+    const low = Object.entries(got).filter(([, v]) => v < 4.5);
+    return { ok: low.length === 0, detail: low.length ? `below 4.5: ${JSON.stringify(low)}` : `min ${Math.min(...Object.values(got))}` };
+  });
+
+  // ── the day rolls over with the tab open ──────────────────────────────────────────────────
+  const panelDays = (p) => p.eval(() => [...new Set([...document.querySelectorAll("#hb-today .hb-heart")].map((b) => b.dataset.day))]);
+  const panelDate = (p) => p.eval(() => (document.querySelector("#hb-today .hb-today-date") || {}).textContent || null);
+  await openTakip(page, "2026-10-31T23:59:30", "furkan", { habits: { months: {} }, habitsTickMs: 300 });
+  await check(N_ROLL, async () => {
+    const before = { days: await panelDays(page), date: await panelDate(page), title: await titleOf(page), items: (await page.eval(() => document.querySelectorAll("#hb-today .hb-row").length)) };
+    await page.advanceClock(60000);
+    await until(async () => (await panelDate(page)) !== before.date);
+    await sleep(300);
+    const after = { days: await panelDays(page), date: await panelDate(page), title: await titleOf(page), today: await page.eval(() => (document.querySelector("#hb-month .hb-day.is-today") || {}).dataset.day), cells: await page.eval(() => document.querySelectorAll("#hb-month .hb-day:not(.is-blank)").length) };
+    const ok =
+      JSON.stringify(before.days) === JSON.stringify(["2026-10-31"]) && /31 Ekim/.test(before.date) && before.title === "Ekim 2026" && before.items === 5 &&
+      JSON.stringify(after.days) === JSON.stringify(["2026-11-01"]) && /1 Kasım/.test(after.date) && after.title === "Kasım 2026" && after.today === "2026-11-01" && after.cells === 30;
+    return { ok, detail: JSON.stringify({ before, after }) };
+  });
+
+  await openTakip(page, "2026-10-14T23:59:30", "meryem", { habits: { months: {} }, habitsTickMs: 300 });
+  await check("habits: a day change inside the month moves today's panel and the outlined calendar day", async () => {
+    const before = { days: await panelDays(page), today: await page.eval(() => document.querySelector("#hb-month .hb-day.is-today").dataset.day) };
+    await page.advanceClock(60000);
+    await until(async () => JSON.stringify(await panelDays(page)) !== JSON.stringify(before.days));
+    await sleep(200);
+    const after = { days: await panelDays(page), today: await page.eval(() => document.querySelector("#hb-month .hb-day.is-today").dataset.day), title: await titleOf(page) };
+    return { ok: before.days[0] === "2026-10-14" && before.today === "2026-10-14" && after.days[0] === "2026-10-15" && after.today === "2026-10-15" && after.title === "Ekim 2026", detail: JSON.stringify({ before, after }) };
+  });
+
+  await check(N_ERR, () => ({ ok: page.errors.length === 0, detail: page.errors.slice(0, 3).join(" | ") }));
 }
+
+// ── screenshot fixtures (tests/shoot.mjs) ───────────────────────────────────────────────────
+const NOW_SHOT = "2026-10-15T12:00:00";
+const SHOT_STORE = { "meryem-gate-played-year": "2026", "meryem-birthday-seen-year": "2026" };
+const SHOT_HABITS = { months: { "2026-10": M1 } };
+const tabAct = async (page) => {
+  await sleep(300);
+  await page.tap('.nav-btn[data-tab="habits-view"]');
+  await page.settle();
+  await sleep(250);
+};
 
 export const mutants = [
   {
@@ -634,4 +1009,78 @@ export const mutants = [
     replace: "    items = items.filter(function (x) { return !!x.at; });\n    items.sort(function (a, b) { return habitLogMillis(b) - habitLogMillis(a); });\n",
     expect: N_LOG,
   },
+  {
+    id: "habits-partner-row-unlocked",
+    file: "js/habits.js",
+    find: "    return person === state.me;\n",
+    replace: "    return true;\n",
+    expect: N_LOCK,
+  },
+  {
+    id: "habits-log-without-by",
+    file: "js/habits.js",
+    find: "by: state.me, ",
+    replace: "",
+    expect: N_TICK,
+  },
+  {
+    id: "habits-future-day-tappable",
+    file: "js/habits.js",
+    find: "    var tappable = key <= todayKey && key >= startKey;\n",
+    replace: "    var tappable = key >= startKey;\n",
+    expect: N_FUTURE_DAY,
+  },
+  {
+    id: "habits-joint-heart-on-single-tick",
+    file: "js/habits.js",
+    find: "    return isTicked(md, key, item, 'furkan') && isTicked(md, key, item, 'meryem');",
+    replace: "    return isTicked(md, key, item, 'furkan') || isTicked(md, key, item, 'meryem');",
+    expect: N_HEART,
+  },
+  {
+    id: "habits-navigator-offers-next-month",
+    file: "js/habits.js",
+    find: "    return monthsFrom(CONFIG.habitsStart, now);\n",
+    replace: "    return monthsFrom(CONFIG.habitsStart, new Date(now.getFullYear(), now.getMonth() + 1, 1));\n",
+    expect: N_NAV,
+  },
+  {
+    id: "habits-previous-month-not-subscribed",
+    file: "js/habits.js",
+    find: "      if (prev >= CONFIG.habitsStart) add(prev);\n",
+    replace: "",
+    expect: N_PREVSUB,
+  },
+  {
+    id: "habits-month-listener-never-closed",
+    file: "js/habits.js",
+    find: "      try { subs[mk](); } catch (e) { /* already gone */ }\n",
+    replace: "",
+    expect: N_LEAK,
+  },
+];
+
+export const shots = [
+  { name: "chooser", open: { now: NOW_SHOT, storage: SHOT_STORE, habits: SHOT_HABITS }, act: tabAct },
+  { name: "today-meryem", open: { now: NOW_SHOT, storage: { ...SHOT_STORE, "meryem-habits-me": "meryem" }, habits: SHOT_HABITS }, act: tabAct },
+  { name: "today-furkan", open: { now: NOW_SHOT, storage: { ...SHOT_STORE, "meryem-habits-me": "furkan" }, habits: SHOT_HABITS }, act: tabAct },
+  {
+    name: "calendar",
+    open: { now: NOW_SHOT, storage: { ...SHOT_STORE, "meryem-habits-me": "meryem" }, habits: SHOT_HABITS },
+    act: async (page) => { await tabAct(page); await page.eval(() => document.getElementById("hb-month").scrollIntoView({ block: "center" })); },
+  },
+  {
+    name: "day-sheet",
+    open: { now: NOW_SHOT, storage: { ...SHOT_STORE, "meryem-habits-me": "meryem" }, habits: SHOT_HABITS },
+    act: async (page) => { await tabAct(page); await tapIn(page, '#hb-month .hb-day[data-day="2026-10-06"]'); await page.settle(); },
+  },
+  {
+    name: "past-month",
+    open: { now: "2026-11-10T12:00:00", storage: { ...SHOT_STORE, "meryem-habits-me": "furkan" }, habits: SHOT_HABITS },
+    act: async (page) => { await tabAct(page); await tapIn(page, '#hb-month [data-act="prev"]'); await page.eval(() => document.getElementById("hb-month").scrollIntoView({ block: "center" })); },
+  },
+  { name: "saturday", open: { now: "2026-10-17T10:00:00", storage: { ...SHOT_STORE, "meryem-habits-me": "furkan" }, habits: SHOT_HABITS }, act: tabAct },
+  { name: "not-started", open: { now: "2026-09-20T10:00:00", storage: { ...SHOT_STORE, "meryem-habits-me": "meryem" } }, act: tabAct },
+  { name: "nav-360", open: { now: NOW_SHOT, storage: { ...SHOT_STORE, "meryem-habits-me": "meryem" }, habits: SHOT_HABITS, viewport: { width: 360, height: 780 } }, act: tabAct },
+  { name: "sheet-360", open: { now: NOW_SHOT, storage: { ...SHOT_STORE, "meryem-habits-me": "furkan" }, habits: SHOT_HABITS, viewport: { width: 360, height: 780 } }, act: async (page) => { await tabAct(page); await tapIn(page, '#hb-month .hb-day[data-day="2026-10-11"]'); await page.settle(); } },
 ];

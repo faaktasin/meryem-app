@@ -453,5 +453,42 @@ var CONTENT = {
       title: 'İyi ki doğdun, iyi ki varsın\u00a0💗',
       button: 'Seni seviyorum, hadi içeri gel\u00a0💕'
     }
+  },
+
+  /* Takip (js/habits.js). Voice: "biz" - the two of us, warm and short. Nothing here says who
+     does what between them; a line names a person only where a box belongs to that person. */
+  habits: {
+    me: {
+      title: 'Ben kimim?',
+      sub: 'Bu telefonda kim işaretleyecek?',
+      line: 'Ben:',
+      change: 'değiştir',
+      cancel: 'Vazgeç'
+    },
+    today: {
+      title: 'Bugün',
+      hint: 'Kendi kalbine dokun, yaptıkça yanar. İkimiz de yapınca ortadaki kalp yanar\u00a0💞'
+    },
+    notStarted: {
+      title: '1 Ekim\'de başlıyoruz',
+      sub: 'O gün kutular burada açılır\u00a0🐻'
+    },
+    groups: { together: 'Birlikte', meryem: 'Meryem', furkan: 'Furkan' },
+    legendJoint: 'ikimiz de',
+    sheetEmpty: 'Bu gün için kutu yok',
+    saveError: 'Kaydedemedik, bir daha dokun\u00a0💗',
+    dow: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'],
+    days: ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'],
+    months: ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'],
+    aria: {
+      done: 'yapıldı',
+      notDone: 'yapılmadı',
+      locked: '{name} kendisi işaretler',
+      jointOn: 'ikimiz de yaptık',
+      jointOff: 'ikimiz de yapınca yanar',
+      prev: 'Önceki ay',
+      next: 'Sonraki ay',
+      day: '{day}: Meryem %{m}, Furkan %{f}'
+    }
   }
 };
