@@ -11,7 +11,7 @@
 import { readdirSync } from "node:fs";
 import { basename, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { APP_ROOT, TESTS_DIR, checker, launch } from "./harness.mjs";
+import { APP_ROOT, TESTS_DIR, assertProfileSeed, checker, launch } from "./harness.mjs";
 
 const args = process.argv.slice(2);
 const has = (flag) => args.includes(flag);
@@ -32,6 +32,7 @@ const { check, results } = checker();
 let browser;
 let harnessError = null;
 try {
+  assertProfileSeed();
   browser = await launch();
   const { page } = browser;
   const ctx = { page, check, root: APP_ROOT };

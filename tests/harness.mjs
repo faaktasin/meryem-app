@@ -534,12 +534,43 @@ class Page {
   }
 }
 
-/** Starts a headless browser with a fresh profile under tests/.tmp/ and returns { page, close }. */
+// A fresh profile makes Chromium call LogonUser(user, ".", "", INTERACTIVE) to see whether the
+// Windows account has a blank password — one FAILED logon per launch
+// (chrome/browser/password_manager/password_manager_util_win.cc). Ten in ten minutes lock the
+// owner's account (it happened on 2026-10-09 during a full mutation run), and every S4U scheduled
+// task fails while it is locked. The check is skipped when Local State says it ran after the
+// password last changed, so both prefs are seeded before launch (the same seed as webprobe and the
+// web-ui-kit harness). The int64 pref is a string, as Chromium stores it.
+export const LOCAL_STATE_SEED = { password_manager: { os_password_blank: false, os_password_last_changed: "9223372036854775807" } };
+
+/** Makes a fresh, seeded browser profile under tests/.tmp/ and returns its path. */
+export function makeProfile() {
+  mkdirSync(TMP_DIR, { recursive: true });
+  const profile = mkdtempSync(join(TMP_DIR, "profile-"));
+  writeFileSync(join(profile, "Local State"), JSON.stringify(LOCAL_STATE_SEED), "utf8");
+  return profile;
+}
+
+/**
+ * Throws unless makeProfile() writes both prefs with the values that skip the logon. test_app.mjs
+ * runs it before the first launch, so a broken seed stops the run without starting a browser.
+ */
+export function assertProfileSeed() {
+  const profile = makeProfile();
+  try {
+    const pm = JSON.parse(readFileSync(join(profile, "Local State"), "utf8")).password_manager ?? {};
+    if (pm.os_password_blank !== false || pm.os_password_last_changed !== "9223372036854775807")
+      throw new Error(`browser profile is not seeded against the Windows logon check: ${JSON.stringify(pm)}`);
+  } finally {
+    rmSync(profile, { recursive: true, force: true });
+  }
+}
+
+/** Starts a headless browser with a fresh, seeded profile under tests/.tmp/ and returns { page, close }. */
 export async function launch() {
   const exe = BROWSERS.find((p) => existsSync(p));
   if (!exe) throw new Error("no Brave or Chrome found; set APP_BROWSER to a Chromium executable");
-  mkdirSync(TMP_DIR, { recursive: true });
-  const profile = mkdtempSync(join(TMP_DIR, "profile-"));
+  const profile = makeProfile();
   const child = spawn(exe, [
     "--headless=new", "--remote-debugging-port=0", `--user-data-dir=${profile}`,
     "--no-first-run", "--no-default-browser-check", "--disable-extensions",
