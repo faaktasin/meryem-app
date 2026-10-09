@@ -735,8 +735,7 @@
   var MOM = { group: 54, bar: 13, gap: 3, base: 92, maxH: 72, h: 118 };
 
   function personClass(p) {
-    if (p === 'together') return 'hb-p-together';
-    return isPerson(p) ? 'hb-p-' + p : 'hb-p-none';
+    return p === 'together' ? 'hb-p-together' : 'hb-p-' + p;
   }
 
   function monthLabel(mk) {
@@ -769,7 +768,6 @@
   }
 
   function dotMark(p) {
-    if (p !== 'together' && !isPerson(p)) return '';
     return '<i class="hb-dot ' + personClass(p) + '"></i>';
   }
 
@@ -1030,9 +1028,9 @@
     var pending = entry.pendingWrites === true;
     /* Two lines: who and what on the first, the time (and the pending pill) on the second, so no
        separator dangles at a line end and the pill never sits alone. */
-    return '<li class="hb-log-row ' + personClass(by) + '" data-id="' + escapeHtml(entry.id || '') + '" data-value="' + (entry.value ? '1' : '0') + '"' + (pending ? ' data-pending="1"' : '') + '>' +
+    return '<li class="hb-log-row ' + (by ? personClass(by) : 'hb-p-none') + '" data-id="' + escapeHtml(entry.id || '') + '" data-value="' + (entry.value ? '1' : '0') + '"' + (pending ? ' data-pending="1"' : '') + '>' +
       '<div class="hb-log-main">' +
-        '<span class="hb-log-who">' + dotMark(by) + escapeHtml(nameOf(by) || '') + '</span>' +
+        '<span class="hb-log-who">' + (by ? dotMark(by) : '') + escapeHtml(nameOf(by) || '') + '</span>' +
         '<span class="hb-log-sep"> · </span>' +
         '<span class="hb-log-what">' + escapeHtml(shortLabel(entry.item)) + ' ' + (entry.value ? '✓' : escapeHtml(c.undone)) + escapeHtml(whose) + '</span>' +
       '</div> ' +

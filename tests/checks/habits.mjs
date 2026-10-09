@@ -1796,7 +1796,7 @@ export const mutants = [
     id: "habits-log-sort-drops-null-at",
     file: "js/firebase.js",
     find: "    items.sort(function (a, b) { return habitLogMillis(b) - habitLogMillis(a); });\n",
-    replace: "    items = items.filter(function (x) { return !!x.at; });\n    items.sort(function (a, b) { return habitLogMillis(b) - habitLogMillis(a); });\n",
+    replace: "    items = items.filter(function (x) { return !x.pendingWrites; });\n    items.sort(function (a, b) { return habitLogMillis(b) - habitLogMillis(a); });\n",
     expect: N_LOG,
   },
   {
@@ -2083,7 +2083,7 @@ export const mutants = [
     id: "habits-log-view-drops-null-at-rows",
     file: "js/habits.js",
     find: "    var rows = state.log.slice();\n",
-    replace: "    var rows = state.log.filter(function (x) { return !!x.at; });\n",
+    replace: "    var rows = state.log.filter(function (x) { return !x.pendingWrites; });\n",
     expect: N_LOGVIEW,
   },
   {
