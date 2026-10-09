@@ -7,11 +7,10 @@
  * identity survives every tick. Reads CONFIG's dates and getElapsed()/getNextBirthdayCountdown()
  * from js/data.js, and appNow() from js/time.js. Exposes window.initDates().
  *
- * Card order (her birthday, wedding, engagement, the two since-cards, his birthday last) is
- * achieved without touching index.html's two-column markup: her/wedding/engagement stay in (or
- * are appended to) .dates-col-birthdays, and his card is moved — via appendChild in buildHisCard,
- * which relocates an existing node rather than cloning it — to the end of .dates-col-counters, so
- * the flat mobile reading order comes out right without any CSS layout change.
+ * Card order is plain document order: her birthday and his birthday (index.html's
+ * .dates-col-birthdays), then the wedding and engagement cards (appended to that column), then
+ * meet and love (.dates-col-counters). A phone stacks them in that order; from 700 px the grid
+ * reads it row by row, two cards per row (css/style.css).
  */
 (function () {
   'use strict';
@@ -129,10 +128,13 @@
     if (!box) return null;
     var card = box.parentNode;
     card.setAttribute('data-dts-card', 'his');
+    /* The blue twin of her gift card: same ground, same party bear above a big countdown, but in
+       Furkan's blue (css/dates.css) and with no gift. The hat's colour comes from that CSS. */
+    card.classList.add('dts-card-his');
 
     var bearSlot = document.createElement('div');
-    bearSlot.className = 'dts-bear-slot dts-bear-slot--small';
-    bearSlot.innerHTML = '<span class="dts-bear" data-bear data-bear-mood="happy" data-bear-size="52"></span>';
+    bearSlot.className = 'dts-bear-slot';
+    bearSlot.innerHTML = '<span class="dts-bear" data-bear data-bear-mood="happy" data-bear-hat="true" data-bear-arms="wave" data-bear-size="72"></span>';
     card.insertBefore(bearSlot, box);
 
     box.innerHTML = unitsMarkup('his');
@@ -142,14 +144,6 @@
     today.hidden = true;
     today.textContent = HIS_TODAY_LINE;
     card.insertBefore(today, box.nextSibling);
-
-    /* Card order (2026-09-30 brief): her birthday, wedding, engagement, the two since-cards, his
-       birthday last. His card starts as the 2nd child of .dates-col-birthdays in index.html —
-       moved here to the end of .dates-col-counters so the flat reading order (mobile: this
-       column stacks fully below the birthdays column) comes out her/wedding/engagement/meet/
-       love/his. appendChild() on an element already in the document MOVES it, it never clones. */
-    var counters = document.querySelector('.dates-col-counters');
-    if (counters) counters.appendChild(card);
 
     return {
       units: box,

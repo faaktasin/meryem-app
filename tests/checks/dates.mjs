@@ -301,12 +301,13 @@ export async function run({ page, check }) {
     detail: JSON.stringify(weddingBears),
   }));
 
-  // 18. Card order: her birthday, wedding, engagement, the two since-cards, his birthday last.
+  // 18. Card order: her birthday, his birthday, wedding, engagement, then the two since-cards.
+  const ORDER = ["her", "his", "wedding", "engagement", "meet", "love"];
   const cardOrder = await page.eval(() =>
     Array.prototype.map.call(document.querySelectorAll(".dates-container [data-dts-card]"), (el) => el.getAttribute("data-dts-card"))
   );
-  await check("dates: Tarihler cards read her birthday, wedding, engagement, meet, love, his birthday in that order", () => ({
-    ok: JSON.stringify(cardOrder) === JSON.stringify(["her", "wedding", "engagement", "meet", "love", "his"]),
+  await check("dates: Tarihler cards read her birthday, his birthday, wedding, engagement, meet, love in that order", () => ({
+    ok: JSON.stringify(cardOrder) === JSON.stringify(ORDER),
     detail: JSON.stringify(cardOrder),
   }));
 
@@ -323,14 +324,14 @@ export async function run({ page, check }) {
       });
       return o;
     });
-  const pairs = [["her", "meet"], ["wedding", "love"], ["engagement", "his"]];
+  const pairs = [["her", "his"], ["wedding", "engagement"], ["meet", "love"]];
   for (const [vw, vh] of [[1280, 800], [768, 1024]]) {
     for (const now of ["2026-06-15T12:00:00", "2026-10-04T10:00:00"]) {
       await openDates(page, { now, viewport: { width: vw, height: vh } });
       const bx = await boxes();
       const diffs = pairs.map(([a, b]) => ({ top: Math.abs(bx[a].t - bx[b].t), bottom: Math.abs(bx[a].b - bx[b].b) }));
-      const twoCols = bx.meet.l > bx.her.l + bx.her.w / 2 && bx.love.l === bx.meet.l && bx.his.l === bx.meet.l;
-      const stacked = bx.wedding.t > bx.her.b && bx.engagement.t > bx.wedding.b && bx.love.t > bx.meet.b && bx.his.t > bx.love.b;
+      const twoCols = bx.his.l > bx.her.l + bx.her.w / 2 && bx.engagement.l === bx.his.l && bx.love.l === bx.his.l && bx.wedding.l === bx.her.l && bx.meet.l === bx.her.l;
+      const stacked = bx.wedding.t > bx.her.b && bx.meet.t > bx.wedding.b && bx.engagement.t > bx.his.b && bx.love.t > bx.engagement.b;
       await check(`dates: at ${vw}px the cards line up row by row, columns end level (${now.slice(0, 10)})`, () => ({
         ok: twoCols && stacked && diffs.every((d) => d.top <= 1 && d.bottom <= 1),
         detail: JSON.stringify({ diffs, twoCols, stacked }),
@@ -340,7 +341,7 @@ export async function run({ page, check }) {
   for (const now of ["2026-06-15T12:00:00", "2026-10-04T10:00:00"]) {
     await openDates(page, { now, viewport: { width: 390, height: 844 } });
     const bx = await boxes();
-    const order = ["her", "wedding", "engagement", "meet", "love", "his"];
+    const order = ORDER;
     let ok = true;
     for (let i = 0; i < order.length; i++) {
       const c = bx[order[i]];
@@ -349,6 +350,74 @@ export async function run({ page, check }) {
     }
     await check(`dates: at 390px the six cards stay one column, 16 px apart (${now.slice(0, 10)})`, () => ({ ok, detail: JSON.stringify(bx) }));
   }
+
+  // 20. The two birthday cards as a matched pair: hers pink with the gift, his blue with no gift,
+  //     a party-hat bear on both, and the numbers and labels readable on every pixel of the ground.
+  //     Contrast is gradient-aware: the card's own background-image stops are parsed from the
+  //     computed style and each text colour is measured against both (see check 9a).
+  await openDates(page, { now: "2026-06-15T12:00:00" });
+  const pair = await page.eval(() => {
+    const A = window.__app;
+    function info(key) {
+      const card = document.querySelector('[data-dts-card="' + key + '"]');
+      const cs = getComputedStyle(card);
+      const stops = (cs.backgroundImage.match(/rgba?\([^)]*\)/g) || []).map((s) => A.parse(s));
+      const texts = [].slice.call(card.querySelectorAll(".countdown-num, .countdown-unit-label, .countdown-label"));
+      const worst = Math.min.apply(null, texts.map((el) => {
+        const ink = A.ink(el);
+        return Math.min.apply(null, stops.map((s) => A.contrast(ink, s)));
+      }));
+      const hatPath = card.querySelector(".kawaii-bear-hat path");
+      const before = getComputedStyle(card, "::after").content;
+      return {
+        classes: card.className,
+        last: stops[stops.length - 1],
+        stops: stops.length,
+        gift: before && before !== "none" && before !== "normal" ? before : null,
+        hat: !!hatPath,
+        hatFill: hatPath ? getComputedStyle(hatPath).fill : null,
+        worst: worst,
+        texts: texts.length,
+      };
+    }
+    return { her: info("her"), his: info("his") };
+  });
+  const isBlue = (c) => c && c.b > c.r + 20;
+  const isPink = (c) => c && c.r > c.b;
+  await check("dates: his card has a blue ground, no gift icon, and a blue party hat on its bear", () => ({
+    ok: pair.his.classes.indexOf("dts-card-his") !== -1 && pair.his.stops >= 2 && isBlue(pair.his.last) && pair.his.gift === null && pair.his.hat && pair.his.hatFill === "rgb(10, 140, 181)",
+    detail: JSON.stringify(pair.his),
+  }));
+  await check("dates: her card is unchanged (dts-card-gift, pink ground, gift icon, party-hat bear)", () => ({
+    ok: pair.her.classes.indexOf("dts-card-gift") !== -1 && pair.her.classes.indexOf("dts-card-his") === -1 && isPink(pair.her.last) && !!pair.her.gift && pair.her.gift.indexOf("🎁") !== -1 && pair.her.hat,
+    detail: JSON.stringify(pair.her),
+  }));
+  await check("dates: the numbers and labels on both birthday cards reach 4.5:1 at both ends of the gradient ground", () => ({
+    ok: pair.her.texts >= 9 && pair.his.texts >= 9 && pair.her.worst >= 4.5 && pair.his.worst >= 4.5,
+    detail: JSON.stringify({ her: pair.her.worst, his: pair.his.worst }),
+  }));
+
+  // 21. His birthday itself (26 May 2027): the card stays blue, the short line replaces the numbers,
+  //     the line is readable on the blue ground, and nothing threw.
+  await openDates(page, { now: "2027-05-26T09:00:00" });
+  const hisDay = await page.eval(() => {
+    const A = window.__app;
+    const card = document.querySelector('[data-dts-card="his"]');
+    const line = card.querySelector(".dts-today-line");
+    const stops = (getComputedStyle(card).backgroundImage.match(/rgba?\([^)]*\)/g) || []).map((s) => A.parse(s));
+    const ink = A.ink(line);
+    return {
+      blue: card.classList.contains("dts-card-his") && stops.length >= 2 && stops[stops.length - 1].b > stops[stops.length - 1].r + 20,
+      lineShown: !line.hidden,
+      unitsHidden: card.querySelector(".countdown").hidden,
+      worst: Math.min.apply(null, stops.map((s) => A.contrast(ink, s))),
+      lineColor: getComputedStyle(line).color,
+    };
+  });
+  await check("dates: on 26 May his card stays blue, shows the short line readable at 4.5:1, and raises no page errors", () => ({
+    ok: hisDay.blue && hisDay.lineShown && hisDay.unitsHidden && hisDay.worst >= 4.5 && page.errors.length === 0,
+    detail: JSON.stringify({ hisDay, errors: page.errors.slice(0, 3) }),
+  }));
 }
 
 export const mutants = [
@@ -390,9 +459,16 @@ export const mutants = [
   {
     id: "dates-celebration-title-contrast",
     file: "css/dates.css",
-    find: "color: var(--berry);",
-    replace: "color: var(--rose-strong);",
+    find: "color: var(--berry);\n  line-height: 1.25;",
+    replace: "color: var(--rose-strong);\n  line-height: 1.25;",
     expect: "dates: the celebration title reaches 4.5:1 at both ends of the .dts-card-gift gradient (--paper and --blush), not just readable()'s ancestor-walk",
+  },
+  {
+    id: "dates-her-numbers-contrast",
+    file: "css/dates.css",
+    find: ".dts-card-gift .countdown-num {\n  color: var(--berry);",
+    replace: ".dts-card-gift .countdown-num {\n  color: var(--rose-strong);",
+    expect: "dates: the numbers and labels on both birthday cards reach 4.5:1 at both ends of the gradient ground",
   },
   {
     id: "dates-config-engagement-date",
@@ -458,11 +534,32 @@ export const mutants = [
     expect: "dates: the wedding illustration shows the bride bear's veil and the groom bear's bow tie",
   },
   {
-    id: "dates-card-order-his-stays",
+    id: "dates-card-order-his-last",
     file: "js/dates.js",
-    find: "var counters = document.querySelector('.dates-col-counters');\n    if (counters) counters.appendChild(card);",
-    replace: "var counters = document.querySelector('.dates-col-counters');",
-    expect: "dates: Tarihler cards read her birthday, wedding, engagement, meet, love, his birthday in that order",
+    find: "    var today = document.createElement('p');\n    today.className = 'dts-today-line';",
+    replace: "    var _cols = document.querySelector('.dates-col-counters');\n    if (_cols) _cols.appendChild(card);\n    var today = document.createElement('p');\n    today.className = 'dts-today-line';",
+    expect: "dates: Tarihler cards read her birthday, his birthday, wedding, engagement, meet, love in that order",
+  },
+  {
+    id: "dates-his-card-plain",
+    file: "js/dates.js",
+    find: "    card.classList.add('dts-card-his');\n",
+    replace: "",
+    expect: "dates: his card has a blue ground, no gift icon, and a blue party hat on its bear",
+  },
+  {
+    id: "dates-his-card-gift",
+    file: "css/dates.css",
+    find: ".dts-card-his .countdown-num,\n.dts-card-his .dts-today-line {",
+    replace: ".dts-card-his { position: relative; }\n.dts-card-his::after { content: '\\1F381'; position: absolute; top: 10px; right: 14px; }\n\n.dts-card-his .countdown-num,\n.dts-card-his .dts-today-line {",
+    expect: "dates: his card has a blue ground, no gift icon, and a blue party hat on its bear",
+  },
+  {
+    id: "dates-wide-grid-column-flow",
+    file: "css/style.css",
+    find: "    display: grid;\n    grid-template-columns: 1fr 1fr;\n    gap: 16px 24px;",
+    replace: "    display: grid;\n    grid-auto-flow: column;\n    grid-template-columns: 1fr 1fr;\n    grid-template-rows: repeat(3, auto);\n    gap: 16px 24px;",
+    expect: "dates: at 1280px the cards line up row by row, columns end level (2026-06-15)",
   },
   {
     id: "dates-rows-align-grid",

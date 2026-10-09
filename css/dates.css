@@ -39,6 +39,39 @@
   opacity: 0.55;
 }
 
+/* The global number pink (--rose-strong) reaches only 4.04:1 on the --blush end of this gradient,
+   measured when the two birthday cards were put side by side; --berry (the celebration title's
+   fix, below) clears it. */
+.dts-card-gift .countdown-num {
+  color: var(--berry);
+}
+
+/* His birthday card: the blue twin of the gift card above — same gradient ground and layout, in
+   Furkan's blue (the Takip tab's --hb-furkan family) and with no gift corner. The numbers and the
+   today line use the deeper blue: the plain #0A8CB5 only reaches 3.3:1 on the tint. */
+.dts-card-his {
+  --dts-blue: #0A8CB5;
+  --dts-blue-tint: #DDF1F8;
+  --dts-blue-deep: #0A6285;
+  background: linear-gradient(135deg, var(--paper), var(--dts-blue-tint));
+  border-color: #BFE4F1;
+  box-shadow: 0 6px 22px rgba(10, 98, 133, 0.14);
+}
+
+.dts-card-his .countdown-num,
+.dts-card-his .dts-today-line {
+  color: var(--dts-blue-deep);
+}
+
+/* The one bear drawing, with only the hat re-coloured: cone blue, pompom pale blue. */
+.dts-card-his .kawaii-bear-hat path {
+  fill: var(--dts-blue);
+}
+
+.dts-card-his .kawaii-bear-hat circle:nth-of-type(1) {
+  fill: #BFE4F1;
+}
+
 /* ── Celebration (her birthday itself) ──────────────────────────────── */
 
 .dts-celebration {
