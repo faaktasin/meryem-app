@@ -4,7 +4,7 @@
  * follow-ups, a love meter, and a hugging finale. Renders into the frozen #gate-overlay shell.
  *
  * Contract (called by app.js / firebase.js, both frozen):
- *   window.isGateDue()       true once her birthday has started and this year's play is unplayed
+ *   window.isGateDue()       true during her birthday week (4-10 Oct) while this year's play is unplayed
  *   window.startGateIfDue()  opens the automatic birthday sequence when isGateDue()
  *   window.replayGate()      opens the shorter replay sequence any time
  * #gate-replay-btn (header) un-hides once the gate has ever been completed and replays it.
@@ -13,6 +13,7 @@
   'use strict';
 
   var GATE_FLAG_KEY = 'meryem-gate-played-year';
+  var GATE_WEEK_DAYS = 7; /* the gate opens by itself from her birthday for this many days (4-10 Oct) */
 
   var BEAR_SIZE = 128;
   var HUG_SIZE = 200;
@@ -48,8 +49,15 @@
 
   /* ── Public contract ─────────────────────────────────── */
 
+  /** Inside her birthday week only: after the last day the gate never opens by itself (the header
+   *  bear's replay button still plays it any time). isBirthdayUnlocked() is left alone — the Sürpriz
+   *  tab keeps using it. */
   function isGateDue() {
-    return isBirthdayUnlocked() && storageGet(GATE_FLAG_KEY) !== String(birthdayYear());
+    if (!isBirthdayUnlocked()) return false;
+    var now = appNow();
+    var weekEnd = birthdayStart(now.getFullYear());
+    weekEnd.setDate(weekEnd.getDate() + GATE_WEEK_DAYS);
+    return now.getTime() < weekEnd.getTime() && storageGet(GATE_FLAG_KEY) !== String(birthdayYear());
   }
 
   function startGateIfDue() {

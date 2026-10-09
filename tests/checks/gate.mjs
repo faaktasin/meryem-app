@@ -14,6 +14,9 @@ export const name = "gate";
 const NOT_DUE_NOW = "2026-10-03T23:59:00";
 const DUE_NOW = "2026-10-04T00:01:00";
 
+const N_WEEK_OPENS = "gate: opens by itself on 4 Oct 00:01 and on 10 Oct 23:59 (the birthday week, both ends)";
+const N_WEEK_CLOSED = "gate: does not open by itself on 11 Oct 00:01 or on 1 Nov, flag unset, while the Sürpriz tab stays unlocked";
+
 async function waitUntil(fn, timeoutMs) {
   const deadline = Date.now() + (timeoutMs || 2500);
   let last;
@@ -340,6 +343,27 @@ export async function run({ page, check }) {
     detail: JSON.stringify({ beforeReplay, afterReplayTap }),
   }));
 
+  // 7b. The birthday week: the gate opens by itself 4-10 Oct only (flag unset in all of these; the
+  // birthday "seen" flag is seeded so the surprise's own overlay stays out of the way of the reading).
+  const weekProbe = async (now) => {
+    await openApp(page, { signedIn: true, now, storage: { "meryem-birthday-seen-year": "2026" } });
+    await page.eval(() => new Promise((r) => setTimeout(r, 400)));
+    return page.eval(() => ({ hidden: document.getElementById("gate-overlay").hidden, due: window.isGateDue(), unlocked: isBirthdayUnlocked() }));
+  };
+  const weekFirst = await weekProbe("2026-10-04T00:01:00");
+  const weekLast = await weekProbe("2026-10-10T23:59:00");
+  await check(N_WEEK_OPENS, () => ({
+    ok: weekFirst.hidden === false && weekFirst.due === true && weekLast.hidden === false && weekLast.due === true,
+    detail: JSON.stringify({ weekFirst, weekLast }),
+  }));
+  const weekAfter = await weekProbe("2026-10-11T00:01:00");
+  const weekNov = await weekProbe("2026-11-01T12:00:00");
+  await check(N_WEEK_CLOSED, () => ({
+    ok: weekAfter.hidden === true && weekAfter.due === false && weekAfter.unlocked === true
+      && weekNov.hidden === true && weekNov.due === false && weekNov.unlocked === true,
+    detail: JSON.stringify({ weekAfter, weekNov }),
+  }));
+
   // 8. Reduced motion: no heart burst on Yes, and the press-4 hop still keeps No clear of Yes
   await openApp(page, { signedIn: true, now: DUE_NOW, reducedMotion: true });
   await waitUntil(async () => (await overlayHidden(page)) === false, 2000);
@@ -512,6 +536,21 @@ export async function run({ page, check }) {
 }
 
 export const mutants = [
+  {
+    id: "gate-week-limit-dropped",
+    file: "js/gate.js",
+    find: "now.getTime() < weekEnd.getTime() && ",
+    replace: "",
+    expect: N_WEEK_CLOSED,
+  },
+  {
+    // The week one day short: 10 Oct 23:59 is already out.
+    id: "gate-week-too-short",
+    file: "js/gate.js",
+    find: "var GATE_WEEK_DAYS = 7;",
+    replace: "var GATE_WEEK_DAYS = 6;",
+    expect: N_WEEK_OPENS,
+  },
   {
     id: "gate-due-inequality",
     file: "js/gate.js",
