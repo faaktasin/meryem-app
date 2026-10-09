@@ -159,7 +159,12 @@ const N_LONGSTREAK = "habits: a streak older than the previous month is counted 
 const N_LEADSHOWN = "habits: the lead line is the difference of the two numbers the cards show, and Başa baş only when they read the same";
 const N_DOUBLETAP = "habits: two quick taps before the snapshot echo store true then false, in the month document and in the log";
 
-const N_COPY = "habits: the reviewed texts - closing pool, save error, daily chart title - read as agreed, and a failed save puts the box back";
+const N_JUNKLOG = "habits: a stored log entry with markup or a prototype name in person/by/item creates no element, prints no function text and the page stays error-free";
+const N_LOGFAIL = "habits: a refused log write leaves the saved tick alone with no toast; a refused month write toasts, clears the pending tap and shows the stored value";
+const N_LISTENFAIL = "habits: a habit listener the server refuses shows one toast (Kayıtlara ulaşamadık) and logs the error, however many listeners fail";
+const N_PILL = "habits: the kaydediliyor pill follows the SDK's pending flag - absent after an online echo, shown while a write is pending, and the row still sorts by its estimated time";
+const N_PREVIEW = "habits: under the rehearsal clock (?onizleme=dogumgunu) a tap writes nothing to the month document or the log";
+const N_COPY ="habits: the reviewed texts - closing pool, save error, daily chart title - read as agreed, and a failed save puts the box back";
 const N_GAPS ="habits: every card on the Takip page sits 14-18 px below the one before it (360 and 390 px)";
 const N_LOGLAYOUT = "habits: a log row is two lines, the pending pill shares the time's line, no separator dangles and no cross glyph";
 const N_SCORELINE = "habits: each Name %n of the report's score line is one unbreakable unit, and the best item prints its short name";
@@ -1580,6 +1585,130 @@ export async function run({ page, check, root }) {
     return { ok, detail: JSON.stringify({ notes, disabled }) };
   });
 
+  // ── final judge's fixes (stage 7) ────────────────────────────────────────────────────────────
+  const toasts = (p) => p.eval(() => window.__toastLog.slice());
+  const JUNK = '"><b id="pwn">x</b><i class="';
+
+  await check(N_JUNKLOG, async () => {
+    const log = [
+      logEntry("ok1", { item: "arapca", person: "meryem", by: "meryem", at: { __ts: LE(15, 10, 0) }, atLocal: LE(15, 10, 0) }),
+      { id: "j1", month: "2026-10", day: "2026-10-15", item: "spor", person: JUNK, by: JUNK, value: true, at: null, atLocal: "2026-10-15T09:00:00.000Z" },
+      { id: "j2", month: "2026-10", day: "2026-10-15", item: { x: 1 }, person: "constructor", by: "constructor", value: "yes", at: "notatimestamp", atLocal: 1e20 },
+      { id: "j3", month: "2026-10", day: "2026-10-15", item: "kuran", person: "toString", by: 7, value: true, at: { __ts: LE(15, 9, 30) }, atLocal: LE(15, 9, 30) },
+    ];
+    await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: { "2026-10": M1 }, log } });
+    await until(async () => (await logRows(page)).length >= 4);
+    await sleep(200);
+    const got = await page.eval(() => {
+      const rows = [...document.querySelectorAll("#hb-log .hb-log-row")];
+      const byId = (id) => rows.find((r) => r.dataset.id === id);
+      const info = (r) => r && ({ cls: r.className, dots: r.querySelectorAll(".hb-dot").length, text: r.textContent.replace(/\s+/g, " ").trim() });
+      return {
+        pwn: !!document.getElementById("pwn"),
+        injected: document.querySelectorAll("#hb-log b, #hb-log i:not(.hb-dot)").length,
+        rows: rows.length,
+        ok1: info(byId("ok1")), j1: info(byId("j1")), j2: info(byId("j2")), j3: info(byId("j3")),
+        logText: document.getElementById("hb-log").textContent,
+        stats: !!document.querySelector("#hb-stats .hb-stat"),
+      };
+    });
+    const neutral = (r) => r && r.dots === 0 && /\bhb-p-none\b/.test(r.cls) && !/hb-p-(meryem|furkan|together)/.test(r.cls);
+    const ok =
+      !got.pwn && got.injected === 0 && got.rows === 4 && !/function|Object|undefined|NaN/.test(got.logText) &&
+      got.ok1.dots === 1 && /hb-p-meryem/.test(got.ok1.cls) && /^Meryem · Arapça tekrarı ✓/.test(got.ok1.text) &&
+      neutral(got.j1) && neutral(got.j2) && neutral(got.j3) && got.stats && page.errors.length === 0;
+    return { ok, detail: JSON.stringify({ ...got, logText: undefined, errors: page.errors.slice(0, 3) }).slice(0, 900) };
+  });
+
+  await check(N_LOGFAIL, async () => {
+    await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: {} } });
+    // 1. the log write is refused, the month write lands: the tick is saved, so no toast and no undo
+    await page.eval(() => { window.__STUB_REJECT = { habitLog: true }; });
+    await tapIn(page, slot("spor", "meryem"));
+    await sleep(400);
+    let db = await page.stubDb();
+    const box1 = (((db[MONTHS] || {})["2026-10"] || {}).days || {})["2026-10-15"];
+    const logged1 = Object.keys(db[LOG] || {}).length;
+    const t1 = await toasts(page);
+    const lit1 = await page.eval((s) => document.querySelector(s).classList.contains("is-on"), slot("spor", "meryem"));
+    const st1 = await stateOf(page);
+    // 2. the month write is refused: the toast, the pending tap cleared, the heart shows what is stored
+    await page.eval(() => { window.__STUB_REJECT = { habitMonths: true }; });
+    await tapIn(page, slot("kuran", "meryem"));
+    await sleep(400);
+    db = await page.stubDb();
+    const box2 = (((db[MONTHS] || {})["2026-10"] || {}).days || {})["2026-10-15"];
+    const t2 = await toasts(page);
+    const lit2 = await page.eval((s) => document.querySelector(s).classList.contains("is-on"), slot("kuran", "meryem"));
+    const st2 = await stateOf(page);
+    const msg = await page.eval(() => CONTENT.habits.saveError);
+    const ok =
+      box1 && box1.spor && box1.spor.meryem === true && logged1 === 0 && t1.length === 0 && lit1 === true && st1.pending === 0 &&
+      box2 && !box2.kuran && t2.length === 1 && t2[0] === msg && lit2 === false && st2.pending === 0;
+    return { ok, detail: JSON.stringify({ box1, logged1, t1, lit1, p1: st1.pending, box2, t2, lit2, p2: st2.pending }) };
+  });
+
+  await check(N_LISTENFAIL, async () => {
+    const msg = "Kayıtlara ulaşamadık, sayfayı yenileyelim 💗";
+    const runs = [];
+    let ok = true;
+    for (const [label, fail] of [["none", {}], ["month document", { "habitMonths/2026-10": true }], ["all months", { habitMonths: true }], ["log", { habitLog: true }], ["all three", { "habitMonths/2026-10": true, habitMonths: true, habitLog: true }]]) {
+      await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: { "2026-10": M1 }, log: LOG8 }, stubFlags: { __STUB_FAIL_LISTEN: fail } });
+      await sleep(500);
+      const t = await toasts(page);
+      const logged = page.errors.filter((e) => /habit listener failed/.test(e)).length;
+      const want = label === "none" ? 0 : 1;
+      if (t.length !== want || (want === 1 && t[0] !== msg) || (want === 1 && logged < 1) || (want === 0 && page.errors.length !== 0)) ok = false;
+      runs.push([label, t.length, logged]);
+    }
+    return { ok, detail: JSON.stringify(runs) };
+  });
+
+  await check(N_PILL, async () => {
+    const seedLog = [logEntry("old", { item: "kuran", at: { __ts: LE(15, 8, 0) }, atLocal: LE(15, 8, 0) })];
+    await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: {}, log: seedLog } });
+    await until(async () => (await logRows(page)).length === 1);
+    // online: the tick echoes back with its server time; the row never carries the pill
+    await tapIn(page, slot("spor", "meryem"));
+    await until(async () => (await logRows(page)).length === 2);
+    await sleep(500);
+    const online = await logRows(page);
+    // offline: the write stays pending - the pill shows and the row still sorts by its (estimated) time
+    await page.eval(() => { window.__STUB_OFFLINE = true; });
+    await tapIn(page, slot("arapca", "meryem"));
+    await until(async () => (await logRows(page)).length === 3);
+    await sleep(300);
+    const offline = await logRows(page);
+    // back online: the server time arrives, the pill goes, the order stays
+    await page.eval(() => { window.__STUB_OFFLINE = false; window.__STUB_FLUSH(); });
+    await sleep(500);
+    const after = await logRows(page);
+    const ids = (rows) => rows.map((r) => r.id);
+    const ok =
+      online.length === 2 && online.every((r) => !r.pending) && !/kaydediliyor/.test(online[0].text) &&
+      offline.length === 3 && offline[0].pending && /kaydediliyor$/.test(offline[0].text) && /Arapça tekrarı/.test(offline[0].text) && offline.slice(1).every((r) => !r.pending) &&
+      after.length === 3 && after.every((r) => !r.pending) && JSON.stringify(ids(after)) === JSON.stringify(ids(offline)) &&
+      offline[0].text.includes("15 Eki 12:");
+    return { ok, detail: JSON.stringify({ online, offline, after }).slice(0, 900) };
+  });
+
+  await check(N_PREVIEW, async () => {
+    await openTakip(page, "2026-10-15T12:00:00", "meryem", { query: "?onizleme=dogumgunu", habits: { months: { "2026-10": M1 } } });
+    const sel = slot("spor", "meryem");
+    const has = await page.eval((s) => !!document.querySelector(s), sel);
+    // the rehearsal's gate overlay covers the page, so the tap is delivered to the heart itself
+    if (has) await page.eval((s) => document.querySelector(s).click(), sel);
+    await sleep(400);
+    const db = await page.stubDb();
+    const t = await toasts(page);
+    const st = await stateOf(page);
+    const msg = await page.eval(() => CONTENT.habits.previewNote);
+    const monthDocs = Object.keys(db[MONTHS] || {});
+    const logged = Object.keys(db[LOG] || {}).length;
+    const same = JSON.stringify((db[MONTHS] || {})["2026-10"]) === JSON.stringify(M1);
+    return { ok: has && JSON.stringify(monthDocs) === JSON.stringify(["2026-10"]) && same && logged === 0 && st.pending === 0 && t.length === 1 && t[0] === msg, detail: JSON.stringify({ has, monthDocs, same, logged, pending: st.pending, t }) };
+  });
+
   // ── copy (stage 6) ───────────────────────────────────────────────────────────────────────────
   await check(N_COPY, async () => {
     await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: { "2026-10": M1 } } });
@@ -1963,6 +2092,55 @@ export const mutants = [
     find: "    var list = shownMonths(now);\n",
     replace: "    var list = shownMonths(now).slice(1);\n",
     expect: N_MOM,
+  },
+  {
+    id: "habits-log-row-by-falls-back-to-raw-person",
+    file: "js/habits.js",
+    find: "    var by = isPerson(entry.by) ? entry.by : (isPerson(entry.person) ? entry.person : null);\n",
+    replace: "    var by = isPerson(entry.by) ? entry.by : entry.person;\n",
+    expect: N_JUNKLOG,
+  },
+  {
+    id: "habits-log-write-failure-toasts-again",
+    file: "js/habits.js",
+    find: ".catch(logFailed);\n",
+    replace: ".catch(monthFailed);\n",
+    expect: N_LOGFAIL,
+  },
+  {
+    id: "habits-month-listener-has-no-error-callback",
+    file: "js/firebase.js",
+    find: "    cb(snap && snap.exists ? snap.data() : {});\n  }, habitListenError);\n",
+    replace: "    cb(snap && snap.exists ? snap.data() : {});\n  });\n",
+    expect: N_LISTENFAIL,
+  },
+  {
+    id: "habits-all-months-listener-has-no-error-callback",
+    file: "js/firebase.js",
+    find: "    cb(months);\n  }, habitListenError);\n",
+    replace: "    cb(months);\n  });\n",
+    expect: N_LISTENFAIL,
+  },
+  {
+    id: "habits-log-listener-has-no-error-callback",
+    file: "js/firebase.js",
+    find: "    cb(items);\n  }, habitListenError);\n",
+    replace: "    cb(items);\n  });\n",
+    expect: N_LISTENFAIL,
+  },
+  {
+    id: "habits-pill-keyed-on-empty-server-time",
+    file: "js/habits.js",
+    find: "    var pending = entry.pendingWrites === true;\n",
+    replace: "    var pending = !entry.at;\n",
+    expect: N_PILL,
+  },
+  {
+    id: "habits-preview-mode-tick-written",
+    file: "js/habits.js",
+    find: "    if (isPreviewMode()) {\n      if (typeof showToast === 'function') showToast(copy().previewNote);\n      return;\n    }\n",
+    replace: "",
+    expect: N_PREVIEW,
   },
 ];
 

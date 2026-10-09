@@ -317,7 +317,7 @@ class Page {
    * ticking), stubs navigator.serviceWorker.register, seeds window.__STUB_MEMORIES /
    * __STUB_SIGNED_IN for the firebase stub, and applies the requested mic behaviour.
    */
-  async setupNewDocumentScript({ nowIso, memories, signedIn, mic, stubDb, habitsTickMs }) {
+  async setupNewDocumentScript({ nowIso, memories, signedIn, mic, stubDb, habitsTickMs, stubFlags }) {
     if (this.#dateScriptId) {
       await this.send("Page.removeScriptToEvaluateOnNewDocument", { identifier: this.#dateScriptId });
       this.#dateScriptId = null;
@@ -345,6 +345,19 @@ class Page {
       window.__STUB_DB = ${JSON.stringify(stubDb || {})};
       ${habitsTickMs ? `window.__HABITS_TICK_MS = ${Number(habitsTickMs)};` : ""}
       window.__STUB_SIGNED_IN = ${signedIn ? "true" : "false"};
+      /* Stub switches that must be in place before the app subscribes (see fixtures/firebase-stub.js). */
+      var FLAGS = ${JSON.stringify(stubFlags || {})};
+      for (var fk in FLAGS) if (Object.prototype.hasOwnProperty.call(FLAGS, fk)) window[fk] = FLAGS[fk];
+      /* Every toast that ever appears, in order: a toast lives 2 s and is replaced by the next one,
+         so "shown exactly once" can only be read from a record. */
+      window.__toastLog = [];
+      new MutationObserver(function (records) {
+        records.forEach(function (r) {
+          r.addedNodes.forEach(function (n) {
+            if (n.nodeType === 1 && n.classList && n.classList.contains("toast")) window.__toastLog.push(n.textContent);
+          });
+        });
+      }).observe(document, { childList: true, subtree: true });
 
       var MIC = ${JSON.stringify(mic || "none")};
       if (navigator.mediaDevices) {
@@ -657,6 +670,8 @@ export async function closeServer() {
  *                     Firestore stub's habitMonths / habitLog before the app loads. A log entry's
  *                     `at` is null or { __ts: <ms> } (a server timestamp)
  *   opts.habitsTickMs shortens js/habits.js's minute timer (the window.__HABITS_TICK_MS seam)
+ *   opts.stubFlags    { __STUB_FAIL_LISTEN: {...}, __STUB_OFFLINE: true, ... } assigned to window before any
+ *                     script runs (the firebase stub's failure switches); window.__toastLog lists every toast shown
  *   opts.viewport     { width, height }, default 390x844 (mobile, touch)
  *   opts.page         which html file to open, default 'index.html'
  */
@@ -678,6 +693,7 @@ export async function openApp(page, opts = {}) {
     voiceAudio = null,
     habits = null,
     habitsTickMs = 0,
+    stubFlags = null,
     viewport = { width: 390, height: 844 },
     page: appPage = "index.html",
   } = opts;
@@ -688,7 +704,7 @@ export async function openApp(page, opts = {}) {
   await page.send("Emulation.setTimezoneOverride", { timezoneId: "Europe/Istanbul" });
   await page.media(reducedMotion ? [{ name: "prefers-reduced-motion", value: "reduce" }] : []);
   page.setVoiceAudioFixture(voiceAudio);
-  await page.setupNewDocumentScript({ nowIso: now, memories, signedIn, mic, stubDb: habitsSeed(habits), habitsTickMs });
+  await page.setupNewDocumentScript({ nowIso: now, memories, signedIn, mic, stubDb: habitsSeed(habits), habitsTickMs, stubFlags });
 
   if (!keepStorage) {
     await page.goto(server.base + "__blank.html");
