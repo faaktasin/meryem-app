@@ -521,8 +521,16 @@
     });
   }
 
+  /** True only for the two people of the app. Anything read from storage (a log entry's person or
+      by) passes through this before it can reach a class attribute or a name. */
+  function isPerson(p) {
+    return typeof p === 'string' && PEOPLE.indexOf(p) !== -1;
+  }
+
+  /** The person's display name; '' for anything that is not one of the two (an own-property
+      check: 'constructor' and 'toString' are not names). */
   function nameOf(person) {
-    return CONFIG.people[person];
+    return isPerson(person) && Object.prototype.hasOwnProperty.call(CONFIG.people, person) ? CONFIG.people[person] : '';
   }
 
   function readMe() {
@@ -727,7 +735,8 @@
   var MOM = { group: 54, bar: 13, gap: 3, base: 92, maxH: 72, h: 118 };
 
   function personClass(p) {
-    return p === 'together' ? 'hb-p-together' : 'hb-p-' + p;
+    if (p === 'together') return 'hb-p-together';
+    return isPerson(p) ? 'hb-p-' + p : 'hb-p-none';
   }
 
   function monthLabel(mk) {
@@ -760,6 +769,7 @@
   }
 
   function dotMark(p) {
+    if (p !== 'together' && !isPerson(p)) return '';
     return '<i class="hb-dot ' + personClass(p) + '"></i>';
   }
 
@@ -1000,20 +1010,24 @@
     var ms = typeof habitLogMillis === 'function' ? habitLogMillis(entry) : 0;
     if (!ms) return '';
     var d = new Date(ms);
+    if (isNaN(d.getTime())) return '';
     return d.getDate() + ' ' + copy().monthsShort[d.getMonth()] + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
   }
 
+  /** The habit's short label; an id that is not in CONFIG.habits (a stored value) prints as ''. */
   function shortLabel(id) {
-    var out = id;
+    var out = '';
     CONFIG.habits.forEach(function (h) { if (h.id === id) out = h.label.replace(/\s*\(.*$/, ''); });
     return out;
   }
 
   function logRowHtml(entry) {
     var c = copy().log;
-    var by = entry.by === 'furkan' || entry.by === 'meryem' ? entry.by : entry.person;
-    var whose = entry.person && entry.person !== by ? ' · ' + fmt(c.box, { name: nameOf(entry.person) }) : '';
-    var pending = !entry.at;
+    /* by is one of the two people or null (a neutral row, no dot): never the raw stored string. */
+    var by = isPerson(entry.by) ? entry.by : (isPerson(entry.person) ? entry.person : null);
+    var whose = isPerson(entry.person) && entry.person !== by ? ' · ' + fmt(c.box, { name: nameOf(entry.person) }) : '';
+    /* the pill follows the SDK's own flag: this entry has not reached the server yet */
+    var pending = entry.pendingWrites === true;
     /* Two lines: who and what on the first, the time (and the pending pill) on the second, so no
        separator dangles at a line end and the pill never sits alone. */
     return '<li class="hb-log-row ' + personClass(by) + '" data-id="' + escapeHtml(entry.id || '') + '" data-value="' + (entry.value ? '1' : '0') + '"' + (pending ? ' data-pending="1"' : '') + '>' +
@@ -1153,6 +1167,11 @@
     var key = btn.getAttribute('data-day');
     var itemId = btn.getAttribute('data-item');
     if (!canTick(person)) return;
+    /* The rehearsal clock (?onizleme=dogumgunu) dates every tap a year ahead: never write from it. */
+    if (isPreviewMode()) {
+      if (typeof showToast === 'function') showToast(copy().previewNote);
+      return;
+    }
     var item = null;
     CONFIG.habits.forEach(function (h) { if (h.id === itemId) item = h; });
     if (!item || !key) return;
@@ -1161,19 +1180,32 @@
     var month = key.slice(0, 7);
     var value = !tickedOn(item, key, person);
     var pendingKey = key + '|' + itemId + '|' + person;
-    var failed = function () {
+    /* The month write decides whether the tick is saved: only its failure clears the box and
+       asks for another tap. The log is a side record - its failure is only noted, because the tick
+       DID save and a toast would tell her to undo it. */
+    var monthFailed = function () {
       delete pending[pendingKey];
       renderAll();
       if (typeof showToast === 'function') showToast(copy().saveError);
     };
+    var logFailed = function (err) {
+      if (window.console && console.warn) console.warn('habit log entry was not saved', err);
+    };
     if (typeof setHabitTick !== 'function' || typeof addHabitLog !== 'function') return;
     pending[pendingKey] = { day: key, item: itemId, person: person, value: value };
     renderAll();
+    var written;
     try {
-      setHabitTick(month, key, itemId, person, value).catch(failed);
-      addHabitLog({ month: month, day: key, item: itemId, person: person, value: value, by: state.me, atLocal: now.toISOString() }).catch(failed);
+      written = setHabitTick(month, key, itemId, person, value);
     } catch (e) {
-      failed();
+      monthFailed();
+      return;
+    }
+    written.catch(monthFailed);
+    try {
+      addHabitLog({ month: month, day: key, item: itemId, person: person, value: value, by: state.me, atLocal: now.toISOString() }).catch(logFailed);
+    } catch (e) {
+      logFailed(e);
     }
   }
 

@@ -518,6 +518,8 @@ var CONTENT = {
       less: 'Daha az göster'
     },
     sheetEmpty: 'Bu gün için kutu yok',
+    readError: 'Kayıtlara ulaşamadık, sayfayı yenileyelim 💗',
+    previewNote: 'Önizlemede kayıt yapılmıyor 💗',
     saveError: 'Kaydedemedik, bir daha dokunalım\u00a0💗',
     dow: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'],
     days: ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'],

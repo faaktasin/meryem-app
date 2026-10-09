@@ -159,11 +159,22 @@ function deleteTodoFromFirestore(id) {
 /* habitMonths/{YYYY-MM}: { days: { 'YYYY-MM-DD': { <itemId>: { <person>: true|false } } } }
    habitLog/{auto}: { at, atLocal, month, day, item, person, value, by } — append-only. */
 
+/* A habit listener the server refuses (rules deny the read, or the project is gone) would leave
+   the tab silently empty. Every habit listener reports through here: logged, and ONE toast for
+   the whole page however many listeners fail. */
+var _habitReadErrorShown = false;
+function habitListenError(err) {
+  console.error('habit listener failed', err);
+  if (_habitReadErrorShown) return;
+  _habitReadErrorShown = true;
+  if (typeof showToast === 'function' && typeof CONTENT !== 'undefined' && CONTENT.habits) showToast(CONTENT.habits.readError);
+}
+
 /** Live month document. `cb` gets the document's data, or {} while the month has no ticks yet. */
 function subscribeHabitMonth(monthKey, cb) {
   return userCollection('habitMonths').doc(monthKey).onSnapshot(function (snap) {
     cb(snap && snap.exists ? snap.data() : {});
-  });
+  }, habitListenError);
 }
 
 /** Live view of every month document, as an object keyed by 'YYYY-MM' (month-over-month chart). */
@@ -172,7 +183,7 @@ function subscribeHabitMonths(cb) {
     var months = {};
     snapshot.forEach(function (doc) { months[doc.id] = doc.data(); });
     cb(months);
-  });
+  }, habitListenError);
 }
 
 /** One person's tick (or untick, value=false) on one day. A merge write: the other person's
@@ -209,13 +220,17 @@ function subscribeHabitLog(monthKey, cb) {
   return userCollection('habitLog').where('month', '==', monthKey).onSnapshot(function (snapshot) {
     var items = [];
     snapshot.forEach(function (doc) {
-      var data = doc.data();
+      /* 'estimate': a just-written entry has no server time yet - read the local estimate so it
+         sorts by the moment it was made, never as a null. */
+      var data = doc.data({ serverTimestamps: 'estimate' });
       data.id = doc.id;
+      /* the SDK's own word for "not on the server yet" (an offline tick) */
+      data.pendingWrites = !!(doc.metadata && doc.metadata.hasPendingWrites);
       items.push(data);
     });
     items.sort(function (a, b) { return habitLogMillis(b) - habitLogMillis(a); });
     cb(items);
-  });
+  }, habitListenError);
 }
 
 /* ── Photo Validation ───────────────────────────────── */
