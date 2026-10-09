@@ -809,8 +809,8 @@ export const mutants = [
     // (.gate-meter-heart's own touch-action is "none", a different value/string).
     id: "gate-btn-touch-action",
     file: "css/gate.css",
-    find: "  touch-action: manipulation;",
-    replace: "  touch-action: auto;",
+    find: "  touch-action: manipulation;\n}\n\n.gate-btn:active",
+    replace: "  touch-action: auto;\n}\n\n.gate-btn:active",
     expect: "gate: Yes and the hopping No have touch-action:manipulation and user-select:none",
   },
   {
@@ -855,6 +855,15 @@ export const mutants = [
 
 export const shots = [
   { name: "due", open: { signedIn: true, now: DUE_NOW } },
+  { name: "skip-360", open: { signedIn: true, now: DUE_NOW, viewport: { width: 360, height: 844 } } },
+  { name: "skip-390", open: { signedIn: true, now: DUE_NOW, viewport: { width: 390, height: 844 } } },
+  {
+    name: "skip-no-hopped-390",
+    open: { signedIn: true, now: DUE_NOW, viewport: { width: 390, height: 844 } },
+    act: async (page) => {
+      for (let n = 0; n < 6; n++) { await page.tap(".gate-btn-no"); await sleep(500); }
+    },
+  },
   {
     name: "no-pressed",
     open: { signedIn: true, now: DUE_NOW },
