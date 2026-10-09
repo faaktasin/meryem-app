@@ -176,6 +176,8 @@ const N_LOCKEDTICK = "habits: a ticked partner box looks different from your own
 const N_SHEETSTICKY = "habits: the day sheet keeps its title and close button in view while the rows scroll";
 const N_TARGETS = "habits: every control inside Takip and its day sheet is at least 44 x 44 px (360, 390 and 412 px)";
 
+const N_SINCE = "habits: the shipped config starts every habit on 2026-10-08 (no test seam)";
+const N_WEEK1 = "habits: with the shipped config 1-7 October are due nowhere - calendar, cards and report - and 8 October is";
 const N_WEEKDAY = "habits: Erken çıkış is due Monday to Friday only and a weekend tick never counts";
 const N_FUTURE = "habits: a tick dated after today never counts, in any number";
 const N_JOINT = "habits: Birlikte counts a joint item-day only when both ticked";
@@ -1141,6 +1143,54 @@ export async function run({ page, check, root }) {
     return { ok: !!ok, detail: JSON.stringify({ rows: rows.map((r) => r.slice(0, 3).join(":")), dash }) };
   });
 
+
+  // ── Takip starts on 8 October (the shipped config, habitsSince: null = no test seam) ────────
+  await check(N_SINCE, async () => {
+    await open(page, "2026-10-09T12:00:00", { habitsSince: null });
+    const since = await page.eval(() => CONFIG.habits.map((h) => [h.id, h.since]));
+    const ids = ["spor", "kuran", "arapca", "cicek", "projeler", "erken"];
+    const ok = since.length === 6 && ids.every((id, i) => since[i][0] === id && since[i][1] === "2026-10-08");
+    return { ok, detail: JSON.stringify(since) };
+  });
+
+  await check(N_WEEK1, async () => {
+    // Ticks on 1-7 October must count nowhere. By hand, today = Fri 9 Oct, so 8 and 9 Oct are the due days
+    // (both weekdays, so Erken çıkış is due on both): Furkan 4 boxes x 2 days = 8, Meryem 4 x 2 = 8.
+    //   Furkan  spor 5,8  kuran 6,8  projeler 7,9  erken 8   -> counted spor8 kuran8 projeler9 erken8 = 4/8 = 50
+    //   Meryem  spor 5,8  kuran 6,8,9  arapca 7,8,9  cicek 1,9 -> counted 1 + 2 + 2 + 1 = 6/8 = 75
+    //   Birlikte (spor and kuran, 2 days = 4 item-days): spor 8 both, kuran 8 both, spor 9 no, kuran 9 no = 2/4 = 50
+    //   8 Oct: Meryem spor kuran arapca = 3/4 = 75, Furkan spor kuran erken = 3/4 = 75
+    //   9 Oct: Meryem kuran arapca cicek = 3/4 = 75, Furkan projeler = 1/4 = 25
+    const OCT = mk("2026-10", [
+      ["spor", "furkan", [5, 8]], ["kuran", "furkan", [6, 8]], ["projeler", "furkan", [7, 9]], ["erken", "furkan", [8]],
+      ["spor", "meryem", [5, 8]], ["kuran", "meryem", [6, 8, 9]], ["arapca", "meryem", [7, 8, 9]], ["cicek", "meryem", [1, 9]],
+    ]);
+    const extra = { habitsSince: null, habits: { months: { "2026-10": OCT } } };
+    await openTakip(page, "2026-10-09T12:00:00", "meryem", extra);
+    const due = [];
+    for (const d of ["2026-10-05", "2026-10-07", "2026-10-08"]) due.push(await core(page, "isDue", I("spor"), T(d), T("2026-10-09")));
+    const cell = (day) => page.eval((k) => { const e = document.querySelector('#hb-month .hb-day[data-day="' + k + '"]'); return e ? [e.dataset.pm, e.dataset.pf] : null; }, day);
+    const cells = {};
+    for (let d = 1; d <= 9; d++) cells[d] = await cell("2026-10-0" + d);
+    const tiles = await tilesOf(page);
+    const cards = [tiles.meryem && tiles.meryem.num, tiles.furkan && tiles.furkan.num, tiles.together && tiles.together.num];
+    const blankDays = [1, 2, 3, 4, 5, 6, 7].every((d) => cells[d] && cells[d][0] === "" && cells[d][1] === "");
+    // the October report, read on 1 Nov (days 8-31 due). By hand: Furkan due 24 x 3 + 17 weekdays (8,9,12-16,19-23,26-30) = 89,
+    // counted 4 -> 4.49 -> %4; Meryem 4 x 24 = 96, counted 6 -> 6.25 -> %6; lead +2; best item Arapça tekrarı 2/24 = 8.33 -> %8.
+    await openTakip(page, "2026-11-01T08:00:00", "meryem", extra);
+    await goPrev(page);
+    const rep = await page.eval(() => {
+      const tx = (s) => { const e = document.querySelector(s); return e ? e.textContent.replace(/\s+/g, " ").trim() : null; };
+      const r = document.querySelector("#hb-report .hb-report");
+      return { month: r ? r.dataset.month : null, lead: tx("#hb-report .hb-report-lead"), best: tx("#hb-report .hb-report-best") };
+    });
+    const repOk = rep.month === "2026-10" && rep.lead === "Önde: Meryem (+2 puan)" && rep.best === "En düzenli görev: Arapça tekrarı (%8)";
+    const ok = JSON.stringify(due) === "[false,false,true]" && blankDays
+      && JSON.stringify(cells[8]) === '["75","75"]' && JSON.stringify(cells[9]) === '["75","25"]'
+      && JSON.stringify(cards) === '["%75","%50","%50"]' && repOk;
+    return { ok, detail: JSON.stringify({ due, cells, cards, rep }) };
+  });
+
   // ── month over month ──────────────────────────────────────────────────────────────────────
   await check(N_MOM, async () => {
     await openTakip(page, "2027-01-10T12:00:00", "meryem", { habits: { months: MOM_MONTHS } });
@@ -1750,6 +1800,21 @@ const tabAct = async (page) => {
 };
 
 export const mutants = [
+  {
+    // One item's start date back on 1 October: its early ticks count again, and the shipped-config checks see it.
+    id: "habits-since-back-to-oct-1",
+    file: "js/data.js",
+    find: "id: 'spor', label: 'Spor', owners: ['furkan', 'meryem'], weekdaysOnly: false, since: '2026-10-08'",
+    replace: "id: 'spor', label: 'Spor', owners: ['furkan', 'meryem'], weekdaysOnly: false, since: '2026-10-01'",
+    expect: N_SINCE,
+  },
+  {
+    id: "habits-since-back-to-oct-1-week",
+    file: "js/data.js",
+    find: "id: 'spor', label: 'Spor', owners: ['furkan', 'meryem'], weekdaysOnly: false, since: '2026-10-08'",
+    replace: "id: 'spor', label: 'Spor', owners: ['furkan', 'meryem'], weekdaysOnly: false, since: '2026-10-01'",
+    expect: N_WEEK1,
+  },
   {
     id: "habits-weekday-rule-dropped",
     file: "js/habits.js",

@@ -83,6 +83,12 @@ gapi.client = gapi.client || {
 `;
 
 /** Every page/file at the app root the http server may be asked for. */
+/* The habitsSince test seam: when set, js/data.js is served with every habit's `since` replaced.
+   Set by openApp() for each open; a data.js without a `since:` field while an override is requested
+   is a 500, so the seam can never go silently dead. */
+let _habitsSince = null;
+const SINCE_FIELD = /since: '\d{4}-\d{2}-\d{2}'/g;
+
 export function serve(root = APP_ROOT) {
   return new Promise((res, rej) => {
     const server = createServer((req, reply) => {
@@ -98,6 +104,18 @@ export function serve(root = APP_ROOT) {
       if (!file || !file.startsWith(root + sep) || !existsSync(file) || !statSync(file).isFile()) {
         reply.writeHead(404);
         reply.end();
+        return;
+      }
+      if (_habitsSince && pathname === "/js/data.js") {
+        const text = readFileSync(file, "utf8");
+        if (!SINCE_FIELD.test(text)) {
+          reply.writeHead(500);
+          reply.end("habitsSince seam: no since field in js/data.js");
+          return;
+        }
+        SINCE_FIELD.lastIndex = 0;
+        reply.writeHead(200, { "content-type": TYPES[".js"] || "application/javascript", "cache-control": "no-store" });
+        reply.end(text.replace(SINCE_FIELD, "since: '" + _habitsSince + "'"));
         return;
       }
       reply.writeHead(200, { "content-type": TYPES[extname(file)] || "application/octet-stream", "cache-control": "no-store" });
@@ -672,6 +690,9 @@ export async function closeServer() {
  *   opts.habitsTickMs shortens js/habits.js's minute timer (the window.__HABITS_TICK_MS seam)
  *   opts.stubFlags    { __STUB_FAIL_LISTEN: {...}, __STUB_OFFLINE: true, ... } assigned to window before any
  *                     script runs (the firebase stub's failure switches); window.__toastLog lists every toast shown
+ *   opts.habitsSince  'YYYY-MM-DD' | null. Test seam: js/data.js is served with every CONFIG.habits[].since
+ *                     replaced by this date, so the habits checks' hand-computed numbers (written for a
+ *                     1 October start) stay valid. Default '2026-10-01'; null serves the shipped config.
  *   opts.viewport     { width, height }, default 390x844 (mobile, touch)
  *   opts.page         which html file to open, default 'index.html'
  */
@@ -694,11 +715,13 @@ export async function openApp(page, opts = {}) {
     habits = null,
     habitsTickMs = 0,
     stubFlags = null,
+    habitsSince = "2026-10-01",
     viewport = { width: 390, height: 844 },
     page: appPage = "index.html",
   } = opts;
 
   const server = await ownServer();
+  _habitsSince = habitsSince || null;
 
   await page.viewport(viewport.width, viewport.height, { mobile: true });
   await page.send("Emulation.setTimezoneOverride", { timezoneId: "Europe/Istanbul" });

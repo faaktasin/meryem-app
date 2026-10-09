@@ -25,12 +25,12 @@ const CONFIG = {
   /* The list. `owners` = who ticks it, `weekdaysOnly` = due Mon-Fri only, `since` / optional
      `until` = the dates it is active (so changing the list never rewrites old months). */
   habits: [
-    { id: 'spor', label: 'Spor', owners: ['furkan', 'meryem'], weekdaysOnly: false, since: '2026-10-01', note: 'Spor yapacağız' },
-    { id: 'kuran', label: 'Kuran (en az 1 sayfa)', owners: ['furkan', 'meryem'], weekdaysOnly: false, since: '2026-10-01', note: 'En az 1 sf Kuran okucaz' },
-    { id: 'arapca', label: 'Arapça tekrarı (en az 15 dk)', owners: ['meryem'], weekdaysOnly: false, since: '2026-10-01', note: 'Min 15 dk Arapça tekrarı yapacağım' },
-    { id: 'cicek', label: 'Çiçek yapımı', owners: ['meryem'], weekdaysOnly: false, since: '2026-10-01', note: 'Çiçek yapmaya başlıcam' },
-    { id: 'projeler', label: 'Projeleri geliştirme', owners: ['furkan'], weekdaysOnly: false, since: '2026-10-01', note: 'Sen elindeki projeleri geliştirmeye başlayıp belli bir seviyeye getireceksin' },
-    { id: 'erken', label: 'Erken çıkış (fazla mesai yok)', owners: ['furkan'], weekdaysOnly: true, since: '2026-10-01', note: 'Fazla mesai yok işten erken çıkacaksın 🤗' }
+    { id: 'spor', label: 'Spor', owners: ['furkan', 'meryem'], weekdaysOnly: false, since: '2026-10-08', note: 'Spor yapacağız' },
+    { id: 'kuran', label: 'Kuran (en az 1 sayfa)', owners: ['furkan', 'meryem'], weekdaysOnly: false, since: '2026-10-08', note: 'En az 1 sf Kuran okucaz' },
+    { id: 'arapca', label: 'Arapça tekrarı (en az 15 dk)', owners: ['meryem'], weekdaysOnly: false, since: '2026-10-08', note: 'Min 15 dk Arapça tekrarı yapacağım' },
+    { id: 'cicek', label: 'Çiçek yapımı', owners: ['meryem'], weekdaysOnly: false, since: '2026-10-08', note: 'Çiçek yapmaya başlıcam' },
+    { id: 'projeler', label: 'Projeleri geliştirme', owners: ['furkan'], weekdaysOnly: false, since: '2026-10-08', note: 'Sen elindeki projeleri geliştirmeye başlayıp belli bir seviyeye getireceksin' },
+    { id: 'erken', label: 'Erken çıkış (fazla mesai yok)', owners: ['furkan'], weekdaysOnly: true, since: '2026-10-08', note: 'Fazla mesai yok işten erken çıkacaksın 🤗' }
   ],
   google: {
     clientId: '548770900516-76u61ct0rjs4oa6rpe7c418m3k5jqooh.apps.googleusercontent.com',
