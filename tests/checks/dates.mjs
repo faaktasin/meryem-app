@@ -309,6 +309,46 @@ export async function run({ page, check }) {
     ok: JSON.stringify(cardOrder) === JSON.stringify(["her", "wedding", "engagement", "meet", "love", "his"]),
     detail: JSON.stringify(cardOrder),
   }));
+
+  // 19. Layout: from 700 px up the six cards form three rows of two. Both cards of a row share top
+  //     and bottom edges (within 1 px) and the two columns end level, in a normal state and on her
+  //     birthday (a taller celebration card). On a phone the cards stay one column, each below the
+  //     last with the 16 px gap and the same left edge and width.
+  const boxes = () =>
+    page.eval(() => {
+      const o = {};
+      Array.prototype.forEach.call(document.querySelectorAll(".dates-container [data-dts-card]"), (el) => {
+        const r = el.getBoundingClientRect();
+        o[el.getAttribute("data-dts-card")] = { l: r.left, t: r.top, b: r.bottom, w: r.width };
+      });
+      return o;
+    });
+  const pairs = [["her", "meet"], ["wedding", "love"], ["engagement", "his"]];
+  for (const [vw, vh] of [[1280, 800], [768, 1024]]) {
+    for (const now of ["2026-06-15T12:00:00", "2026-10-04T10:00:00"]) {
+      await openDates(page, { now, viewport: { width: vw, height: vh } });
+      const bx = await boxes();
+      const diffs = pairs.map(([a, b]) => ({ top: Math.abs(bx[a].t - bx[b].t), bottom: Math.abs(bx[a].b - bx[b].b) }));
+      const twoCols = bx.meet.l > bx.her.l + bx.her.w / 2 && bx.love.l === bx.meet.l && bx.his.l === bx.meet.l;
+      const stacked = bx.wedding.t > bx.her.b && bx.engagement.t > bx.wedding.b && bx.love.t > bx.meet.b && bx.his.t > bx.love.b;
+      await check(`dates: at ${vw}px the cards line up row by row, columns end level (${now.slice(0, 10)})`, () => ({
+        ok: twoCols && stacked && diffs.every((d) => d.top <= 1 && d.bottom <= 1),
+        detail: JSON.stringify({ diffs, twoCols, stacked }),
+      }));
+    }
+  }
+  for (const now of ["2026-06-15T12:00:00", "2026-10-04T10:00:00"]) {
+    await openDates(page, { now, viewport: { width: 390, height: 844 } });
+    const bx = await boxes();
+    const order = ["her", "wedding", "engagement", "meet", "love", "his"];
+    let ok = true;
+    for (let i = 0; i < order.length; i++) {
+      const c = bx[order[i]];
+      if (Math.abs(c.l - bx.her.l) > 0.5 || Math.abs(c.w - bx.her.w) > 0.5) ok = false;
+      if (i > 0 && Math.abs(c.t - bx[order[i - 1]].b - 16) > 1) ok = false;
+    }
+    await check(`dates: at 390px the six cards stay one column, 16 px apart (${now.slice(0, 10)})`, () => ({ ok, detail: JSON.stringify(bx) }));
+  }
 }
 
 export const mutants = [
@@ -423,6 +463,13 @@ export const mutants = [
     find: "var counters = document.querySelector('.dates-col-counters');\n    if (counters) counters.appendChild(card);",
     replace: "var counters = document.querySelector('.dates-col-counters');",
     expect: "dates: Tarihler cards read her birthday, wedding, engagement, meet, love, his birthday in that order",
+  },
+  {
+    id: "dates-rows-align-grid",
+    file: "css/style.css",
+    find: "  .dates-col {\n    display: contents;\n  }",
+    replace: "  .dates-col {\n    flex: 1;\n  }",
+    expect: "dates: at 1280px the cards line up row by row, columns end level (2026-06-15)",
   },
 ];
 

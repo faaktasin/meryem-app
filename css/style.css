@@ -567,15 +567,28 @@ button, input, textarea {
 }
 
 @media (min-width: 700px) {
+  /* The two column wrappers dissolve so all six cards sit in ONE grid: three rows, two columns,
+     filled column by column (DOM order: her/wedding/engagement, then meet/love/his). A row is as
+     tall as its taller card, so both cards of a row share top and bottom edges and the columns end
+     level; each card centres its content so the shorter one does not look top-heavy. */
   .dates-container {
     max-width: 900px;
-    flex-direction: row;
-    gap: 24px;
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(3, auto);
+    gap: 16px 24px;
     padding: 24px;
   }
 
   .dates-col {
-    flex: 1;
+    display: contents;
+  }
+
+  .dates-container .countdown-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 }
 
