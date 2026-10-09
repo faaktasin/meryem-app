@@ -52,6 +52,50 @@
   background-position: 0 0, 22px 22px;
 }
 
+/* ── Skip control (top-right corner, every step but the finale) ──────────────
+   Low-key on purpose: soft ink text and a small chevron, no fill, no border. --ink-soft on the
+   blush end of the overlay gradient measures about 5.4:1. The 44x44 hit area is the button itself
+   (min size), so the small look never shrinks the target. Fixed, like the birthday close button,
+   so it stays put when a tall overlay scrolls. */
+.gate-skip {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 6px);
+  right: 8px;
+  z-index: 6; /* above the hopping No button (5) so a hop can never bury it */
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 10px;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--ink-soft);
+  cursor: pointer;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.gate-skip[hidden] {
+  display: none;
+}
+
+.gate-skip:focus-visible {
+  outline: 3px solid var(--rose-strong);
+  outline-offset: -4px;
+  border-radius: 12px;
+}
+
+.gate-skip-chevron {
+  display: block;
+}
+
 /* ── Progress hearts ─────────────────────────────────── */
 
 .gate-progress {

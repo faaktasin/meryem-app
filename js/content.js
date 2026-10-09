@@ -53,6 +53,8 @@ var CONTENT = {
   },
 
   gate: {
+    /* The quiet skip control in the gate's top corner (js/gate.js). */
+    skip: { label: 'Geç', aria: 'Soruları geç' },
     yesLabel: 'Evet\u00a0💗',
     noLabels: [
       'Hayır',

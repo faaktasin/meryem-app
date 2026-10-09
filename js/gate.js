@@ -7,6 +7,8 @@
  *   window.isGateDue()       true during her birthday week (4-10 Oct) while this year's play is unplayed
  *   window.startGateIfDue()  opens the automatic birthday sequence when isGateDue()
  *   window.replayGate()      opens the shorter replay sequence any time
+ * A quiet "Geç ›" control (top corner, every step but the finale) ends the playthrough early and marks the
+ * year played, exactly as the finale does, without opening the surprise.
  * #gate-replay-btn (header) un-hides once the gate has ever been completed and replays it.
  */
 (function () {
@@ -39,10 +41,12 @@
     '<path d="' + GATE_HEART_PATH_D + '" fill="var(--rose-100)" stroke="var(--rose-strong)" stroke-width="3"/></svg>';
   var GATE_HEART_SVG_FILL = '<svg class="gate-meter-heart-fill" viewBox="-30 -6 60 62" aria-hidden="true">' +
     '<path d="' + GATE_HEART_PATH_D + '" fill="var(--rose-strong)"/></svg>';
+  var GATE_CHEVRON_ICON = '<svg class="gate-skip-chevron" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">' +
+    '<path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   var GATE_HEART_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">' +
     '<path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
 
-  var _els = { overlay: null, stage: null, progress: null };
+  var _els = { overlay: null, stage: null, progress: null, skip: null };
   var _state = null; /* the current playthrough, or null when the gate is closed */
   var _previousActiveElement = null;
   var _completedThisSession = false;
@@ -115,6 +119,7 @@
   }
 
   function _advance() {
+    if (!_state) return;
     _state.stepIndex++;
     _renderStep();
   }
@@ -123,6 +128,7 @@
     _updateProgress();
     var step = _state.steps[_state.stepIndex];
     if (!step) return;
+    if (_els.skip) _els.skip.hidden = step.type === 'finale'; /* the finale button already closes the gate */
     if (step.type === 'question') _renderQuestion(step.data);
     else if (step.type === 'meter') _renderMeter();
     else if (step.type === 'finale') _renderFinale();
@@ -161,8 +167,14 @@
       '<div class="gate-shell">' +
         '<div class="gate-progress" id="gate-progress" aria-hidden="true"></div>' +
         '<div class="gate-stage" id="gate-stage"></div>' +
-      '</div>';
+      '</div>' +
+      /* Last in the DOM so Tab reaches the questions first; pinned to the top-right corner by CSS. */
+      '<button type="button" class="gate-skip" id="gate-skip" aria-label="' + CONTENT.gate.skip.aria + '">' +
+        '<span class="gate-skip-text">' + CONTENT.gate.skip.label + '</span>' + GATE_CHEVRON_ICON +
+      '</button>';
     _els.stage = document.getElementById('gate-stage');
+    _els.skip = document.getElementById('gate-skip');
+    _els.skip.addEventListener('click', _onSkip);
     _els.progress = document.getElementById('gate-progress');
 
     overlay.hidden = false;
@@ -363,6 +375,12 @@
     var maxX = oRect.right - HOP_MARGIN - noRect.width;
     var minY = oRect.top + HOP_MARGIN;
     var maxY = oRect.bottom - HOP_MARGIN - noRect.height;
+    /* Keep the hopping No out of the band the skip control sits in (top-right corner): only the
+       top edge moves down, and only while that still leaves room. */
+    if (_els.skip && !_els.skip.hidden) {
+      var skipBottom = _els.skip.getBoundingClientRect().bottom + HOP_OVERLAP_MARGIN;
+      if (skipBottom < maxY) minY = Math.max(minY, skipBottom);
+    }
     if (maxX < minX) { var midX = (oRect.left + oRect.right - noRect.width) / 2; minX = maxX = midX; }
     if (maxY < minY) { var midY = (oRect.top + oRect.bottom - noRect.height) / 2; minY = maxY = midY; }
 
@@ -438,12 +456,14 @@
     replyEl.hidden = false;
 
     var advanced = false;
+    var playing = _state; /* a skip (or replay) during the reply must not advance a different playthrough */
     var timer = setTimeout(goNext, REPLY_MS);
     function goNext() {
       if (advanced) return;
       advanced = true;
       clearTimeout(timer);
       replyEl.removeEventListener('click', goNext);
+      if (_state !== playing) return;
       _advance();
     }
     replyEl.addEventListener('click', goNext);
@@ -625,12 +645,23 @@
     _focusEl(btn);
   }
 
-  function _onFinaleClick() {
-    var wasBirthdayPlay = _state.birthdayPlay;
+  /** Marks this year played (a no-op under preview), un-hides the replay button and closes the overlay. */
+  function _completeGate() {
     storageSet(GATE_FLAG_KEY, String(birthdayYear()));
     _completedThisSession = true;
     _updateReplayVisibility();
     _closeGate();
+  }
+
+  /** The quiet skip control: ends the playthrough like the finale does, but never opens the surprise. */
+  function _onSkip() {
+    if (!_state) return;
+    _completeGate();
+  }
+
+  function _onFinaleClick() {
+    var wasBirthdayPlay = _state.birthdayPlay;
+    _completeGate();
     if (wasBirthdayPlay && typeof window.openBirthdaySurprise === 'function') {
       window.openBirthdaySurprise();
     }

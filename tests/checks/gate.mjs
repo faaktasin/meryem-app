@@ -14,6 +14,13 @@ export const name = "gate";
 const NOT_DUE_NOW = "2026-10-03T23:59:00";
 const DUE_NOW = "2026-10-04T00:01:00";
 
+const N_SKIP_LOOK = "gate: the skip control reads 'Geç' with a chevron, is a plain keyboard-reachable button with an aria-label, no fill, no border, top-right";
+const N_SKIP_SIZE = "gate: the skip control is at least 44 x 44 px and its text reaches 4.5:1 on both ends of the overlay gradient";
+const N_SKIP_SHOWN = "gate: the skip control is on every question, the first and a later one, and never overlaps a gate button, the hopping No included";
+const N_SKIP_CLOSES = "gate: one tap on skip closes the gate, sets this year's flag, shows the replay button and does not open the surprise";
+const N_SKIP_RELOAD = "gate: after a skip a reload does not bring the gate back";
+const N_SKIP_FINALE = "gate: the skip control is on the love meter and absent on the finale";
+const N_SKIP_PREVIEW = "gate: under the rehearsal clock skip closes the gate and writes no flag";
 const N_WEEK_OPENS = "gate: opens by itself on 4 Oct 00:01 and on 10 Oct 23:59 (the birthday week, both ends)";
 const N_WEEK_CLOSED = "gate: does not open by itself on 11 Oct 00:01 or on 1 Nov, flag unset, while the Sürpriz tab stays unlocked";
 
@@ -364,6 +371,128 @@ export async function run({ page, check }) {
     detail: JSON.stringify({ weekAfter, weekNov }),
   }));
 
+  // 7c. The quiet skip control ("Geç ›", top-right): read back from the live page at 360 and 390 px.
+  const skipSnap = (p) => p.eval(() => {
+    const el = document.getElementById("gate-skip");
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    const A = window.__app;
+    const probe = document.createElement("i");
+    document.body.appendChild(probe);
+    const bgOf = (v) => { probe.style.backgroundColor = "var(" + v + ")"; return A.parse(getComputedStyle(probe).backgroundColor); };
+    const ends = [bgOf("--cream"), bgOf("--blush")];
+    probe.remove();
+    const ink = A.ink(el);
+    const cs = getComputedStyle(el);
+    const buttons = Array.prototype.slice.call(document.querySelectorAll("#gate-overlay .gate-btn")).map((b) => b.getBoundingClientRect())
+      .filter((b) => b.width > 0 && b.height > 0);
+    const hit = (b) => b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top;
+    return {
+      hidden: el.hidden, shown: r.width > 0 && r.height > 0, w: Math.round(r.width * 10) / 10, h: Math.round(r.height * 10) / 10,
+      inViewport: r.left >= 0 && r.top >= 0 && r.right <= document.documentElement.clientWidth && r.bottom <= document.documentElement.clientHeight,
+      contrastMin: Math.round(Math.min.apply(null, ends.map((e) => A.contrast(ink, e))) * 100) / 100,
+      text: el.textContent.trim(), aria: el.getAttribute("aria-label"), tag: el.tagName, tabIndex: el.tabIndex,
+      bg: cs.backgroundColor, border: cs.borderTopWidth, buttonCount: buttons.length, overlapsButton: buttons.some(hit), buttonRects: buttons.map((b) => [Math.round(b.left), Math.round(b.top), Math.round(b.right), Math.round(b.bottom)]),
+      rect: { l: Math.round(r.left), t: Math.round(r.top), r: Math.round(r.right), b: Math.round(r.bottom) },
+    };
+  });
+  const surpriseHidden = (p) => p.eval(() => document.getElementById("birthday-overlay").hidden);
+
+  for (const width of [360, 390]) {
+    const view = { width, height: 844 };
+    await openApp(page, { signedIn: true, now: DUE_NOW, viewport: view });
+    await waitUntil(async () => (await overlayHidden(page)) === false, 2500);
+    const first = await skipSnap(page);
+    await page.eval(() => { window.__gateSpy = false; window.openBirthdaySurprise = function () { window.__gateSpy = true; }; });
+    await page.eval(() => { var el = document.getElementById("gate-skip"); el.focus(); window.__skipFocused = document.activeElement === el; });
+    const focusable = await page.eval(() => window.__skipFocused === true);
+    await yesAndSkip(page); // on to the second question
+    const later = await skipSnap(page);
+    // Pin the hop to the top-right corner (x at its maximum, y at its minimum), the very spot the skip control occupies.
+    // Only the hop's own calls are pinned (found by call stack) so unrelated Math.random users cannot flip the x/y order.
+    await page.eval(() => {
+      var i = 0, real = Math.random;
+      Math.random = function () { return /_hopNoButton/.test(new Error().stack || "") ? (i++ % 2 === 0 ? 0.999 : 0) : real(); };
+    });
+    // The No button hops from the 4th press. One press per 0.5 s: a hop is placed from No's size at that moment, so No has
+    // to have finished shrinking (0.22 s) before the next one for the pinned corner to be the real corner.
+    for (let n = 0; n < 6; n++) {
+      await page.tap(".gate-btn-no");
+      await page.eval(() => new Promise((r) => setTimeout(r, 500)));
+    }
+    await page.settle();
+    await page.eval(() => new Promise((r) => setTimeout(r, 600))); // let No's left/top transition (0.35 s) finish before measuring
+    const hopped = await skipSnap(page);
+    await check(`${N_SKIP_LOOK} (${width}px)`, () => ({
+      ok: !!first && first.shown && !first.hidden && first.tag === "BUTTON" && first.text === "Geç" && first.aria === "Soruları geç"
+        && first.bg === "rgba(0, 0, 0, 0)" && first.border === "0px" && first.inViewport && focusable
+        && first.rect.r > width - 60 && first.rect.t < 60,
+      detail: JSON.stringify({ first, focusable }),
+    }));
+    await check(`${N_SKIP_SIZE} (${width}px)`, () => ({
+      ok: !!first && first.w >= 44 && first.h >= 44 && first.contrastMin >= 4.5
+        && !!later && later.w >= 44 && later.h >= 44 && later.contrastMin >= 4.5,
+      detail: JSON.stringify({ first: { w: first && first.w, h: first && first.h, c: first && first.contrastMin }, later: { w: later && later.w, h: later && later.h, c: later && later.contrastMin } }),
+    }));
+    await check(`${N_SKIP_SHOWN} (${width}px)`, () => ({
+      ok: !!later && later.shown && !later.hidden && !!first && first.buttonCount >= 2 && first.overlapsButton === false
+        && later.overlapsButton === false && !!hopped && hopped.shown && hopped.overlapsButton === false && hopped.buttonCount >= 2,
+      detail: JSON.stringify({ first: first && first.overlapsButton, later: later && later.overlapsButton, hopped }),
+    }));
+
+    await page.tap("#gate-skip");
+    await page.eval(() => new Promise((r) => setTimeout(r, 80)));
+    const afterSkip = await page.eval(() => ({
+      gateHidden: document.getElementById("gate-overlay").hidden,
+      flag: (function () { try { return localStorage.getItem("meryem-gate-played-year"); } catch (e) { return null; } })(),
+      replayHidden: document.getElementById("gate-replay-btn").hidden,
+      spy: window.__gateSpy,
+      inert: document.getElementById("app-content").hasAttribute("inert"),
+      overflow: document.body.style.overflow,
+    }));
+    const surpriseAfterSkip = await surpriseHidden(page);
+    await check(`${N_SKIP_CLOSES} (${width}px)`, () => ({
+      ok: afterSkip.gateHidden === true && afterSkip.flag === "2026" && afterSkip.replayHidden === false
+        && afterSkip.spy === false && surpriseAfterSkip === true && afterSkip.inert === false && afterSkip.overflow === "",
+      detail: JSON.stringify({ afterSkip, surpriseAfterSkip }),
+    }));
+    await openApp(page, { signedIn: true, now: DUE_NOW, viewport: view, keepStorage: true });
+    await page.eval(() => new Promise((r) => setTimeout(r, 400)));
+    const reloaded = await page.eval(() => ({ gateHidden: document.getElementById("gate-overlay").hidden, due: window.isGateDue() }));
+    await check(`${N_SKIP_RELOAD} (${width}px)`, () => ({
+      ok: reloaded.gateHidden === true && reloaded.due === false,
+      detail: JSON.stringify(reloaded),
+    }));
+  }
+
+  // The skip control is on the love meter and gone on the finale (its own button already closes the gate).
+  await openApp(page, { signedIn: true, now: DUE_NOW });
+  await waitUntil(async () => (await overlayHidden(page)) === false, 2500);
+  for (let i = 0; i < 5; i++) await yesAndSkip(page);
+  const onMeter = await skipSnap(page);
+  await fillMeterToMax(page);
+  await page.tap(".gate-meter-actions .gate-btn-yes");
+  await page.eval(() => new Promise((r) => setTimeout(r, 40)));
+  await yesAndSkip(page); // birthday[1]
+  await waitUntil(() => page.eval(() => !!document.querySelector(".gate-finale-btn")), 1500);
+  const onFinale = await skipSnap(page);
+  await check(N_SKIP_FINALE, () => ({
+    ok: !!onMeter && onMeter.shown && onMeter.overlapsButton === false && !!onFinale && onFinale.hidden === true && onFinale.shown === false,
+    detail: JSON.stringify({ onMeter: onMeter && { shown: onMeter.shown, overlaps: onMeter.overlapsButton }, onFinale: onFinale && { hidden: onFinale.hidden, shown: onFinale.shown } }),
+  }));
+
+  // Under the rehearsal clock a skip closes the gate and writes no flag, like the finale does.
+  await openApp(page, { signedIn: true, query: "?onizleme=dogumgunu" });
+  await waitUntil(async () => (await overlayHidden(page)) === false, 2000);
+  await page.tap("#gate-skip");
+  await page.eval(() => new Promise((r) => setTimeout(r, 80)));
+  const previewSkip = await page.eval(() => ({ gateHidden: document.getElementById("gate-overlay").hidden, replayHidden: document.getElementById("gate-replay-btn").hidden }));
+  const previewSkipStorage = await page.storageDump();
+  await check(N_SKIP_PREVIEW, () => ({
+    ok: previewSkip.gateHidden === true && previewSkip.replayHidden === false && !previewSkipStorage["meryem-gate-played-year"],
+    detail: JSON.stringify({ previewSkip, previewSkipStorage }),
+  }));
+
   // 8. Reduced motion: no heart burst on Yes, and the press-4 hop still keeps No clear of Yes
   await openApp(page, { signedIn: true, now: DUE_NOW, reducedMotion: true });
   await waitUntil(async () => (await overlayHidden(page)) === false, 2000);
@@ -536,6 +665,51 @@ export async function run({ page, check }) {
 }
 
 export const mutants = [
+  {
+    id: "gate-skip-no-flag",
+    file: "js/gate.js",
+    find: "function _onSkip() {\n    if (!_state) return;\n    _completeGate();",
+    replace: "function _onSkip() {\n    if (!_state) return;\n    _closeGate();",
+    expect: N_SKIP_CLOSES + " (360px)",
+  },
+  {
+    id: "gate-skip-opens-surprise",
+    file: "js/gate.js",
+    find: "function _onSkip() {\n    if (!_state) return;\n    _completeGate();",
+    replace: "function _onSkip() {\n    if (!_state) return;\n    _completeGate();\n    if (typeof window.openBirthdaySurprise === 'function') window.openBirthdaySurprise();",
+    expect: N_SKIP_CLOSES + " (360px)",
+  },
+  {
+    id: "gate-skip-shown-on-finale",
+    file: "js/gate.js",
+    find: "_els.skip.hidden = step.type === 'finale';",
+    replace: "_els.skip.hidden = false;",
+    expect: N_SKIP_FINALE,
+  },
+  {
+    // The control shrunk below a finger: 44 -> 30.
+    id: "gate-skip-too-small",
+    file: "css/gate.css",
+    find: "  min-width: 44px;\n  min-height: 44px;\n  display: inline-flex;",
+    replace: "  min-width: 30px;\n  min-height: 30px;\n  padding: 0;\n  display: inline-flex;",
+    expect: N_SKIP_SIZE + " (360px)",
+  },
+  {
+    // A pale ink on the blush gradient: the text fails 4.5:1.
+    id: "gate-skip-low-contrast",
+    file: "css/gate.css",
+    find: "  color: var(--ink-soft);\n  cursor: pointer;\n  -webkit-touch-callout: none;\n  -webkit-user-select: none;\n  user-select: none;\n  touch-action: manipulation;\n}\n\n.gate-skip[hidden]",
+    replace: "  color: var(--rose-100);\n  cursor: pointer;\n  -webkit-touch-callout: none;\n  -webkit-user-select: none;\n  user-select: none;\n  touch-action: manipulation;\n}\n\n.gate-skip[hidden]",
+    expect: N_SKIP_SIZE + " (360px)",
+  },
+  {
+    // The hopping No may land under the skip control again.
+    id: "gate-skip-hop-ignores-skip",
+    file: "js/gate.js",
+    find: "if (skipBottom < maxY) minY = Math.max(minY, skipBottom);",
+    replace: "",
+    expect: N_SKIP_SHOWN + " (360px)",
+  },
   {
     id: "gate-week-limit-dropped",
     file: "js/gate.js",
