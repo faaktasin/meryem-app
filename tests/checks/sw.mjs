@@ -139,8 +139,8 @@ export const mutants = [
   {
     id: "sw-cache-not-bumped",
     file: "sw.js",
-    find: "var CACHE_NAME = 'meryem-v15';",
-    replace: "var CACHE_NAME = 'meryem-v14';",
+    find: "var CACHE_NAME = 'meryem-v16';",
+    replace: "var CACHE_NAME = 'meryem-v15';",
     expect: "sw: CACHE_NAME changes whenever a site file differs from origin/main",
   },
   {

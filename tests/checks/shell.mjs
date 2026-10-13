@@ -73,6 +73,30 @@ export async function run({ page, check, root }) {
     };
   });
 
+  // 2b. The desktop panel opens the site on #takip: that hash starts the app on Takip, no hash on Bugün
+  await openApp(page, { signedIn: true, query: "#takip" });
+  await page.eval(() => new Promise((r) => setTimeout(r, 300)));
+  const takipHash = await page.eval(() => ({
+    habitsActive: document.getElementById("habits-view").classList.contains("is-active"),
+    todayActive: document.getElementById("today-view").classList.contains("is-active"),
+    navActive: [...document.querySelectorAll(".nav-btn.is-active")].map((b) => b.dataset.tab),
+  }));
+  await openApp(page, { signedIn: true });
+  await page.eval(() => new Promise((r) => setTimeout(r, 300)));
+  const noHash = await page.eval(() => ({
+    habitsActive: document.getElementById("habits-view").classList.contains("is-active"),
+    todayActive: document.getElementById("today-view").classList.contains("is-active"),
+  }));
+  await check("shell: the URL hash #takip opens the app on Takip, no hash opens it on Bugün", () => ({
+    ok: takipHash.habitsActive === true && takipHash.todayActive === false
+      && takipHash.navActive.length === 1 && takipHash.navActive[0] === "habits-view"
+      && noHash.todayActive === true && noHash.habitsActive === false,
+    detail: JSON.stringify({ takipHash, noHash }),
+  }));
+  // The page is re-opened without a hash so the checks below start from the same state as before.
+  await openApp(page, { signedIn: true });
+  await page.eval(() => new Promise((r) => setTimeout(r, 200)));
+
   // 3. Every nav button shows its own view, whose content sits strictly between header and nav
   const geomFailures = [];
   for (const t of TABS) {
@@ -760,6 +784,13 @@ export const mutants = [
     find: ".auth-bear {\n  display: flex;\n  justify-content: center;",
     replace: ".auth-bear {\n  display: block;\n  justify-content: center;",
     expect: "shell: the login bear is centred over the title",
+  },
+  {
+    id: "shell-takip-hash-dropped",
+    file: "js/app.js",
+    find: "  if (window.location.hash === '#takip') showTab('habits-view');\n",
+    replace: "",
+    expect: "shell: the URL hash #takip opens the app on Takip, no hash opens it on Bugün",
   },
   {
     id: "shell-firebase-not-last",

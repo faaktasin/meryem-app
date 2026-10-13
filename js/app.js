@@ -33,6 +33,9 @@ function initTabs() {
       showTab(btn.dataset.tab);
     });
   });
+
+  /* The desktop Başlat panel opens the site on #takip — start on Takip instead of Bugün. */
+  if (window.location.hash === '#takip') showTab('habits-view');
 }
 
 /**
