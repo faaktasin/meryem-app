@@ -486,24 +486,6 @@ export async function run({ page, check, root }) {
     detail: JSON.stringify(toastAttrs),
   }));
 
-  // 18. m13: js/drive.js error strings use real Turkish characters, not ASCII stand-ins (console-
-  // only strings — verified by source text, since they never reach the screen).
-  const driveJsSrc = readFileSync(join(root, "js", "drive.js"), "utf8");
-  const expectedDriveStrings = [
-    "Google API henüz yüklenmedi. Sayfayı yenile.",
-    "Google giriş zaman aşımı. Popup engellenmiş olabilir.",
-    "Google giriş hatası: ",
-    "Google giriş açılamadı: ",
-    "Drive upload hatası: ",
-    "Drive silme hatası:",
-  ];
-  const missingDriveStrings = expectedDriveStrings.filter((s) => driveJsSrc.indexOf(s) === -1);
-  const staleAsciiDrive = ["henuz", "yuklenmedi", "Sayfayi", "asimi", "acilamadi", "hatasi"].filter((s) => driveJsSrc.indexOf(s) !== -1);
-  await check("shell: js/drive.js error strings use real Turkish characters, not ASCII stand-ins (m13)", () => ({
-    ok: missingDriveStrings.length === 0 && staleAsciiDrive.length === 0,
-    detail: missingDriveStrings.length ? `missing: ${missingDriveStrings.join(" | ")}` : (staleAsciiDrive.length ? `stale ascii: ${staleAsciiDrive.join(", ")}` : "ok"),
-  }));
-
   // The gift icon sits in the middle of its raised pink circle — read from the painted pixels, on
   // two phone sizes and with the Sürpriz tab both idle and selected (the selected state once
   // dropped the icon out of the circle). From the icon's edges the scan walks outwards through the
@@ -735,13 +717,6 @@ export const mutants = [
     find: "  toast.setAttribute('role', 'status');\n  toast.setAttribute('aria-live', 'polite');\n  toast.textContent = message;",
     replace: "  toast.textContent = message;",
     expect: "shell: toast notifications carry role=status aria-live=polite (m8)",
-  },
-  {
-    id: "shell-drive-turkish-chars",
-    file: "js/drive.js",
-    find: "reject(new Error('Google giriş zaman aşımı. Popup engellenmiş olabilir.'));",
-    replace: "reject(new Error('Google giris zaman asimi. Popup engellenmis olabilir.'));",
-    expect: "shell: js/drive.js error strings use real Turkish characters, not ASCII stand-ins (m13)",
   },
   {
     id: "shell-header-nav-padding",

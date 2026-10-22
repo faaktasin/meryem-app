@@ -32,10 +32,6 @@ const CONFIG = {
     { id: 'projeler', label: 'Projeleri geliştirme', owners: ['furkan'], weekdaysOnly: false, since: '2026-10-07', note: 'Sen elindeki projeleri geliştirmeye başlayıp belli bir seviyeye getireceksin' },
     { id: 'erken', label: 'Erken çıkış (fazla mesai yok)', owners: ['furkan'], weekdaysOnly: true, since: '2026-10-07', note: 'Fazla mesai yok işten erken çıkacaksın 🤗' }
   ],
-  google: {
-    clientId: '548770900516-76u61ct0rjs4oa6rpe7c418m3k5jqooh.apps.googleusercontent.com',
-    apiKey: 'AIzaSyCMJX7CIG5CaXHGQKylj2GnUfGgcaNPOV4'
-  }
 };
 
 const LOVE_MESSAGES = [

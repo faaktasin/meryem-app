@@ -24,7 +24,6 @@ var ASSETS = [
   './js/daily.js',
   './js/data.js',
   './js/dates.js',
-  './js/drive.js',
   './js/exif.js',
   './js/firebase.js',
   './js/fx.js',

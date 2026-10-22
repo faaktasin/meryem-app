@@ -3,7 +3,7 @@
  *
  * Shared by test_app.mjs, mutate_app.mjs, shoot.mjs and every module in checks/. Serves the app
  * over http, drives a throwaway headless Brave (Chrome fallback) over the DevTools protocol, and
- * stubs every third-party network dependency (Firebase, Google Identity/Drive, map tiles,
+ * stubs every third-party network dependency (Firebase, map tiles,
  * geocoder) so the app runs deterministically with no real network or credentials.
  *
  * Modelled on D:/code-base/active/web-ui-kit/tests/harness.mjs (http serve, DevToolsActivePort
@@ -51,36 +51,6 @@ export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     pixel, which painted the whole Leaflet map solid black — always decode a "blank" fixture and
     check its actual pixels before trusting it.) */
 const BLANK_PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==";
-
-/**
- * A minimal, safe replacement for Google's real GIS client script: defines just enough of
- * `google.accounts.oauth2` that drive.js's onGisLoaded() runs without throwing. Never talks to a
- * real Google endpoint.
- */
-const GIS_STUB_SRC = `
-window.google = window.google || {};
-google.accounts = google.accounts || {};
-google.accounts.oauth2 = {
-  initTokenClient: function (opts) {
-    return {
-      callback: opts && opts.callback,
-      requestAccessToken: function () {
-        /* Never resolves on its own in tests — nothing in the shell suite exercises Drive auth. */
-      }
-    };
-  }
-};
-`;
-
-/** A minimal, safe replacement for Google's real gapi client script — same idea as GIS_STUB_SRC. */
-const GAPI_STUB_SRC = `
-window.gapi = window.gapi || {};
-gapi.load = function (name, cb) { setTimeout(cb, 0); };
-gapi.client = gapi.client || {
-  init: function () { return Promise.resolve(); },
-  drive: { files: {}, permissions: {} }
-};
-`;
 
 /** Every page/file at the app root the http server may be asked for. */
 /* The habitsSince test seam: when set, js/data.js is served with every habit's `since` replaced.
@@ -286,17 +256,6 @@ class Page {
           await this.#fulfillText(requestId, readFileSync(join(TESTS_DIR, "fixtures", "firebase-stub.js"), "utf8"), "application/javascript");
         } else if (/\/firebasejs\/[\d.]+\/firebase-(auth|firestore)-compat\.js/.test(url)) {
           await this.#fulfillText(requestId, "", "application/javascript");
-        } else if (/accounts\.google\.com/.test(url)) {
-          // These two load async — a real Google CDN round-trip is slow enough that drive.js (a
-          // later, blocking <script>) has always finished defining onGisLoaded/onGapiLoaded by
-          // the time onload fires. Answering instantly from localhost breaks that ordering
-          // (measured: an intermittent "onGisLoaded is not defined"), so a small artificial delay
-          // restores it rather than changing app code.
-          await sleep(120);
-          await this.#fulfillText(requestId, GIS_STUB_SRC, "application/javascript");
-        } else if (/apis\.google\.com/.test(url)) {
-          await sleep(120);
-          await this.#fulfillText(requestId, GAPI_STUB_SRC, "application/javascript");
         } else if (/\.tile\.openstreetmap\.org/.test(url)) {
           await this.send("Fetch.fulfillRequest", { requestId, responseCode: 200, responseHeaders: [{ name: "content-type", value: "image/png" }], body: BLANK_PNG_B64 });
         } else if (/nominatim/.test(url)) {
