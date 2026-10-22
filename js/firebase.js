@@ -42,10 +42,19 @@ auth.onAuthStateChanged(function (user) {
   var appContent = document.getElementById('app-content');
 
   if (user) {
-    if (splashScreen) splashScreen.style.display = 'none';
+    /* The private texts (js/private.js) are merged into the page before anything is drawn from
+       them, so the splash stays up and the app hidden until the load has settled. It always
+       settles (a missing or broken document leaves the repo texts in place). */
     authScreen.style.display = 'none';
-    appContent.style.display = 'block';
-    onAppReady();
+    appContent.style.display = 'none';
+    if (splashScreen) splashScreen.style.display = '';
+    loadPrivateTexts().then(function () {
+      if (auth.currentUser !== user) return; /* signed out while the texts were loading */
+      if (splashScreen) splashScreen.style.display = 'none';
+      authScreen.style.display = 'none';
+      appContent.style.display = 'block';
+      onAppReady();
+    });
   } else {
     if (splashScreen) splashScreen.style.display = 'none';
     authScreen.style.display = 'flex';
@@ -101,6 +110,7 @@ function onAppReady() {
   initFeatures();
   registerServiceWorker();
   migrateLocalStorage();
+  maybeOpenPrivatePanel();
 }
 
 /* ── Firestore: Memories (user-scoped) ──────────────── */

@@ -5,10 +5,6 @@
  * app to her birthday without touching the real clock or any persisted flag.
  */
 
-/* Duplicated from CONFIG.herBirthday on purpose — data.js (which defines CONFIG) loads after
-   this file, so this module reads its own copy instead of depending on load order. */
-var TIME_HER_BIRTHDAY = { month: 10, day: 4 };
-
 var _timeOffsetMs = 0;
 var _previewMode = null; /* computed once, lazily, on first use */
 
@@ -54,7 +50,9 @@ function appNow() {
  * @returns {Date}
  */
 function birthdayStart(year) {
-  return new Date(year, TIME_HER_BIRTHDAY.month - 1, TIME_HER_BIRTHDAY.day, 0, 0, 0);
+  /* CONFIG (js/data.js, loads after this file) is read at call time, never copied at load: the
+     private texts (js/private.js) can replace herBirthday before the first call. */
+  return new Date(year, CONFIG.herBirthday.month - 1, CONFIG.herBirthday.day, 0, 0, 0);
 }
 
 /**

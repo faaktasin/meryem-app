@@ -536,5 +536,22 @@ var CONTENT = {
       next: 'Sonraki ay',
       day: '{day}: Meryem %{m}, Furkan %{f}'
     }
+  },
+
+  /* The private-texts loader and its import/export panel (js/private.js). Interface strings only:
+     the texts themselves are never written here, they arrive from the signed-in account. */
+  privateTexts: {
+    loadError: 'Özel metinler yüklenemedi',
+    panel: {
+      title: 'Özel metinler',
+      hint: 'Bir JSON dosyası yükle ya da kayıtlı metinleri indir.',
+      choose: 'Dosya seç',
+      download: 'İndir',
+      saved: 'Metinler kaydedildi. Sayfayı yenile\u00a0💗',
+      invalid: 'Dosya geçersiz: {reason}',
+      saveError: 'Metinler kaydedilemedi',
+      noDocument: 'Kayıtlı metin yok',
+      downloadError: 'Metinler indirilemedi'
+    }
   }
 };

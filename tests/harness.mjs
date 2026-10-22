@@ -656,6 +656,14 @@ function habitsSeed(habits) {
   return db;
 }
 
+/** The stub database for openApp's `privateTexts` option: users/test-uid/private/texts. An object is
+    stored as its JSON text; a string is stored as it is (to seed a broken document). */
+function privateSeed(privateTexts) {
+  if (privateTexts === null || privateTexts === undefined) return {};
+  const json = typeof privateTexts === "string" ? privateTexts : JSON.stringify(privateTexts);
+  return { "users/test-uid/private": { texts: { json, updatedAt: { __ts: 0 } } } };
+}
+
 let _server = null;
 async function ownServer() {
   if (!_server) _server = await serve(APP_ROOT);
@@ -693,6 +701,11 @@ export async function closeServer() {
  *   opts.habitsSince  'YYYY-MM-DD' | null. Test seam: js/data.js is served with every CONFIG.habits[].since
  *                     replaced by this date, so the habits checks' hand-computed numbers (written for a
  *                     1 October start) stay valid. Default '2026-10-01'; null serves the shipped config.
+ *   opts.privateTexts a payload object (or a raw string) stored as users/test-uid/private/texts, the
+ *                     document js/private.js loads after sign-in; null (default) = no document
+ *   opts.waitReady    default true: after a signed-in load of index.html, wait (5 s at most, then throw)
+ *                     for window.appInitialized === true, i.e. the private texts have settled and the
+ *                     app is up. false skips the wait (a check that looks at the delay itself)
  *   opts.viewport     { width, height }, default 390x844 (mobile, touch)
  *   opts.page         which html file to open, default 'index.html'
  */
@@ -716,6 +729,8 @@ export async function openApp(page, opts = {}) {
     habitsTickMs = 0,
     stubFlags = null,
     habitsSince = "2026-10-01",
+    privateTexts = null,
+    waitReady = true,
     viewport = { width: 390, height: 844 },
     page: appPage = "index.html",
   } = opts;
@@ -727,7 +742,7 @@ export async function openApp(page, opts = {}) {
   await page.send("Emulation.setTimezoneOverride", { timezoneId: "Europe/Istanbul" });
   await page.media(reducedMotion ? [{ name: "prefers-reduced-motion", value: "reduce" }] : []);
   page.setVoiceAudioFixture(voiceAudio);
-  await page.setupNewDocumentScript({ nowIso: now, memories, signedIn, mic, stubDb: habitsSeed(habits), habitsTickMs, stubFlags });
+  await page.setupNewDocumentScript({ nowIso: now, memories, signedIn, mic, stubDb: { ...habitsSeed(habits), ...privateSeed(privateTexts) }, habitsTickMs, stubFlags });
 
   if (!keepStorage) {
     await page.goto(server.base + "__blank.html");
@@ -744,6 +759,15 @@ export async function openApp(page, opts = {}) {
   }
 
   await page.goto(server.base + appPage + (query || ""));
+
+  if (signedIn && waitReady && appPage === "index.html") {
+    // The app is drawn only after the private texts settle (js/private.js), a moment after load.
+    const deadline = Date.now() + 5000;
+    while (!(await page.eval(() => window.appInitialized === true))) {
+      if (Date.now() > deadline) throw new Error("openApp: the app was not initialised within 5 s of the page load (window.appInitialized stayed false)");
+      await sleep(25);
+    }
+  }
 }
 
 /**

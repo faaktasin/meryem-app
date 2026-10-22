@@ -19,16 +19,27 @@
   /* CONTENT (js/content.js) has no line for "it's HIS birthday today" — every message there is
      written for Meryem's days, not Furkan's. A small default in the app's own sweet voice. */
   /* His card on his birthday; the words live in CONTENT.dates.hisToday. */
-  var HIS_TODAY_LINE = (CONTENT.dates && CONTENT.dates.hisToday) || 'Bugün benim doğum günüm 🎉';
+  var HIS_TODAY_LINE;
 
   /* Engagement/wedding card text: CONTENT.dates.* is the source (js/content.js), each with a
-     fallback here in the app's own voice, same pattern as HIS_TODAY_LINE above, in case CONTENT
-     is ever missing a key. */
-  var ENGAGEMENT_LABEL = (CONTENT.dates && CONTENT.dates.engagementLabel) || 'Nişanımızdan beri';
-  var WEDDING_LABEL = (CONTENT.dates && CONTENT.dates.weddingLabel) || 'Düğünümüze';
-  var WEDDING_APPROX = (CONTENT.dates && CONTENT.dates.weddingApprox) || 'yaklaşık {months} ay kaldı';
-  var WEDDING_THIS_MONTH = (CONTENT.dates && CONTENT.dates.weddingThisMonth) || 'Bu ay evleniyoruz 💍';
-  var WEDDING_DONE = (CONTENT.dates && CONTENT.dates.weddingDone) || 'Evlendik! 💍';
+     fallback in the app's own voice, same pattern as HIS_TODAY_LINE above, in case CONTENT
+     is ever missing a key. All six are read inside initDates(), not at load: the private texts
+     (js/private.js) are merged into CONTENT after this file has run and before initDates(). */
+  var ENGAGEMENT_LABEL;
+  var WEDDING_LABEL;
+  var WEDDING_APPROX;
+  var WEDDING_THIS_MONTH;
+  var WEDDING_DONE;
+
+  function readDatesContent() {
+    var d = CONTENT.dates || {};
+    HIS_TODAY_LINE = d.hisToday || 'Bugün benim doğum günüm 🎉';
+    ENGAGEMENT_LABEL = d.engagementLabel || 'Nişanımızdan beri';
+    WEDDING_LABEL = d.weddingLabel || 'Düğünümüze';
+    WEDDING_APPROX = d.weddingApprox || 'yaklaşık {months} ay kaldı';
+    WEDDING_THIS_MONTH = d.weddingThisMonth || 'Bu ay evleniyoruz 💍';
+    WEDDING_DONE = d.weddingDone || 'Evlendik! 💍';
+  }
 
   var _initialized = false;
   var _refs = null;
@@ -443,6 +454,7 @@
   function initDates() {
     if (_initialized) return;
     _initialized = true;
+    readDatesContent();
 
     _refs = {
       her: buildHerCard(),

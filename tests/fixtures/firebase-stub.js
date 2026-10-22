@@ -33,6 +33,10 @@
  *                                                    window.__STUB_FLUSH() delivers them: the server time
  *                                                    arrives and hasPendingWrites turns false.
  *     A seeded document whose `at` is null counts as pending too.
+ *   window.__STUB_FAIL_GET = { texts: true }       doc().get() of the document with that id rejects
+ *                                                    (a failed read of users/test-uid/private/texts)
+ *   window.__STUB_GET_DELAY_MS = n                 the FIRST doc().get() of each document is answered after
+ *                                                    n ms (later reads of it are not delayed)
  *   window.__STUB_ECHO_DELAY_MS = n delays the snapshot that follows a WRITE by n ms (the write
  *   itself lands in the database at once; the first snapshot after a subscribe is not delayed), so
  *   a test can act again before the echo arrives.
@@ -51,6 +55,7 @@
   var _autoId = 0;
   var _listeners = [];
   var _pending = {}; // doc path -> names of the fields still waiting for a server timestamp
+  var _getDelayed = {}; // doc path -> true once its first get() has been delayed (__STUB_GET_DELAY_MS)
 
   window.__STUB_DB = window.__STUB_DB || {};
 
@@ -289,8 +294,18 @@
         return Promise.resolve();
       },
       get: function () {
-        var docs = frozen ? {} : col(colPath);
-        return Promise.resolve(docSnapshot(id, docs[id], path));
+        var failGet = window.__STUB_FAIL_GET;
+        if (failGet && failGet[id]) return Promise.reject(new Error("stub: read of " + path + " denied"));
+        var read = function () {
+          var docs = frozen ? {} : col(colPath);
+          return docSnapshot(id, docs[id], path);
+        };
+        var delay = window.__STUB_GET_DELAY_MS || 0;
+        if (delay && !_getDelayed[path]) {
+          _getDelayed[path] = true;
+          return new Promise(function (res) { setTimeout(function () { res(read()); }, delay); });
+        }
+        return Promise.resolve(read());
       },
       onSnapshot: function (cb, errCb) {
         return addListener(colPath, path, function () {
