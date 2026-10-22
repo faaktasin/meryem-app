@@ -93,6 +93,7 @@ function uploadFile(page, text) {
     const dt = new DataTransfer();
     dt.items.add(new File([t], "ozel-metinler.json", { type: "application/json" }));
     const input = document.getElementById("private-file-input");
+    if (!input) return false;
     input.files = dt.files;
     input.dispatchEvent(new Event("change", { bubbles: true }));
     return true;
