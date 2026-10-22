@@ -1,0 +1,15 @@
+rules_version = '2';
+
+// Cloud Firestore security rules for meryem-app.
+// This file is the text published in the Firebase console (Firestore Database > Rules).
+// Every document the app reads or writes sits under users/{uid}/ (js/firebase.js
+// userCollection), so a signed-in account reaches only its own subtree. Anything no rule
+// matches is denied, which covers every other path and every request without sign-in.
+// tests/checks/rules.mjs keeps this file and the client in step.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
