@@ -7,6 +7,8 @@
  * of the raised gift-tab nav button.
  */
 import { openApp } from "../harness.mjs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 
 export const name = "memories";
 
@@ -17,7 +19,7 @@ const DATA_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAf
 /* 3 memories with photos: 2 carry lat/lng (go to #gallery-grid), 1 does not (goes to
    #gallery-grid-nomap), exactly as the task's fixture spec asks. */
 const MEMORIES_FIXTURE = [
-  { id: "m1", title: "İlk Buluşma", date: "2026-03-10", note: "Kahve içtik", lat: 39.92, lng: 32.85, source: "map", thumbnail: DATA_PNG },
+  { id: "m1", title: "İlk Buluşma", date: "2026-04-20", note: "Kahve içtik", lat: 39.92, lng: 32.85, source: "map", thumbnail: DATA_PNG },
   { id: "m2", title: "Deniz Kenarı", date: "2026-06-01", note: "", lat: 36.88, lng: 30.7, source: "gallery", thumbnail: DATA_PNG },
   { id: "m3", title: "Ev Akşamı", date: "2026-07-15", note: "Film gecesi", lat: null, lng: null, source: "gallery", thumbnail: DATA_PNG },
 ];
@@ -54,7 +56,7 @@ async function switchToGallery(page) {
   await page.eval(() => new Promise((r) => setTimeout(r, 200)));
 }
 
-export async function run({ page, check }) {
+export async function run({ page, check, root }) {
   // 1. The three polaroids render in the right sections
   await openMemories(page);
   const sections = await page.eval(() => ({
@@ -332,9 +334,114 @@ export async function run({ page, check }) {
     ok: JSON.stringify(markerA11y) === JSON.stringify(["Deniz Kenarı", "İlk Buluşma"]),
     detail: JSON.stringify(markerA11y),
   }));
+
+  // 12. Photo upload is Firestore-only: saving a map memory with a photo writes the memory (with its
+  // preview and thumbnail) to Firestore and makes no request to any Google API/auth host.
+  await openMemories(page, []);
+  const saved = await page.eval(async () => {
+    var cv = document.createElement("canvas");
+    cv.width = 800; cv.height = 600;
+    var cx = cv.getContext("2d"); cx.fillStyle = "#e85d8a"; cx.fillRect(0, 0, 800, 600);
+    var blob = await new Promise((r) => cv.toBlob(r, "image/jpeg", 0.9));
+    var file = new File([blob], "foto.jpg", { type: "image/jpeg" });
+    var dt = new DataTransfer(); dt.items.add(file);
+    document.getElementById("memory-photo").files = dt.files;
+    document.getElementById("memory-title").value = "Yeni Anı";
+    document.getElementById("memory-lat").value = "39.93";
+    document.getElementById("memory-lng").value = "32.86";
+    /* The stub keeps the memories collection read-only, so capture what the app hands to its
+       Firestore writer (addMemoryToFirestore -> userCollection('memories').doc(id).set(memory)). */
+    var docs = [];
+    window.addMemoryToFirestore = function (memory) { docs.push(JSON.parse(JSON.stringify(memory))); return Promise.resolve(); };
+    saveMemory();
+    await new Promise((r) => setTimeout(r, 1200));
+    var d = docs[0] || {};
+    var hosts = performance.getEntriesByType("resource").map((e) => e.name)
+      .filter((u) => /^https?:\/\/(accounts\.google\.com|apis\.google\.com|www\.googleapis\.com)\//.test(u));
+    return {
+      count: docs.length, title: d.title,
+      photo: typeof d.photo === "string" && d.photo.indexOf("data:image/") === 0,
+      thumb: typeof d.thumbnail === "string" && d.thumbnail.indexOf("data:image/") === 0,
+      drive: "driveFileId" in d, size: JSON.stringify(d).length, googleRequests: hosts,
+    };
+  });
+  await check("memories: saving a photo writes the memory with its preview to Firestore and makes no Google request", () => ({
+    ok: saved.count === 1 && saved.title === "Yeni Anı" && saved.photo && saved.thumb && !saved.drive
+      && saved.size < 900000 && saved.googleRequests.length === 0,
+    detail: JSON.stringify(saved),
+  }));
+
+  // 13. A memory saved before the Drive removal (driveFileId) still renders from the Drive thumbnail URL.
+  await openMemories(page, [
+    { id: "d1", title: "Eski Anı", date: "2026-05-05", note: "", lat: 39.9, lng: 32.8, source: "map", driveFileId: "FILE123" },
+  ]);
+  const legacy = await page.eval(() => {
+    var m = [...document.querySelectorAll("#gallery-grid img")].map((i) => i.getAttribute("src"));
+    return { srcs: m, url: typeof getMemoryPhotoUrl === "function" ? getMemoryPhotoUrl({ driveFileId: "FILE123" }) : null };
+  });
+  await check("memories: a memory with a driveFileId renders an img whose src is the Drive thumbnail URL", () => ({
+    ok: legacy.srcs.length === 1 && legacy.srcs[0] === "https://drive.google.com/thumbnail?id=FILE123&sz=w1600"
+      && legacy.url === "https://drive.google.com/thumbnail?id=FILE123&sz=w1600",
+    detail: JSON.stringify(legacy),
+  }));
+
+  // 14. Statically: the Drive upload code, its script tags and both Google keys are gone.
+  const jsFiles = readdirSync(join(root, "js")).filter((f) => f.endsWith(".js"));
+  const banned = ["AIza", "apps.googleusercontent.com", "ensureGoogleAuth", "uploadToDrive"];
+  const leaks = [];
+  for (const f of jsFiles) {
+    const src = readFileSync(join(root, "js", f), "utf8");
+    for (const b of banned) {
+      if (src.indexOf(b) === -1) continue;
+      if (b === "AIza" && f === "firebase.js") continue; // Firebase's own public web key, a different key
+      leaks.push(f + ":" + b);
+    }
+  }
+  const indexSrc = readFileSync(join(root, "index.html"), "utf8");
+  const scriptTags = indexSrc.match(/<script[^>]*src="[^"]*"/g) || [];
+  const googleTags = scriptTags.filter((t) => /accounts\.google\.com|apis\.google\.com|drive\.js/.test(t));
+  await check("memories: js/drive.js is gone, index.html has no Google script tag, and no Drive upload code or key remains in js/", () => ({
+    ok: !existsSync(join(root, "js", "drive.js")) && googleTags.length === 0 && leaks.length === 0,
+    detail: JSON.stringify({ driveExists: existsSync(join(root, "js", "drive.js")), googleTags, leaks }),
+  }));
 }
 
 export const mutants = [
+  {
+    id: "memories-save-drops-preview",
+    file: "js/map.js",
+    find: "      memory.photo = results[1];",
+    replace: "      memory.photo = undefined;",
+    expect: "memories: saving a photo writes the memory with its preview to Firestore and makes no Google request",
+  },
+  {
+    id: "memories-save-calls-google",
+    file: "js/map.js",
+    find: "    var previewData = document.getElementById('photo-preview').dataset.photo || '';",
+    replace: "    fetch('https://www.googleapis.com/drive/v3/files');\n    var previewData = document.getElementById('photo-preview').dataset.photo || '';",
+    expect: "memories: saving a photo writes the memory with its preview to Firestore and makes no Google request",
+  },
+  {
+    id: "memories-legacy-drive-url",
+    file: "js/map.js",
+    find: "'&sz=w1600';",
+    replace: "'&sz=w160';",
+    expect: "memories: a memory with a driveFileId renders an img whose src is the Drive thumbnail URL",
+  },
+  {
+    id: "memories-google-script-tag",
+    file: "index.html",
+    find: '  <script src="js/exif.js"></script>',
+    replace: '  <script src="https://apis.google.com/js/api.js" async defer></script>\n  <script src="js/exif.js"></script>',
+    expect: "memories: js/drive.js is gone, index.html has no Google script tag, and no Drive upload code or key remains in js/",
+  },
+  {
+    id: "memories-drive-auth-name-returns",
+    file: "js/map.js",
+    find: "/* ── Photo URL Helper ──────────────────────────────── */",
+    replace: "/* ── Photo URL Helper ──────────────────────────────── */\n/* ensureGoogleAuth */",
+    expect: "memories: js/drive.js is gone, index.html has no Google script tag, and no Drive upload code or key remains in js/",
+  },
   {
     id: "memories-seg-pill-width",
     file: "css/anilar.css",

@@ -32,10 +32,6 @@ const CONFIG = {
     { id: 'su', label: 'Su içme', owners: ['furkan'], weekdaysOnly: false, since: '2026-10-07', note: 'Gün boyunca yeterince su içeceğim' },
     { id: 'uyku', label: 'Düzenli uyku', owners: ['furkan'], weekdaysOnly: true, since: '2026-10-07', note: 'Hafta içi düzenli saatte uyuyacağım' }
   ],
-  google: {
-    clientId: '548770900516-76u61ct0rjs4oa6rpe7c418m3k5jqooh.apps.googleusercontent.com',
-    apiKey: 'AIzaSyCMJX7CIG5CaXHGQKylj2GnUfGgcaNPOV4'
-  }
 };
 
 const LOVE_MESSAGES = [

@@ -1,6 +1,6 @@
 /**
  * Meryem App — Memory Map
- * Leaflet map with Firestore-synced memory pins, Google Drive photo storage,
+ * Leaflet map with Firestore-synced memory pins, Firestore-only photo storage,
  * EXIF GPS gallery upload, and geocoder.
  */
 
@@ -269,8 +269,7 @@ function makeThumbnail(file) {
 }
 
 /**
- * Creates a medium-quality preview for Firestore fallback (when Drive is unavailable).
- * Same quality as the map upload preview: 600px, q=0.6.
+ * Creates the medium-quality photo stored in Firestore: 600px, q=0.6.
  * @param {File} file
  * @returns {Promise<string>} base64 data URL
  */
@@ -278,16 +277,6 @@ function makePreview(file) {
   return processImage(file, CONFIG.maxPhotoWidth, 0.6).then(function (result) {
     return result.dataUrl;
   });
-}
-
-/**
- * Returns the original file as a Blob for Drive upload.
- * No resizing or compression — uploads at full quality.
- * @param {File} file
- * @returns {Promise<Blob>}
- */
-function makeFullImage(file) {
-  return Promise.resolve(file);
 }
 
 /* ── CRUD Operations ────────────────────────────────── */
@@ -322,19 +311,15 @@ function saveMemory() {
   var uploadPromise;
 
   if (file) {
-    uploadPromise = uploadPhotoForMemory(file, memoryId).then(function (photoData) {
-      memory.thumbnail = photoData.thumbnail;
-      memory.driveFileId = photoData.driveFileId;
-      /* Keep photo field for backward compat with old rendering */
-      memory.photo = photoData.thumbnail;
-    }).catch(function (err) {
-      console.warn('Drive upload failed, falling back to base64:', err);
-      /* Fallback: use the preview data URL if Drive upload fails */
-      var photoData = document.getElementById('photo-preview').dataset.photo || '';
-      if (photoData) {
-        memory.photo = photoData;
-        memory.thumbnail = photoData;
-      }
+    /* The photo lives in the Firestore document only: the form's already-compressed preview
+       (kept under ~500 KB by previewPhoto) plus a small 200px thumbnail. */
+    var previewData = document.getElementById('photo-preview').dataset.photo || '';
+    uploadPromise = Promise.all([
+      makeThumbnail(file),
+      previewData ? Promise.resolve(previewData) : makePreview(file)
+    ]).then(function (results) {
+      memory.thumbnail = results[0];
+      memory.photo = results[1];
     });
   } else {
     uploadPromise = Promise.resolve();
@@ -358,40 +343,8 @@ function saveMemory() {
   });
 }
 
-/**
- * Uploads a photo to Drive and creates a thumbnail.
- * @param {File} file
- * @param {string} memoryId
- * @returns {Promise<{ thumbnail: string, driveFileId: string }>}
- */
-function uploadPhotoForMemory(file, memoryId) {
-  return ensureGoogleAuth().then(function () {
-    return Promise.all([
-      makeThumbnail(file),
-      makeFullImage(file)
-    ]);
-  }).then(function (results) {
-    var thumbnail = results[0];
-    var fullBlob = results[1];
-    var fileName = memoryId + '_' + Date.now() + '.jpg';
-
-    return uploadToDrive(fullBlob, fileName).then(function (driveFileId) {
-      return {
-        thumbnail: thumbnail,
-        driveFileId: driveFileId
-      };
-    });
-  });
-}
-
 function deleteMemory(id) {
   if (!confirm('Bu anıyı silmek istediğine emin misin?')) return;
-
-  /* Find memory to check for Drive file */
-  var mem = memories.find(function (m) { return m.id === id; });
-  if (mem && mem.driveFileId) {
-    deleteFromDrive(mem.driveFileId);
-  }
 
   deleteMemoryFromFirestore(id);
   closeModal('detail-modal');
@@ -419,8 +372,7 @@ function initGalleryUpload() {
 
 /**
  * Uploads files from the gallery upload button.
- * Reads EXIF GPS if available; saves to Drive + Firestore.
- * Falls back to thumbnail-only if Drive is unavailable.
+ * Reads EXIF GPS if available; saves thumbnail + preview to Firestore.
  * @param {FileList} files
  */
 function uploadFromGallery(files) {
@@ -462,7 +414,7 @@ function uploadFromGallery(files) {
 
 /**
  * Uploads a single photo from gallery.
- * If Drive upload fails, saves with thumbnail only.
+ * Saves thumbnail + preview to Firestore.
  * @param {File} file
  * @returns {Promise<void>}
  */
@@ -492,15 +444,7 @@ function uploadSingleGalleryPhoto(file) {
       photo: preview
     };
 
-    /* Try Drive upload, but save to Firestore either way */
-    return uploadPhotoForMemory(file, memoryId).then(function (photoData) {
-      memory.thumbnail = photoData.thumbnail;
-      memory.driveFileId = photoData.driveFileId;
-    }).catch(function (err) {
-      console.warn('Drive upload failed, saving with preview:', err);
-    }).then(function () {
-      return addMemoryToFirestore(memory);
-    });
+    return addMemoryToFirestore(memory);
   });
 }
 
@@ -557,8 +501,18 @@ function resetMemoryForm() {
 /* ── Photo URL Helper ──────────────────────────────── */
 
 /**
+ * Memories saved before the Drive upload was removed keep a driveFileId; this is the only
+ * remaining Drive code — a read-only image URL, no auth, no API.
+ * @param {string} fileId
+ * @returns {string}
+ */
+function getDriveImageUrl(fileId) {
+  return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(fileId) + '&sz=w1600';
+}
+
+/**
  * Returns the best available photo URL for a memory.
- * Prefers Drive full-quality, falls back to thumbnail/base64.
+ * Prefers a legacy Drive image (older memories), else the Firestore photo/thumbnail.
  * @param {object} memory
  * @returns {string|null}
  */
@@ -723,7 +677,7 @@ function escapeHtml(text) {
    the narrower form would not have matched despite pxl being in its own prefix list. A plain
    top-level function — this file loads as a classic script, so it is already reachable the same
    way escapeHtml/formatDate/etc. are (as window.<name>) — directly testable without driving the
-   whole upload chain through Drive auth, which the test harness deliberately never resolves. */
+   whole upload chain. */
 var CAMERA_FILENAME_RE = /^(img|dsc|dscn|pxl|image|photo|foto)[\s_\d-]*$/i;
 
 function isCameraFilenameTitle(title) {
