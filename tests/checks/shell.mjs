@@ -359,13 +359,13 @@ export async function run({ page, check, root }) {
     detail: injected,
   }));
 
-  // 10. isPreviewMode(): false normally, true with the query, and lands appNow() on 4 Oct
+  // 10. isPreviewMode(): false normally, true with the query, and lands appNow() on 25 Nov
   await openApp(page, { signedIn: true });
   const previewOff = await page.eval(() => isPreviewMode());
   await openApp(page, { signedIn: true, query: "?onizleme=dogumgunu" });
   const previewOn = await page.eval(() => ({ preview: isPreviewMode(), month: appNow().getMonth(), date: appNow().getDate() }));
-  await check("shell: isPreviewMode() is false normally, true with the query, and lands appNow() on 4 Oct", () => ({
-    ok: previewOff === false && previewOn.preview === true && previewOn.month === 9 && previewOn.date === 4,
+  await check("shell: isPreviewMode() is false normally, true with the query, and lands appNow() on 25 Nov", () => ({
+    ok: previewOff === false && previewOn.preview === true && previewOn.month === 10 && previewOn.date === 25,
     detail: JSON.stringify({ previewOff, previewOn }),
   }));
 
@@ -755,7 +755,7 @@ export const mutants = [
     file: "js/time.js",
     find: "params.get('onizleme') === 'dogumgunu'",
     replace: "params.get('onizleme') === 'nope'",
-    expect: "shell: isPreviewMode() is false normally, true with the query, and lands appNow() on 4 Oct",
+    expect: "shell: isPreviewMode() is false normally, true with the query, and lands appNow() on 25 Nov",
   },
   {
     id: "shell-nav-label-contrast",

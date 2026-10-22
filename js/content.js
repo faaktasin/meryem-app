@@ -10,46 +10,46 @@
 var CONTENT = {
   greetings: {
     morning: [
-      'Günaydın güzelim\u00a0☀️',
-      'Günaydın tatlım, güne gülümseyerek başla',
-      'Uyandın mı bebeğim? Ayıcık seni bekliyordu\u00a0🐻',
-      'Günaydın Meryem, bugün de güzel bir gün olsun',
-      'Gözlerini aç, güneş de sensin zaten'
+      'Günaydın\u00a0☀️',
+      'Günaydın, güne gülümseyerek başla',
+      'Uyandın mı? Yeni bir gün seni bekliyor\u00a0🌿',
+      'Günaydın Meryem, bugün yeni bir sayfa',
+      'Gözlerini aç, güneş doğdu bile'
     ],
     afternoon: [
-      'Günün nasıl gidiyor bakalım?',
-      'Biraz mola ver, seni düşünüyorum şu an\u00a0💭',
-      'Öğlen arası bir gülümseme sana yeter mi?',
-      'Umarım günün güzel geçiyordur tatlım',
-      'Ayıcık merak etti, sen iyi misin?\u00a0🐻'
+      'Günün nasıl geçiyor, merak ettim',
+      'Biraz mola ver, bir su iç\u00a0💧',
+      'Öğle arasında kısa bir nefes al',
+      'Umarım günün güzel geçiyordur',
+      'Küçük bir nefes molası zamanı\u00a0🌤️'
     ],
     evening: [
-      'Akşamın hayırlı olsun güzelim\u00a0🌆',
-      'Gün bitti, şimdi sıra dinlenmekte',
-      'Bugün de bir gün daha seni sevdim',
-      'Akşam oldu, aklım yine sende',
-      'Nasıl geçti günün, anlat bana'
+      'Akşamın hayırlı olsun\u00a0🌆',
+      'Gün sona erdi, sıra dinlenmekte',
+      'Bugün de bir gün daha geride kaldı',
+      'Akşam oldu, ışıklar yanıyor',
+      'Nasıl geçti günün, anlat bakalım'
     ],
     night: [
-      'İyi geceler Meryem, tatlı rüyalar\u00a0🌙',
-      'Gözlerin kapanmadan bil ki seni seviyorum',
-      'Uyu güzelim, yarın yine buradayım',
-      'Ayıcık nöbette, sen rahat uyu bebeğim\u00a0🐻',
-      'Gece de seninle güzel, iyi uykular'
+      'İyi geceler Meryem, rahat bir uyku\u00a0🌙',
+      'Gözlerini kapat, yarın yeni bir gün',
+      'Uyu rahatça, yarın yine buradayız',
+      'Bu gece yıldızlar çok parlak\u00a0⭐',
+      'Gece de güzel, iyi uykular'
     ],
-    /* Her birthday (4 Oct, all day) replaces the time-of-day line above — Furkan speaking to her. */
+    /* Her birthday (all day) replaces the time-of-day line above — Furkan speaking to her. */
     birthday: [
-      'İyi ki doğdun güzelim\u00a0🎂',
-      'Bugün senin günün tatlım, doğum günün kutlu olsun\u00a0🎉',
-      'Dünyanın en güzel kızının doğum günü bugün\u00a0🎂'
+      'İyi ki doğdun\u00a0🎂',
+      'Bugün senin günün, doğum günün kutlu olsun\u00a0🎉',
+      'Mutlu yıllar, bugün senin için özel bir gün\u00a0🎂'
     ],
     /* On her birthday this replaces "Bugünün Mesajı" for the whole day. */
-    birthdayMessage: 'Bugün dünyaya geldiğin gün. İyi ki doğdun, iyi ki benimlesin Meryem.'
+    birthdayMessage: 'Bugün doğum günün. Mutlu yıllar Meryem.'
   },
 
   together: {
     prefix: 'Birlikte',
-    suffix: 'gündür\u00a0💞'
+    suffix: 'gündür\u00a0✨'
   },
 
   gate: {
@@ -61,62 +61,41 @@ var CONTENT = {
       'Emin misin?',
       'Gerçekten mi?\u00a0🥺',
       'Bir daha düşün bence',
-      'Evlenmeden olmaz\u00a0😉',
-      'Ayıcık üzülüyor bak\u00a0🐻',
+      'Olmaz öyle şey\u00a0😉',
+      'Üzülüyorum bak\u00a0🥲',
       'Kalbimi kırıyorsun\u00a0💔',
-      'Ayıcık ağlıyor bak\u00a0😭',
+      'Ağlayacağım bak\u00a0😭',
       'Yapma böyle ya\u00a0😢',
       'Son şansın bu ha',
       'Bu tuş bozuk galiba',
       'Neredeyse bitti, dayan',
-      'Hayır diye bir şey yok\u00a0💗'
+      'Bu seçenek yok\u00a0💗'
     ],
     /* The reply is Furkan's answer after she presses Yes. */
     opener: {
-      q: 'Meryem, beni seviyor musun?',
-      reply: 'Biliyordum! Ben de seni çok seviyorum\u00a0💗'
+      q: 'Meryem, hazır mısın?',
+      reply: 'Harika, başlayalım\u00a0✨'
     },
     pool: [
-      { q: 'Ben dünyanın en tatlı nişanlısı, yakında da eşi miyim?', reply: 'Resmen onaylandı, belgesi hazırlanıyor\u00a0📜' },
-      { q: 'Benimle yaşlanır mısın?', reply: 'Birlikte beyaz tüylü ayıcıklar olacağız\u00a0🐻' },
-      { q: 'Kötü şakalarıma bile gülüyor musun?', reply: 'İşte bu yüzden seni seviyorum\u00a0😄' },
-      { q: 'Bugün beni biraz özledin mi?', reply: 'Ben de seni çok özledim\u00a0🥺' },
-      { q: 'Benimle bir kahve içmeye gelir misin?', reply: 'Randevu kaydedildi\u00a0☕' },
-      { q: 'Bir gün aynı evde uyanacak mıyız?', reply: 'Uyanacağız, ama biliyorsun: evlenmeden olmaz\u00a0😉' },
-      { q: 'Beni ilk günden daha çok mu seviyorsun?', reply: 'Ben de seni her gün daha çok\u00a0💗' },
-      { q: 'Kavga etsek bile yanımda kalır mısın?', reply: 'Ben de hep yanındayım, söz' },
-      { q: 'Sana sarılmama izin verir misin?', reply: 'Geliyorum, kollarım açık\u00a0🤗' },
-      { q: 'Bugün bana bir öpücük borçlu musun?', reply: 'Not aldım, tahsil edeceğim\u00a0😘' },
-      { q: 'Kolumu yastık yapar mısın?', reply: 'Kolum sadece sana ayrıldı\u00a0🧸' },
-      { q: 'Gece yarısı dondurma yemeye gelir misin?', reply: 'Anlaştık, tek kase iki kaşık\u00a0🍦' },
-      { q: 'Sonsuza kadar elimi tutar mısın?', reply: 'Ben de hiç bırakmayacağım\u00a0🤝' },
-      { q: 'Yüzüğüne bakınca beni düşünüyor musun?', reply: 'Ben de her gün seni düşünüyorum\u00a0💍' },
-      { q: 'Benimle yağmurda yürür müsün?', reply: 'Şemsiye tek, sığışırız\u00a0☔' },
-      { q: 'Birlikte yıldızları seyredelim mi?', reply: 'Battaniyeyi ben getiriyorum\u00a0✨' },
-      { q: 'Sesimi duyunca hâlâ gülümsüyor musun?', reply: 'Ben de seninkini duyunca eriyorum\u00a0🥰' },
-      { q: 'Listemize yeni bir hayal ekleyelim mi?', reply: 'İlk madde: sana sarılmak\u00a0📝' },
-      { q: 'Haritamıza yeni bir kalp ekleyelim mi?', reply: 'Rotayı çiziyorum, bavulunu hazırla\u00a0🗺️' },
-      { q: 'Hasta olduğumda bana çorba yapar mısın?', reply: 'O zaman hastalanmak bile güzel\u00a0🍲' },
-      { q: 'Bugün beni biraz şımartır mısın?', reply: 'Söz, sıra bana gelince ben de şımartacağım\u00a0🥰' },
-      { q: 'Gülüşünü bugün sadece bana ayırır mısın?', reply: 'En sevdiğim hediye bu\u00a0😍' },
-      { q: 'Evimizin anahtarlığını ben seçebilir miyim?', reply: 'Kalpli olacak, şimdiden söyleyeyim\u00a0🔑' },
-      { q: 'Beni hiç bırakmayacağına söz verir misin?', reply: 'Ben de söz veriyorum, hiçbir zaman\u00a0🤞' },
-      { q: 'Şu an seni düşündüğümü hissediyor musun?', reply: 'Çünkü gerçekten düşünüyorum\u00a0💭' },
-      { q: 'Kalbini bana emanet eder misin?', reply: 'Söz, ona çok iyi bakacağım\u00a0💝' },
-      { q: 'Anılarımıza bir fotoğraf daha ekleyelim mi?', reply: 'Hemen gülümse, çekiyorum\u00a0📸' }
+      { q: 'Bugün gülümsedin mi?', reply: 'Ne güzel, devam\u00a0😄' },
+      { q: 'Bir fincan çay içmeye var mısın?', reply: 'Su kaynıyor\u00a0☕' },
+      { q: 'Küçük bir yürüyüş yapalım mı?', reply: 'Ceketini al, çıkıyoruz\u00a0🚶' },
+      { q: 'Bugün yeni bir şey öğrendin mi?', reply: 'Merak güzel şey\u00a0📚' },
+      { q: 'Sıradaki şarkıyı sen seçer misin?', reply: 'Listeye ekledim\u00a0🎵' },
+      { q: 'Birlikte yıldızlara bakalım mı?', reply: 'Battaniyeyi getiriyorum\u00a0✨' }
     ],
     birthday: [
-      { q: 'Bugün çok özel bir gün, biliyor musun?', reply: 'Bugün dünyanın en güzel kızının doğum günü\u00a0🎂' },
-      { q: 'Hediyeni açmaya hazır mısın?', reply: 'O zaman sıkı tutun, geliyor!\u00a0🎁' }
+      { q: 'Bugün özel bir gün, biliyor musun?', reply: 'Bugün senin doğum günün\u00a0🎂' },
+      { q: 'Sürprizi görmeye hazır mısın?', reply: 'O zaman başlıyoruz!\u00a0🎁' }
     ],
     meter: {
-      q: 'Peki beni ne kadar seviyorsun?',
+      q: 'Peki ne kadar heyecanlısın?',
       steps: ['Biraz', 'Çok', 'Çok çok', 'Dünyalar kadar', 'Sonsuz ∞'],
       button: 'İşte bu kadar!'
     },
     finale: {
-      title: 'Ben de seni sonsuz seviyorum',
-      text: 'Bunu her sabah yeniden söylemek isterim, bıkmadan.',
+      title: 'Harika, hazırız',
+      text: 'Bu metin bir örnektir ve gerçek metinle değiştirilir.',
       button: 'İçeri gel\u00a0💕',
       birthdayButton: 'Sürprizini aç\u00a0🎁'
     }
@@ -131,136 +110,43 @@ var CONTENT = {
     },
     quotes: [
       {
-        text: 'Seni düşünmek güzel şey, ümitli şey,\ndünyanın en güzel sesinden\nen güzel şarkıyı dinlemek gibi bir şey.',
-        author: 'Nâzım Hikmet',
-        source: 'Piraye İçin Yazılmış Saat 21-22 Şiirleri (30 Eylül 1945)'
+        text: 'Örnek bir söz birinci satır,\nikinci satır burada,\nüçüncü satır sonda.',
+        author: 'Örnek',
+        source: 'Deneme metni'
       },
       {
-        text: 'En güzel deniz:\nhenüz gidilmemiş olanıdır.\n…\nVe sana söylemek istediğim en güzel söz:\nhenüz söylememiş olduğum sözdür.',
-        author: 'Nâzım Hikmet',
-        source: 'Piraye İçin Yazılmış Saat 21-22 Şiirleri (24 Eylül 1945)'
+        text: 'Bu bir örnek söz.\n…\nGerçek metin giriş yapınca yüklenir.',
+        author: 'Örnek',
+        source: 'Deneme metni'
       },
       {
-        text: 'Sen esirliğim ve hürriyetimsin,\n…\nsen memleketimsin.',
-        author: 'Nâzım Hikmet',
-        source: 'Sen'
+        text: 'Küçük şeyler büyük günleri kurar.',
+        author: 'Örnek',
+        source: 'Deneme metni'
       },
       {
-        text: 'Sevmek, bir insanı sevmekle başlar her şey.',
-        author: 'Sait Faik Abasıyanık',
-        source: "Alemdağ'da Var Bir Yılan"
-      },
-      {
-        text: 'Aşk imiş her ne var âlemde,\nİlm bir kıyl ü kâl imiş ancak.',
-        author: 'Fuzûlî',
-        source: 'Leylâ ile Mecnûn'
-      },
-      {
-        text: 'Gelin tanış olalım,\nİşi kolay kılalım,\nSevelim sevilelim,\nDünya kimseye kalmaz.',
-        author: 'Yunus Emre',
-        source: 'Sevelim Sevilelim'
-      },
-      {
-        text: 'Ben sana mecburum bilemezsin\nAdını mıh gibi aklımda tutuyorum\nBüyüdükçe büyüyor gözlerin',
-        author: 'Attila İlhan',
-        source: 'Ben Sana Mecburum'
-      },
-      {
-        text: 'Sana gitme demeyeceğim.\nÜşüyorsun ceketimi al.\nGünün en güzel saatleri bunlar.\nYanımda kal.',
-        author: 'Özdemir Asaf',
-        source: 'Lavinia'
-      },
-      {
-        text: 'Bilmezdim şarkıların bu kadar güzel,\nKelimelerinse kifayetsiz olduğunu\nBu derde düşmeden önce.',
-        author: 'Orhan Veli Kanık',
-        source: 'Anlatamıyorum'
+        text: 'Her yolculuk bir adımla başlar,\nbu adım da sana ait.',
+        author: 'Örnek',
+        source: 'Deneme metni'
       }
     ],
     lines: [
-      'Kalbim seni ezbere biliyor artık.',
-      'Yanında zaman başka türlü akıyor.',
-      'Gülüşün bugünün en iyi haberi.',
-      'İki kişilik bir dünya kurduk, hoşuma gidiyor.',
-      'Elini tutunca her şey daha kolay.',
-      'Aklımdan çıkmadın bugün, çıkacak gibi de değilsin.',
-      'Seninle sıradan bir Salı bile özel oluyor.',
-      'Bir mesajın günümü kurtarıyor bazen.',
-      'Aramızdaki mesafe kaç kilometre olursa olsun, kalbim yanında.',
-      'Sesini duyunca omuzlarımdaki yük hafifliyor.',
-      'İyi ki seni sevmeyi seçmişim, her gün yeniden seçerim.',
-      'Uzun bir günün sonunda tek istediğim seninle konuşmak.',
-      'Sana sarılmak listemdeki ilk sıradaki iş.',
-      'Küçük şeyleri seninle büyük yapıyorum.',
-      'Gülümsedin mi bilmiyorum ama ben senin için gülümsedim.',
-      'Uyandığımda bile seni özlüyorum, mantıksız biliyorum.',
-      'Ayıcık bugün de senin adına nöbet tuttu\u00a0🐻',
-      'Aklımda bir sürü plan var, hepsinin ortasında sen varsın.',
-      'Bugün ne kadar güzel olduğunu söyledim mi? Söyleyeyim: çok güzelsin.',
-      'Yanımda olmadığında bile elini tutuyormuş gibi hissediyorum.',
-      'Bir günüm nasıl geçerse geçsin, sonunda seni düşünmek iyi geliyor.',
-      'Gülüşünü hayal etmek bile günümü değiştiriyor.',
-      'Yanımda olman, en sevdiğim alışkanlık.',
-      'Listeye yeni bir satır ekledim bugün: seni sevmek.',
-      'Kalbimdeki en rahat köşe sana ait.',
-      'Bazı günler tek kelime etmeden anlaşıyoruz, bu bile özel.',
-      'Telefonun titremesi, seni yazmışsındır umuduyla heyecanlandırıyor beni.',
-      'Güzel bir şey olursa ilk seninle paylaşmak istiyorum.',
-      'Yorulduğumda bile seni düşünmek dinlendiriyor.',
-      'En sevdiğim rutin: günün sonunda sana ulaşmak\u00a0💕'
+      'Bu bir örnek cümledir.',
+      'Bugün küçük bir adım at.',
+      'Güzel günler sana yakışır.',
+      'Bir çay, bir kitap, sakin bir akşam.',
+      'Gülümsemek bulaşıcıdır.',
+      'Bugünün tadını çıkar.',
+      'Yavaş git, ama vazgeçme.',
+      'Güzel bir şey olacak, hissediyorum.'
     ],
     reasons: [
-      'Seni seviyorum çünkü gülüşün odaya giren ilk şey oluyor.',
-      'Seni seviyorum çünkü beni gerçekten dinliyorsun, göz göze bakarak.',
-      'Seni seviyorum çünkü kötü bir günümü tek bir mesajla düzeltebiliyorsun.',
-      'Seni seviyorum çünkü yanındayken kendim olmaktan korkmuyorum.',
-      'Seni seviyorum çünkü küçük şeylere bile heyecanlanmayı biliyorsun.',
-      'Seni seviyorum çünkü sesini duyunca içim rahatlıyor.',
-      'Seni seviyorum çünkü hatalarımı görüp yine de yanımda kalıyorsun.',
-      'Seni seviyorum çünkü bana gülmeyi hatırlatıyorsun.',
-      'Seni seviyorum çünkü her fikrimi ciddiye alıyorsun.',
-      'Seni seviyorum çünkü kucaklaşmalarımız hiç yeterli gelmiyor.',
-      'Seni seviyorum çünkü inatçılığını bile sevimli buluyorum.',
-      'Seni seviyorum çünkü yanında olduğumda ev orası oluyor.',
-      'Seni seviyorum çünkü sabırlısın, benimle bile.',
-      'Seni seviyorum çünkü o kadar tatlısın ki sana kızmayı hiç beceremiyorum.',
-      'Seni seviyorum çünkü cilvene her seferinde yeniden yeniliyorum.',
-      'Seni seviyorum çünkü sıkıldığında yüzünü buruşturman bile çok tatlı.',
-      'Seni seviyorum çünkü planlarımızı hayal etmek bile keyifli.',
-      'Seni seviyorum çünkü kalbin cömert, herkese karşı.',
-      'Seni seviyorum çünkü beni olduğum gibi seviyorsun.',
-      'Seni seviyorum çünkü ufak bir şaka için bile gözlerin parlıyor.',
-      'Seni seviyorum çünkü zor günlerimde panik yapmadan yanımda duruyorsun.',
-      'Seni seviyorum çünkü konuşurken ellerini nasıl kullandığını izlemeyi seviyorum.',
-      'Seni seviyorum çünkü merakın hiç bitmiyor.',
-      'Seni seviyorum çünkü bana inanıyorsun, ben bile kendime inanmazken.',
-      'Seni seviyorum çünkü küçük bir haberi bile heyecanla anlatıyorsun.',
-      'Seni seviyorum çünkü sarılmak seninle hep aynı huzuru veriyor.',
-      'Seni seviyorum çünkü nazik olmayı seçiyorsun, kolay olmasa bile.',
-      'Seni seviyorum çünkü benimle dalga geçmeyi de çok iyi biliyorsun.',
-      'Seni seviyorum çünkü kalbin çok büyük, benim için hep yer buluyor.',
-      'Seni seviyorum çünkü seninle sessizlik bile rahatsız etmiyor.',
-      'Seni seviyorum çünkü hayal kurmaktan hiç vazgeçmiyorsun.',
-      'Seni seviyorum çünkü bir şeyi anlattığımda gerçekten meraklanıyorsun.',
-      'Seni seviyorum çünkü kırgınken bile bana bir şans daha veriyorsun.',
-      'Seni seviyorum çünkü beni her seferinde şaşırtmayı beceriyorsun.',
-      'Seni seviyorum çünkü yanımda kendimi güvende hissediyorum.',
-      'Seni seviyorum çünkü tartışsak bile bir şekilde bulup çözüyoruz.',
-      'Seni seviyorum çünkü küçük sürprizlerden büyük mutluluk çıkarıyorsun.',
-      'Seni seviyorum çünkü bana güvenmeyi hiç bırakmadın.',
-      'Seni seviyorum çünkü benim aptal şakalarıma bile gülüyorsun.',
-      'Seni seviyorum çünkü her günü biraz daha anlamlı yapıyorsun.',
-      'Seni seviyorum çünkü umudunu hiç kaybetmiyorsun.',
-      'Seni seviyorum çünkü seninle konuşmak en sevdiğim zaman geçirme şekli.',
-      'Seni seviyorum çünkü beni gerçekten tanımaya çalışıyorsun.',
-      'Seni seviyorum çünkü kalbindeki iyilik her davranışında görünüyor.',
-      'Seni seviyorum çünkü yorgun olsan bile beni aramayı unutmuyorsun.',
-      'Seni seviyorum çünkü seninle her plan daha eğlenceli hale geliyor.',
-      'Seni seviyorum çünkü kırılgan olduğun anlarda bile güçlüsün.',
-      'Seni seviyorum çünkü minik detayları hatırlıyorsun, ben unutsam bile.',
-      'Seni seviyorum çünkü bana her gün yeni bir şey öğretiyorsun.',
-      'Seni seviyorum çünkü mutluluğun bulaşıcı.',
-      'Seni seviyorum çünkü seninle geleceği düşünmek hiç korkutmuyor.',
-      'Seni seviyorum çünkü sen, sen olduğun için.'
+      'Bu bir örnek nottur: gülüşün odayı aydınlatıyor.',
+      'Bu bir örnek nottur: küçük şeylere sevinmeyi biliyorsun.',
+      'Bu bir örnek nottur: sabırlı ve nazik biri olduğun için.',
+      'Bu bir örnek nottur: merakın hiç bitmiyor.',
+      'Bu bir örnek nottur: yanında rahat hissedildiği için.',
+      'Bu bir örnek nottur: gerçek notlar giriş yapınca yüklenir.'
     ],
     letters: [
       {
@@ -269,9 +155,9 @@ var CONTENT = {
         emoji: '💌',
         birthdayOnly: false,
         body: [
-          'Bu satırları tam da böyle bir an için yazdım, beni özlediğin bir an için.',
-          'Bil ki ben de seni özlüyorum, şu an bile. Aramızdaki mesafe ne olursa olsun kalbim hep senin tarafında duruyor.',
-          'Telefonunu bırak, gözlerini kapat ve düşün: birazdan konuşacağız, birazdan yine gülüşeceğiz. O an çok yakın.'
+          'Bu bir örnek mektuptur, özlediğin bir an için yazıldı.',
+          'Mesafe ne olursa olsun, kısa süre sonra yine konuşacaksınız.',
+          'Bir nefes al ve gülümse, o an çok yakın.'
         ]
       },
       {
@@ -280,9 +166,9 @@ var CONTENT = {
         emoji: '🤍',
         birthdayOnly: false,
         body: [
-          'Canın sıkkınsa, önce derin bir nefes al güzelim. Sonra bil ki yalnız değilsin.',
-          'Bu duygu geçici, sen kalıcısın. Ben burada, seni bekliyorum, ne zaman hazır olursan.',
-          'İstersen anlat, istersen sadece sessiz kal. İkisi de bana uyar, yeter ki yanında olayım.'
+          'Canın sıkkınsa önce derin bir nefes al.',
+          'Bu duygu geçici, sen kalıcısın.',
+          'İstersen anlat, istersen sessiz kal; ikisi de olur.'
         ]
       },
       {
@@ -291,9 +177,9 @@ var CONTENT = {
         emoji: '🌙',
         birthdayOnly: false,
         body: [
-          'Gözlerin açık kalmışsa, bırak bu satırlar seni yavaşça uyutsun.',
-          'Bugünü geride bırak. Yarın hâlâ orada olacak, bu gece sadece dinlen.',
-          'Ben buradayım, kalbimde bir yerin hep sıcak duruyor. Gözlerini kapat bebeğim, güzel rüyalar seni bulsun.'
+          'Gözlerin açık kalmışsa bırak bu satırlar seni yavaşça uyutsun.',
+          'Bugünü geride bırak, yarın hâlâ orada olacak.',
+          'Gözlerini kapat, güzel rüyalar seni bulsun.'
         ]
       },
       {
@@ -302,9 +188,9 @@ var CONTENT = {
         emoji: '🐻',
         birthdayOnly: false,
         body: [
-          'Bana kızgınsan haklı bir sebebin vardır, biliyorum. Bazen beceremiyorum ama denemekten vazgeçmiyorum.',
-          'Özür dilemek benim için hiç zor değil, çünkü seni üzmek asla istemediğim bir şey.',
-          'Kızgınlığın geçince konuşalım, ben hazırım. O zamana kadar da seni sevmeye devam ediyorum.'
+          'Kızgınsan bir sebebin vardır, bunu anlıyorum.',
+          'Özür dilemek zor değil, üzmek istemem.',
+          'Kızgınlığın geçince konuşalım.'
         ]
       },
       {
@@ -313,31 +199,31 @@ var CONTENT = {
         emoji: '😄',
         birthdayOnly: false,
         body: [
-          'Gülmek mi istiyorsun? O zaman şunu hayal et: ben dans ederken.',
-          'Evet, o kadar kötü. Sağ ayağım hangi taraf bilmiyor, ritim benden kaçıyor ama yine de her fırsatta deniyorum, sırf sen gülesin diye.',
-          'Bir de o andaki yüzündeki ifadeyi hayal ediyorum, gülümsemen bile bana yeter zaten.'
+          'Gülmek mi istiyorsun? Şunu hayal et: bir penguen kayıyor.',
+          'Üstelik tam kıyafetli, çok ciddi bir yüzle.',
+          'Şimdi bir gülümse bakalım.'
         ]
       },
       {
         id: 'lonely',
-        title: 'Kendini yalnız hissettiğinde',
+        title: 'Yalnız hissettiğinde',
         emoji: '💗',
         birthdayOnly: false,
         body: [
-          'Yalnız hissetmek bazen içimize sinsice giriyor, biliyorum. Ama şunu unutma: seni düşünen biri var, tam burada.',
-          'Uzakta olsam da aklım sende, kalbim seninle. Bu his geçici, ben kalıcıyım.',
-          'İstediğin an yaz, istediğin an ara. Beklemekten hiç sıkılmam.'
+          'Yalnız hissetmek bazen insanın içine sinsice girer.',
+          'Ama seni düşünen biri var, tam burada.',
+          'İstediğin an yaz, istediğin an ara.'
         ]
       },
       {
         id: 'proud',
-        title: 'Kendinle gurur duyman gerektiğinde',
+        title: 'Gurur duymak istediğinde',
         emoji: '✨',
         birthdayOnly: false,
         body: [
-          'Bugün kendinle gurur duyman gereken bir gün olabilir, fark etmemiş olsan bile.',
-          'Küçük ya da büyük, attığın her adım beni gururlandırıyor. Sen kendini görmesen de ben görüyorum.',
-          'Başardığın her şey senin emeğin. Bunu unutma ve kendine biraz da sen inan.'
+          'Bugün kendinle gurur duyman gereken bir gün olabilir.',
+          'Küçük ya da büyük, attığın her adım değerli.',
+          'Başardığın her şey senin emeğin.'
         ]
       },
       {
@@ -346,46 +232,46 @@ var CONTENT = {
         emoji: '🎂',
         birthdayOnly: true,
         body: [
-          'Bugün gözlerini açtığında ilk bilmeni istediğim şey: bugün senin günün, ve ben bunu kutlamak için sabırsızlanıyorum.',
-          "Bu yıl, birbirimize ilk kez 'seni seviyorum' dediğimiz ve nişanlandığımız yıl. Ve bu yılın en güzel gününü de seninle kutluyorum.",
-          'İyi ki doğdun Meryem. Bugünün, tıpkı sen gibi, güzel geçmesini diliyorum.'
+          'Bugün gözlerini açtığında ilk bilmeni istediğim şey: bugün senin günün.',
+          'Bu bir örnek mektuptur ve gerçek metinle değiştirilir.',
+          'İyi ki doğdun Meryem, güzel bir gün geçir.'
         ]
       }
     ]
   },
 
   dates: {
-    /* Engagement card: days since 25 July 2026 (CONFIG.engagementDate). */
-    engagementLabel: 'Nişanımızdan beri',
+    /* Engagement card: days since the engagement date (CONFIG.engagementDate). */
+    engagementLabel: 'Özel günden beri',
     /* Wedding card. CONFIG.wedding holds the date; while only the month is known it shows months. */
-    weddingLabel: 'Düğünümüze',
-    weddingApprox: 'yaklaşık {months} ay kaldı',          // {months} is filled in
-    weddingThisMonth: 'Bu ay evleniyoruz\u00a0💍',
-    weddingDone: 'Evlendik! Sonsuza kadar seninle\u00a0💍',
-    hisToday: 'Bugün benim doğum günüm 🎉 Bir sarılma borcun var!'          // his card, on 26 May
+    weddingLabel: 'Büyük güne',
+    weddingApprox: 'yaklaşık {months} ay var',          // {months} is filled in
+    weddingThisMonth: 'Bu ay büyük gün\u00a0🎉',
+    weddingDone: 'Büyük gün geldi\u00a0🎉',
+    hisToday: 'Bugün onun doğum günü\u00a0🎉'          // his card, on his birthday
   },
 
   birthday: {
     /* The 🎁 tab card once the surprise is unlocked (Furkan speaking to her). */
     ready: {
-      title: 'Sürprizin hazır!\u00a0🎉',
-      firstTime: 'Dokun, doğum günü sürprizin başlasın\u00a0🎁',                   // before she has opened it this year
-      again: 'Ne zaman istersen yeniden aç, her seferinde aynı heyecanla\u00a0💗'   // after she has opened it
+      title: 'Sürpriz hazır!\u00a0🎉',
+      firstTime: 'Dokun, sürpriz başlasın\u00a0🎁',                   // before she has opened it this year
+      again: 'İstediğin zaman yeniden aç\u00a0💗'   // after she has opened it
     },
     balloonsPrompt: 'Bir balon seç, içinden bir dilek çıksın\u00a0🎈',            // above the balloons scene
     locked: {
       title: 'Burada bir sürpriz var\u00a0🎁',
-      subtitle: "Ama 4 Ekim'e kadar kilitli. Ayıcık nöbette\u00a0🐻",
+      subtitle: 'Ama doğum gününe kadar kilitli\u00a0🔒',
       teases: [
-        'Sabret, daha {days} gün var\u00a0🙈',
-        'Kurcalama, ayıcık bekçi\u00a0🐻',
-        'Bu kapı sadece doğum gününde açılıyor',
-        '{days} gün sonra görüşürüz burada',
-        'Meraklı olma, sürpriz sürpriz kalsın\u00a0😉',
-        'Ayıcık nöbeti bırakmıyor, kilit kalıyor\u00a0🔒'
+        'Biraz bekle, {days} gün kaldı\u00a0🙈',
+        'Kurcalama, kilit sağlam\u00a0🔒',
+        'Bu bölüm doğum gününde açılacak',
+        '{days} gün sonra burada buluşuruz',
+        'Biraz sabır, sürpriz yolda\u00a0😉',
+        'Kilit yerinde, biraz daha bekle\u00a0🔒'
       ]
     },
-    title: 'İyi ki doğdun Meryem',
+    title: 'Mutlu yıllar Meryem',
     wish: 'Gözlerini kapat ve bir dilek tut.',
     blow: {
       prompt: 'Mumları üfle!',
@@ -393,16 +279,16 @@ var CONTENT = {
       tapHint: 'Ya da mumlara dokunarak söndür',
       micDenied: 'Mikrofon izni yoksa sorun değil, mumlara dokunman yeterli\u00a0💗'
     },
-    afterBlow: 'Dileğin tutuldu! Umarım hepsi gerçek olur, hepsini hak ediyorsun\u00a0✨',
+    afterBlow: 'Dileğin kaydedildi, güzel şeyler olsun\u00a0✨',
     balloons: [
-      'Bu yeni yaşın sana sağlık ve mutluluk getirsin\u00a0🎈',
-      'Gülüşün hiç eksilmesin yüzünden.',
-      'Her dileğin bir bir gerçek olsun.',
-      'Bu yıl sana hep iyi şeyler gelsin.',
-      'Kalbin hep bu kadar güzel kalsın.',
-      'Yanında olduğum her gün için minnettarım.',
-      'Doğum günün kutlu olsun, güzelim\u00a0🎂',
-      'Seninle geçecek nice yıllara.'
+      'Bu yeni yaşın sana mutluluk getirsin\u00a0🎈',
+      'Gülüşün hiç eksilmesin.',
+      'Dileklerin gerçek olsun.',
+      'Bu yıl güzel şeyler getirsin.',
+      'Neşen hep yanında olsun.',
+      'Her gün küçük bir sevinç bulasın.',
+      'Doğum günün kutlu olsun\u00a0🎂',
+      'Nice güzel yıllara.'
     ],
     gift: {
       prompt: 'Sana bir hediyem var.',
@@ -411,21 +297,21 @@ var CONTENT = {
     letter: {
       greeting: 'Sevgili Meryem,',
       paragraphs: [
-        "Bu yıl benim için bambaşka bir yıl oldu, çünkü içinde sen vardın. Ocak'ta birbirimize sevgimizi söyledik, Mart'ta da ilk kez yüz yüze geldik.",
-        "Kızılay'da metroda buluşup Akköprü'ye gitmiştik, hatırlıyor musun? İkimiz de saçma sapan heyecanlıydık, ne yapacağımızı bir türlü bilememiştik. Şimdi düşününce o hâlimiz bile çok tatlı geliyor; o günden beri hayatım çok daha güzel bir yer.",
-        "25 Temmuz'da nişanlandık. Nişan bittikten sonra ilk kez baş başa kaldığımız o an, ilk öpücüğümüz, hâlâ gözümün önünde.",
-        'Bu, birlikte kutladığımız ilk doğum günün. Nasıl kutlasam diye çok düşündüm; bu küçük uygulama da o düşüncelerin bir parçası, içindeki her kalp senin için.',
-        'Sana her gün küçük bir şey söylemek istedim, çünkü seni her gün biraz daha çok sevdiğimi fark ettim. Bugün de bunlardan biri, ama en özel olanı.',
-        'Umarım bu yeni yaşın sana sağlık, mutluluk ve gülümseyeceğin çok an getirir. Umarım hayat sana hak ettiğin kadar güzel davranır.',
-        'Ben yanındayım, bugün de, yarın da, önümüzdeki bütün doğum günlerinde de. Seninle kurduğumuz her şey benim için çok değerli.',
-        'İyi ki doğdun, iyi ki varsın, iyi ki hayatımdasın.'
+        'Bu bir örnek mektuptur. Gerçek mektup giriş yaptıktan sonra yüklenir.',
+        'İkinci paragraf da örnek metindir; burada kimseye ait bir anı yoktur.',
+        'Üçüncü paragraf, yalnızca sayfa düzenini göstermek için yazıldı.',
+        'Dördüncü paragraf: kısa, sade ve herkese uyan bir metin.',
+        'Beşinci paragraf de aynı şekilde bir yer tutucudur.',
+        'Altıncı paragraf: yeni yaşın sana güzel günler getirmesini dilerim.',
+        'Yedinci paragraf: bu metin gerçek mektupla değiştirilecek.',
+        'İyi ki doğdun.'
       ],
-      signature: 'Seni çok seven, Furkan'
+      signature: 'İçtenlikle, Furkan'
     },
     /* Scene after the letter: his recorded voice message (audio/sesli-mesaj.*). Skipped when no file. */
     voice: {
-      title: 'Bir de sana söylemek istediğim bir şey var',
-      hint: 'Sesini aç, sonra kalbe dokun\u00a0🎧',
+      title: 'Bir de sana bir ses kaydı var',
+      hint: 'Sesini aç, sonra dokun\u00a0🎧',
       play: 'Dinle',
       pause: 'Durdur'
     },
@@ -438,22 +324,22 @@ var CONTENT = {
       no: 'Sonra',
       used: 'Kullanıldı',
       items: [
-        { id: 'hug', emoji: '🤗', title: 'Sınırsız sarılma', text: 'Ne zaman istersen, nerede istersen. Süresi yok.' },
-        { id: 'yourday', emoji: '👑', title: 'Bir gün her şey senden', text: 'Bir gün boyunca planı sen yaparsın, ben itirazsız gelirim.' },
-        { id: 'trip', emoji: '🗺️', title: 'Sürpriz bir gezi', text: 'Nereye gideceğimizi ben seçerim, sen sadece hazırlan.' },
-        { id: 'dinner', emoji: '🍽️', title: 'Bir akşam yemeği benden', text: 'Nerede istersen, ne istersen. Hesap benden.' },
-        { id: 'walk', emoji: '🌙', title: 'Uzun bir yürüyüş', text: 'El ele, acele etmeden, sadece ikimiz.' },
-        { id: 'win', emoji: '🏳️', title: 'Tartışma bitirme kartı', text: 'Bir tartışmada haklı olan sen olursun, sorgusuz sualsiz.' },
-        { id: 'letter', emoji: '💌', title: 'Bir mektup daha', text: 'Bu kuponu kullandığında sana elimle yazdığım bir mektup gelir.' },
-        { id: 'wish', emoji: '🎁', title: 'Dilediğin bir sürpriz', text: 'Ne istediğini söyle, gerisini ben hallederim.' }
+        { id: 'hug', emoji: '🤗', title: 'Örnek kupon: sarılma', text: 'Bu bir örnek kupondur.' },
+        { id: 'yourday', emoji: '👑', title: 'Örnek kupon: senin günün', text: 'Bu bir örnek kupondur.' },
+        { id: 'trip', emoji: '🗺️', title: 'Örnek kupon: küçük gezi', text: 'Bu bir örnek kupondur.' },
+        { id: 'dinner', emoji: '🍽️', title: 'Örnek kupon: yemek', text: 'Bu bir örnek kupondur.' },
+        { id: 'walk', emoji: '🌙', title: 'Örnek kupon: yürüyüş', text: 'Bu bir örnek kupondur.' },
+        { id: 'win', emoji: '🏳️', title: 'Örnek kupon: son söz', text: 'Bu bir örnek kupondur.' },
+        { id: 'letter', emoji: '💌', title: 'Örnek kupon: mektup', text: 'Bu bir örnek kupondur.' },
+        { id: 'wish', emoji: '🎁', title: 'Örnek kupon: dilek', text: 'Bu bir örnek kupondur.' }
       ]
     },
     slideshow: {
-      title: 'Bizim güzel anılarımız\u00a0📸'
+      title: 'Güzel anılarımız\u00a0📸'
     },
     end: {
-      title: 'İyi ki doğdun, iyi ki varsın\u00a0💗',
-      button: 'Seni seviyorum, hadi içeri gel\u00a0💕'
+      title: 'İyi ki doğdun\u00a0💗',
+      button: 'Hadi içeri gel\u00a0💕'
     }
   },
 
@@ -502,12 +388,12 @@ var CONTENT = {
       streak: '{name} en uzun seri: 🔥 {n} gün',
       teaser: 'Ay bitince karnemiz burada 🐻',
       closing: [
-        'Bir ay daha, birlikte 💞',
-        'Küçük adımlarla bir ay daha 🌷',
-        'Yan yana gitmek en güzeli 🐻',
-        'Gelecek ay da el ele 🤍',
-        'Birlikte olunca her şey daha tatlı 🍯',
-        'Bu ayı güzelce kapattık, yenisi için hazırız ✨'
+        'Bir ay daha geride kaldı 👏',
+        'Adım adım ilerleyen bir ay 🌷',
+        'Düzenli gitmek güzel 🌱',
+        'Gelecek ay da devam 💪',
+        'Güzel bir ay oldu 🌟',
+        'Ay tamamlandı, yenisi için hazırız ✨'
       ]
     },
     log: {

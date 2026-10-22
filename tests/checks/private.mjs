@@ -12,17 +12,20 @@
  *      a missing document is silent;
  *   5. the ?ozel-metin panel uploads a valid file as written, refuses a bad one, downloads what
  *      is stored;
+ *   6. the no-leak guard: no string literal or comment in the app files or the tests may be a
+ *      sentence the couple wrote (SHA-256 list in tests/fixtures/private-hashes.json);
  *   7. the birthday preview lands on the payload's birthday (no clock call before the load).
- * (Check numbers follow the plan; 6, the no-leak guard, belongs to the next stage.)
+ * (Check numbers follow the plan.)
  *
  * Hand-computed dates, Europe/Istanbul (no DST in 2026), default clock 2026-09-20T10:00:
  *   2026-01-01 00:00 -> 2026-09-20 10:00: Jan-Aug = 243 days to 1 Sep, +19 = 262 days (+10 h)
  *   2026-08-01 00:00 -> 2026-09-20 10:00: 31 (Aug) + 19 = 50 days (+10 h)
  */
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 import { runInNewContext } from "node:vm";
-import { openApp, sleep } from "../harness.mjs";
+import { TESTS_DIR, openApp, sleep } from "../harness.mjs";
 
 export const name = "private";
 
@@ -37,6 +40,171 @@ const N_UPLOAD = "private: ?ozel-metin opens the panel and a valid file is writt
 const N_REJECT = "private: the panel refuses bad JSON, a wrong version and an unknown key: a toast, nothing written";
 const N_DOWNLOAD = "private: İndir hands over the stored text as ozel-metinler.json, and says so when nothing is stored";
 const N_PREVIEW = "private: ?onizleme=dogumgunu lands on the payload's birthday at 10:00, not the repo's";
+const N_NOLEAK = "private: no string literal or comment in js/, index.html, css/, sw.js, manifest.json or tests/ is one of the couple's own sentences (hash list), and the scanner finds a planted canary in every literal form";
+
+/* ── The no-leak guard ─────────────────────────────────────────────────────────────────────
+ * tests/fixtures/private-hashes.json holds the SHA-256 of every private sentence of 25+ characters
+ * (hashes reveal nothing; sentences under 25 characters are left out because their hashes could be
+ * guessed). Every string literal and every comment line of the app and of the tests is normalised
+ * as the file says (NFC, no-break space = space, whitespace runs = one space, trimmed) and hashed.
+ *
+ * LIMIT, stated: the guard catches an EXACT re-addition of a listed sentence only. A reworded
+ * sentence, a sentence split over concatenated literals, and any string under 25 characters pass it.
+ *
+ * `canary` is a neutral made-up sentence whose hash is kept apart from `hashes`. It counts as a hit
+ * in the app files only (never in tests/, where the mutant and the scanner's own self-test must be
+ * able to spell it); the mutant writes it into js/content.js, which proves the scan can fail. */
+const MIN_LEN = 25;
+const normalise = (s) => s.normalize("NFC").replace(/ /g, " ").replace(/\s+/g, " ").trim();
+const sha256 = (s) => createHash("sha256").update(s, "utf8").digest("hex");
+
+function unescapeJs(raw) {
+  return raw.replace(/\\(u\{([0-9a-fA-F]+)\}|u([0-9a-fA-F]{4})|x([0-9a-fA-F]{2})|\r?\n|[\s\S])/g, (all, c, braced, u4, x2) => {
+    if (braced) return String.fromCodePoint(parseInt(braced, 16));
+    if (u4) return String.fromCharCode(parseInt(u4, 16));
+    if (x2) return String.fromCharCode(parseInt(x2, 16));
+    if (c === "n") return "\n";
+    if (c === "t") return "\t";
+    if (c === "r") return "\r";
+    if (/^\r?\n$/.test(c)) return "";
+    return c;
+  });
+}
+
+/** Every string literal (' " `) and every comment of JS / CSS source, as { text, line }. */
+function scanScript(src) {
+  const out = [];
+  let i = 0, line = 1;
+  const n = src.length;
+  while (i < n) {
+    const ch = src[i];
+    const two = src.substr(i, 2);
+    if (two === "//" ) {
+      let j = src.indexOf("\n", i); if (j < 0) j = n;
+      out.push({ text: src.slice(i + 2, j), line });
+      i = j;
+    } else if (two === "/*") {
+      let j = src.indexOf("*/", i + 2); if (j < 0) j = n;
+      const body = src.slice(i + 2, j);
+      body.split("\n").forEach((l, k) => out.push({ text: l.replace(/^\s*\*+/, ""), line: line + k }));
+      out.push({ text: body, line });
+      line += body.split("\n").length - 1;
+      i = Math.min(n, j + 2);
+    } else if (ch === "'" || ch === '"' || ch === "`") {
+      let j = i + 1;
+      while (j < n && src[j] !== ch && !(ch !== "`" && src[j] === "\n")) j += src[j] === "\\" ? 2 : 1;
+      out.push({ text: unescapeJs(src.slice(i + 1, j)), line });
+      for (let k = i; k < Math.min(j, n); k++) if (src[k] === "\n") line++;
+      i = j + 1;
+    } else {
+      if (ch === "\n") line++;
+      i++;
+    }
+  }
+  return out;
+}
+
+/** Quoted attribute values, text nodes and comments of HTML, plus the literals of inline scripts. */
+function scanHtml(src) {
+  const out = [];
+  const lineOf = (idx) => src.slice(0, idx).split("\n").length;
+  for (const m of src.matchAll(/="([^"]*)"|='([^']*)'/g)) out.push({ text: m[1] ?? m[2], line: lineOf(m.index) });
+  for (const m of src.matchAll(/>([^<>]+)</g)) out.push({ text: m[1], line: lineOf(m.index) });
+  for (const m of src.matchAll(/<!--([\s\S]*?)-->/g)) {
+    m[1].split("\n").forEach((l, k) => out.push({ text: l, line: lineOf(m.index) + k }));
+  }
+  for (const m of src.matchAll(/<(script|style)\b[^>]*>([\s\S]*?)<\/\1>/g)) {
+    const base = lineOf(m.index);
+    for (const s of scanScript(m[2])) out.push({ text: s.text, line: base + s.line - 1 });
+  }
+  return out;
+}
+
+/** Every string of a JSON file. */
+function scanJson(src) {
+  const out = [];
+  (function walk(v) {
+    if (typeof v === "string") out.push({ text: v, line: 0 });
+    else if (v && typeof v === "object") Object.values(v).forEach(walk);
+  })(JSON.parse(src));
+  return out;
+}
+
+function scanFile(file, src) {
+  if (/\.html?$/.test(file)) return scanHtml(src);
+  if (/\.json$/.test(file)) return scanJson(src);
+  return scanScript(src);
+}
+
+/** Text files under `dir` whose names match `pattern`, never descending into `skipDirs`. */
+function filesUnder(dir, pattern, skipDirs = []) {
+  const out = [];
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) { if (!skipDirs.includes(e.name)) out.push(...filesUnder(p, pattern, skipDirs)); }
+    else if (pattern.test(e.name)) out.push(p);
+  }
+  return out;
+}
+
+/** The hash of every candidate (len >= MIN_LEN after normalising) of `files`, with where it sits. */
+function candidates(files, base) {
+  const found = [];
+  let count = 0;
+  for (const file of files) {
+    const rel = relative(base, file).replace(/\\/g, "/");
+    for (const s of scanFile(file, readFileSync(file, "utf8"))) {
+      const t = normalise(s.text);
+      if (t.length < MIN_LEN) continue;
+      count++;
+      found.push({ where: `${rel}:${s.line}`, hash: sha256(t) });
+    }
+  }
+  return { found, count };
+}
+
+function leakScan(root) {
+  const list = JSON.parse(readFileSync(join(TESTS_DIR, "fixtures", "private-hashes.json"), "utf8"));
+  const sentences = new Set(list.hashes);
+  const appFiles = [
+    ...filesUnder(join(root, "js"), /\.js$/),
+    ...filesUnder(join(root, "css"), /\.css$/),
+    join(root, "index.html"), join(root, "sw.js"), join(root, "manifest.json"),
+  ];
+  // tests/ of THIS checkout (a mutant copy has none); .tmp holds mutant copies of the app, and the
+  // hash file is the one place the hashes may sit.
+  const testFiles = filesUnder(TESTS_DIR, /\.(mjs|js|html|css|json)$/, [".tmp"])
+    .filter((f) => relative(TESTS_DIR, f).replace(/\\/g, "/") !== "fixtures/private-hashes.json");
+  const app = candidates(appFiles, root);
+  const tests = candidates(testFiles, TESTS_DIR);
+  const hits = [
+    ...app.found.filter((c) => sentences.has(c.hash) || c.hash === list.canary),
+    ...tests.found.filter((c) => sentences.has(c.hash)).map((c) => ({ ...c, where: `tests/${c.where}` })),
+  ].map((c) => c.where);
+  return { hits, files: appFiles.length + testFiles.length, strings: app.count + tests.count, listSize: sentences.size, canary: list.canary };
+}
+
+/** The scanner against a planted canary in every literal form it has to read. */
+function scannerSelfTest(canary) {
+  const C = "Mavi kalem sabahın erken saatinde pencerenin önünde bekledi.";
+  const forms = {
+    single: `var a = '${C}';`,
+    double: `var a = "${C}";`,
+    template: `var a = \`${C}\`;`,
+    escapedNbsp: `var a = 'Mavi kalem sabahın erken saatinde pencerenin\\u00a0önünde bekledi.';`,
+    escapedQuote: `var a = "${C.replace("kalem", "kal\\x65m")}";`,
+    lineComment: `var a = 1; // ${C}`,
+    blockComment: `/* first line\n   ${C}\n*/`,
+    htmlText: `<p>${C}</p>`,
+    htmlAttr: `<p title="${C}"></p>`,
+  };
+  const missed = [];
+  for (const [form, src] of Object.entries(forms)) {
+    const list = /^html/.test(form) ? scanHtml(src) : scanScript(src);
+    if (!list.some((s) => sha256(normalise(s.text)) === canary)) missed.push(form);
+  }
+  return missed;
+}
 
 /** The repo's own content.js, evaluated on its own: what the page shows when no document exists. */
 function repoContent(root) {
@@ -163,7 +331,7 @@ export async function run({ page, check, root }) {
   }));
 
   // 3. A slow document: nothing is drawn, nothing is marked, until it has arrived
-  const GATE_WEEK = "2026-10-05T10:00:00";
+  const GATE_WEEK = "2026-11-26T10:00:00";
   await openApp(page, { now: GATE_WEEK, privateTexts: PAYLOAD, stubFlags: { __STUB_GET_DELAY_MS: 2500 }, waitReady: false });
   const during = await page.eval(() => ({
     splash: getComputedStyle(document.getElementById("splash-screen")).display,
@@ -287,6 +455,14 @@ export async function run({ page, check, root }) {
     ok: !!got && got.name === "ozel-metinler.json" && got.body === STORED && none.downloads === 0
       && none.toasts[none.toasts.length - 1] === repo.privateTexts.panel.noDocument,
     detail: JSON.stringify({ got, none }),
+  }));
+
+  // 6. No-leak guard (static)
+  const leak = leakScan(root);
+  const scannerMissed = scannerSelfTest(leak.canary);
+  await check(N_NOLEAK, () => ({
+    ok: leak.hits.length === 0 && scannerMissed.length === 0 && leak.listSize === 392 && leak.files >= 30 && leak.strings >= 1000,
+    detail: JSON.stringify({ hits: leak.hits, scannerMissed, listSize: leak.listSize, files: leak.files, strings: leak.strings }),
   }));
 
   // 7. The rehearsal clock reads the payload's birthday (20 Nov), never the repo's, because the
@@ -438,10 +614,17 @@ export const mutants = [
     expect: N_DOWNLOAD,
   },
   {
+    id: "private-canary-sentence-added",
+    file: "js/content.js",
+    find: "    loadError: 'Özel metinler yüklenemedi',\n",
+    replace: "    loadError: 'Özel metinler yüklenemedi',\n    canary: 'Mavi kalem sabahın erken saatinde pencerenin önünde bekledi.',\n",
+    expect: N_NOLEAK,
+  },
+  {
     id: "private-birthday-hard-coded",
     file: "js/time.js",
     find: "return new Date(year, CONFIG.herBirthday.month - 1, CONFIG.herBirthday.day, 0, 0, 0);",
-    replace: "return new Date(year, 10 - 1, 4, 0, 0, 0);",
+    replace: "return new Date(year, 11 - 1, 25, 0, 0, 0);",
     expect: N_PREVIEW,
   },
 ];

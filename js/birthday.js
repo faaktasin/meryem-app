@@ -73,7 +73,7 @@
   }
 
   /**
-   * Days/hours/minutes/seconds remaining until 4 Oct 00:00 this year, via appNow() only. Only
+   * Days/hours/minutes/seconds remaining until her birthday 00:00 this year, via appNow() only. Only
    * meaningful while locked (appNow() < that date) — never negative in that case.
    */
   function bdayComputeRemaining() {
@@ -822,8 +822,8 @@
   function makeRenderSceneVoice(voiceUrl) {
     return function renderSceneVoice(stage) {
       var c = (CONTENT.birthday && CONTENT.birthday.voice) || {};
-      var title = c.title || 'Bir de sana söylemek istediğim bir şey var';
-      var hint = c.hint || 'Sesini aç, sonra kalbe dokun 🎧';
+      var title = c.title || 'Bir de sana bir ses kaydı var';
+      var hint = c.hint || 'Sesini aç, sonra dokun 🎧';
       var playLabel = c.play || 'Dinle';
       var pauseLabel = c.pause || 'Durdur';
       var r = 32;

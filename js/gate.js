@@ -4,7 +4,7 @@
  * follow-ups, a love meter, and a hugging finale. Renders into the frozen #gate-overlay shell.
  *
  * Contract (called by app.js / firebase.js, both frozen):
- *   window.isGateDue()       true during her birthday week (4-10 Oct) while this year's play is unplayed
+ *   window.isGateDue()       true during her birthday week (her birthday + 6 days) while this year's play is unplayed
  *   window.startGateIfDue()  opens the automatic birthday sequence when isGateDue()
  *   window.replayGate()      opens the shorter replay sequence any time
  * A quiet "Geç ›" control (top corner, every step but the finale) ends the playthrough early and marks the
@@ -15,7 +15,7 @@
   'use strict';
 
   var GATE_FLAG_KEY = 'meryem-gate-played-year';
-  var GATE_WEEK_DAYS = 7; /* the gate opens by itself from her birthday for this many days (4-10 Oct) */
+  var GATE_WEEK_DAYS = 7; /* the gate opens by itself from her birthday for this many days (birthday day + 6) */
 
   var BEAR_SIZE = 128;
   var HUG_SIZE = 200;

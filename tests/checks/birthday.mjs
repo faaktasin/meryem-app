@@ -104,8 +104,8 @@ async function blowAllCandlesByTap(page) {
 }
 
 export async function run({ page, check }) {
-  // 1. Locked before 4 Oct: no auto-open, no glow, ~1 minute on the clock, tap shows a tease.
-  await openApp(page, { now: "2026-10-03T23:59:00", signedIn: true, storage: {} });
+  // 1. Locked before 25 Nov: no auto-open, no glow, ~1 minute on the clock, tap shows a tease.
+  await openApp(page, { now: "2026-11-24T23:59:00", signedIn: true, storage: {} });
   await wait(page, 250);
   const locked1 = await page.eval(() => ({
     overlayHidden: document.getElementById("birthday-overlay").hidden,
@@ -117,7 +117,7 @@ export async function run({ page, check }) {
     triggerIsButton: document.getElementById("bday-gift-trigger").tagName === "BUTTON",
     triggerAriaLabel: document.getElementById("bday-gift-trigger").getAttribute("aria-label"),
   }));
-  await check("birthday: locked before 4 Oct — no auto-open, no nav glow, ~1 minute on the clock, a real labelled button", () => ({
+  await check("birthday: locked before 25 Nov — no auto-open, no nav glow, ~1 minute on the clock, a real labelled button", () => ({
     ok: locked1.overlayHidden === true && locked1.lockedVisible === true && locked1.navGlow === false
       && locked1.days === "0" && locked1.hours === "00" && Number(locked1.minutes) <= 1
       && locked1.triggerIsButton === true && !!locked1.triggerAriaLabel,
@@ -151,7 +151,7 @@ export async function run({ page, check }) {
     return text;
   });
   await check("birthday: on the eve (days=0) the {days}-interpolated teases are excluded — no '0 gün' wording", () => ({
-    ok: dayZeroTease.indexOf("{days}") === -1 && dayZeroTease.indexOf("0 gün") === -1 && dayZeroTease === "Kurcalama, ayıcık bekçi 🐻",
+    ok: dayZeroTease.indexOf("{days}") === -1 && dayZeroTease.indexOf("0 gün") === -1 && dayZeroTease === "Kurcalama, kilit sağlam 🔒",
     detail: dayZeroTease,
   }));
 
@@ -165,7 +165,7 @@ export async function run({ page, check }) {
   // midnight while the app is OPEN also fires meryem:birthday-unlocked and starts the due gate
   // (B1): before this fix, only the 🎁 tab's own view flipped; the gate stayed silent until her
   // next reload, and its finale then replayed the whole surprise a second time.
-  await openApp(page, { now: "2026-10-03T23:59:57", signedIn: true, storage: {} });
+  await openApp(page, { now: "2026-11-24T23:59:57", signedIn: true, storage: {} });
   await page.tap(".nav-btn[data-tab=\"birthday-view\"]");
   await wait(page, 100);
   const beforeFlip = await page.eval(() => !!document.querySelector(".bday-view--locked"));
@@ -206,7 +206,7 @@ export async function run({ page, check }) {
   // CLOSE, not the moment it opens — so an interrupted surprise (a call, iOS evicting the
   // backgrounded app) gets re-offered on the next load instead of silently vanishing behind a
   // "yeniden aç" card.
-  await openApp(page, { now: "2026-10-04T00:01:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
+  await openApp(page, { now: "2026-11-25T00:01:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
   const opened1 = await waitUntilOverlayOpen(page);
   const dumpWhileOpen = await page.storageDump();
   await check("birthday: gate already played this year — the surprise auto-opens once", () => ({
@@ -224,7 +224,7 @@ export async function run({ page, check }) {
     ok: dumpAfterClose["meryem-birthday-seen-year"] === "2026",
     detail: JSON.stringify(dumpAfterClose),
   }));
-  await openApp(page, { now: "2026-10-04T00:01:00", signedIn: true, keepStorage: true });
+  await openApp(page, { now: "2026-11-25T00:01:00", signedIn: true, keepStorage: true });
   await wait(page, 400);
   const opened2 = await page.eval(() => document.getElementById("birthday-overlay").hidden === false);
   await check("birthday: reopening after a real close does not auto-open again", () => ({
@@ -244,9 +244,9 @@ export async function run({ page, check }) {
 
   // M2: reloading WITHOUT closing (an interrupted surprise — a call, iOS backgrounding it away)
   // re-offers it on the next load, because nothing marks it "seen" until a real close does.
-  await openApp(page, { now: "2026-10-04T00:01:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
+  await openApp(page, { now: "2026-11-25T00:01:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
   await waitUntilOverlayOpen(page);
-  await openApp(page, { now: "2026-10-04T00:01:00", signedIn: true, keepStorage: true });
+  await openApp(page, { now: "2026-11-25T00:01:00", signedIn: true, keepStorage: true });
   const reopenedAfterInterruption = await waitUntilOverlayOpen(page);
   await check("birthday: reloading before closing (an interrupted surprise) re-offers it on the next load (M2)", () => ({
     ok: reopenedAfterInterruption === true,
@@ -257,7 +257,7 @@ export async function run({ page, check }) {
   // js/gate.js (another package) may itself auto-play here since storage is fresh — that is its
   // own contract, not this check's concern, so the reset below clears it out of the way before
   // this module's own function is exercised directly.
-  await openApp(page, { now: "2026-10-04T00:01:00", signedIn: true, storage: {} });
+  await openApp(page, { now: "2026-11-25T00:01:00", signedIn: true, storage: {} });
   await wait(page, 300); // let any natural open (birthday's or the gate's own) settle first
   const gateBlocked = await page.eval(() => {
     var overlay = document.getElementById("birthday-overlay");
@@ -358,7 +358,7 @@ export async function run({ page, check }) {
   }));
 
   // 7. mic:'deny' — tap-to-blow still works end to end: afterBlow, confetti, an AudioContext.
-  await openApp(page, { now: "2026-10-04T00:05:00", signedIn: true, mic: "deny", storage: { "meryem-gate-played-year": "2026" } });
+  await openApp(page, { now: "2026-11-25T00:05:00", signedIn: true, mic: "deny", storage: { "meryem-gate-played-year": "2026" } });
   await waitUntilOverlayOpen(page);
   await page.eval(() => {
     window.__bdayAudioCtxCreated = false;
@@ -497,7 +497,7 @@ export async function run({ page, check }) {
   }));
 
   // 9. mic:'fake' — after all candles are blown, every captured getUserMedia track has ended.
-  await openApp(page, { now: "2026-10-04T00:05:00", signedIn: true, mic: "fake", storage: { "meryem-gate-played-year": "2026" } });
+  await openApp(page, { now: "2026-11-25T00:05:00", signedIn: true, mic: "fake", storage: { "meryem-gate-played-year": "2026" } });
   await waitUntilOverlayOpen(page);
   await page.tap("#bday-scene0-continue");
   // #bday-mic-btn sits inside #bday-blow-ui, which stays [hidden] until the wish-text beat has
@@ -534,7 +534,7 @@ export async function run({ page, check }) {
   }));
 
   // 10. The × close button restores the app mid-scene, and the gift-tab glow logic is sound.
-  await openApp(page, { now: "2026-10-04T00:07:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
+  await openApp(page, { now: "2026-11-25T00:07:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
   await waitUntilOverlayOpen(page);
   await page.tap("#bday-scene0-continue");
   await wait(page, 200);
@@ -587,7 +587,7 @@ export async function run({ page, check }) {
   }));
 
   // 11. Slideshow with photo memories: one polaroid per photo, auto-cycling from the first.
-  await openApp(page, { now: "2026-10-04T00:09:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" }, memories: THREE_MEMORIES });
+  await openApp(page, { now: "2026-11-25T00:09:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" }, memories: THREE_MEMORIES });
   await reachSlideshow(page);
   const slideshowResult = await page.eval(() => ({
     polaroidCount: document.querySelectorAll(".bday-polaroid").length,
@@ -616,7 +616,7 @@ export async function run({ page, check }) {
   const XSS_MEMORY = [
     { id: "x1", title: "Zarar", date: "2026-01-01", note: "", lat: null, lng: null, source: "gallery", thumbnail: XSS_PAYLOAD_URL, photo: XSS_PAYLOAD_URL },
   ];
-  await openApp(page, { now: "2026-10-04T00:21:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" }, memories: XSS_MEMORY });
+  await openApp(page, { now: "2026-11-25T00:21:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" }, memories: XSS_MEMORY });
   await page.eval(() => { window.__bdayXssFired = false; });
   await reachSlideshow(page);
   await wait(page, 200);
@@ -638,7 +638,7 @@ export async function run({ page, check }) {
     { id: "s2", title: "IMG_4821", date: "2026-02-01", note: "", lat: null, lng: null, source: "gallery", thumbnail: PHOTO_DATA_URL, photo: PHOTO_DATA_URL },
     { id: "s3", title: "En eski", date: "2026-01-01", note: "", lat: null, lng: null, source: "gallery", thumbnail: PHOTO_DATA_URL, photo: PHOTO_DATA_URL },
   ];
-  await openApp(page, { now: "2026-10-04T00:23:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" }, memories: SLIDESHOW_ORDER_MEMORIES });
+  await openApp(page, { now: "2026-11-25T00:23:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" }, memories: SLIDESHOW_ORDER_MEMORIES });
   await reachSlideshow(page);
   const slideshowOrderResult = await page.eval(() => {
     var figs = document.querySelectorAll(".bday-polaroid");
@@ -658,7 +658,7 @@ export async function run({ page, check }) {
 
   // M5: under reduced motion the slideshow still advances (instantly, no transition) instead of
   // staying frozen on the first photo forever — this was lost content, not reduced motion.
-  await openApp(page, { now: "2026-10-04T00:24:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" }, memories: THREE_MEMORIES, reducedMotion: true });
+  await openApp(page, { now: "2026-11-25T00:24:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" }, memories: THREE_MEMORIES, reducedMotion: true });
   await reachSlideshow(page);
   const activeBefore = await page.eval(() => Array.prototype.findIndex.call(document.querySelectorAll(".bday-polaroid"), (f) => f.classList.contains("is-active")));
   await wait(page, 2800);
@@ -669,7 +669,7 @@ export async function run({ page, check }) {
   }));
 
   // 14. m9: Escape closes the birthday overlay, matching the letter-reader's own contract.
-  await openApp(page, { now: "2026-10-04T00:25:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
+  await openApp(page, { now: "2026-11-25T00:25:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
   await waitUntilOverlayOpen(page);
   await page.tap("#bday-scene0-continue");
   await wait(page, 150);
@@ -688,7 +688,7 @@ export async function run({ page, check }) {
   // box), with the scene's own content lifted above it so the balloons never cover the title/bears
   // /button. .bday-close-btn (position:fixed, unaffected by this fix) already proves fixed
   // positioning escapes the overlay's scroll container correctly in every other shot.
-  await openApp(page, { now: "2026-10-04T00:27:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
+  await openApp(page, { now: "2026-11-25T00:27:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
   await waitUntilOverlayOpen(page);
   await wait(page, 150);
   const balloonLayerResult = await page.eval(() => {
@@ -720,7 +720,7 @@ export async function run({ page, check }) {
   // once the whole surprise closes. Real iOS audio-session ROUTING is unverified from here (no
   // iPhone available) — this proves birthday.js drives the property and the delay at the right
   // moments, which is what M1's fix actually changed.
-  await openApp(page, { now: "2026-10-04T00:29:00", signedIn: true, mic: "fake", storage: { "meryem-gate-played-year": "2026" } });
+  await openApp(page, { now: "2026-11-25T00:29:00", signedIn: true, mic: "fake", storage: { "meryem-gate-played-year": "2026" } });
   await waitUntilOverlayOpen(page);
   await page.eval(() => {
     navigator.audioSession = { _t: "auto", get type() { return this._t; }, set type(v) { this._t = v; } };
@@ -773,7 +773,7 @@ export async function run({ page, check }) {
   // 17. m15: opening the letter, a SINGLE tap fills every remaining paragraph (not just the
   // current one), the "Bitirmek için dokun" hint then hides, and the Devam button is centred like
   // every other scene's.
-  await openApp(page, { now: "2026-10-04T00:31:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
+  await openApp(page, { now: "2026-11-25T00:31:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
   await waitUntilOverlayOpen(page);
   await page.tap("#bday-scene0-continue");
   await blowAllCandlesByTap(page);
@@ -853,7 +853,7 @@ export async function run({ page, check }) {
   // 19. Voice-message scene: skipped entirely with no recording; shown, playable and stops the
   // music box first, when one exists at audio/sesli-mesaj.* (a real 0.3s WAV fixture, faked
   // present at the network level — see harness.mjs's setVoiceAudioFixture()).
-  await openApp(page, { now: "2026-10-04T00:05:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
+  await openApp(page, { now: "2026-11-25T00:05:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
   await waitUntilOverlayOpen(page);
   await page.tap("#bday-scene0-continue");
   await blowAllCandlesByTap(page);
@@ -879,7 +879,7 @@ export async function run({ page, check }) {
     detail: JSON.stringify(noVoiceResult),
   }));
 
-  await openApp(page, { now: "2026-10-04T00:05:00", signedIn: true, voiceAudio: "wav", storage: { "meryem-gate-played-year": "2026" } });
+  await openApp(page, { now: "2026-11-25T00:05:00", signedIn: true, voiceAudio: "wav", storage: { "meryem-gate-played-year": "2026" } });
   await waitUntilOverlayOpen(page);
   await page.tap("#bday-scene0-continue");
   await blowAllCandlesByTap(page);
@@ -996,7 +996,7 @@ export async function run({ page, check }) {
 
   // Closing the whole overlay while the voice scene is playing pauses/releases it too (not just a
   // scene-to-scene change) — same stash-a-live-reference technique, a fresh overlay open.
-  await openApp(page, { now: "2026-10-04T00:05:00", signedIn: true, voiceAudio: "wav", storage: { "meryem-gate-played-year": "2026" } });
+  await openApp(page, { now: "2026-11-25T00:05:00", signedIn: true, voiceAudio: "wav", storage: { "meryem-gate-played-year": "2026" } });
   await waitUntilOverlayOpen(page);
   await page.tap("#bday-scene0-continue");
   await blowAllCandlesByTap(page);
@@ -1031,7 +1031,7 @@ export async function run({ page, check }) {
   // 20. Love coupons: the booklet scene, an in-page confirm (never window.confirm/alert), a
   // persisted stamp with today's date, "Sonra" as a no-op, preview mode's no-persist guarantee,
   // and the always-visible 🎁-tab list.
-  await openApp(page, { now: "2026-10-04T00:05:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
+  await openApp(page, { now: "2026-11-25T00:05:00", signedIn: true, storage: { "meryem-gate-played-year": "2026" } });
   await waitUntilOverlayOpen(page);
   await page.tap("#bday-scene0-continue");
   await blowAllCandlesByTap(page);
@@ -1077,7 +1077,7 @@ export async function run({ page, check }) {
     windowConfirmCalled: window.__bdayConfirmCalled,
   }));
   await check("birthday: tapping a coupon opens an in-page confirm (never window.confirm) reading CONTENT.birthday.coupons text", () => ({
-    ok: confirmDialogResult.visible === true && confirmDialogResult.titleText === "Sınırsız sarılma"
+    ok: confirmDialogResult.visible === true && confirmDialogResult.titleText === "Örnek kupon: sarılma"
       && confirmDialogResult.textContent === confirmDialogResult.expectedConfirmText
       && confirmDialogResult.yesLabel === confirmDialogResult.expectedYes && confirmDialogResult.noLabel === confirmDialogResult.expectedNo
       && confirmDialogResult.windowConfirmCalled === false,
@@ -1117,11 +1117,11 @@ export async function run({ page, check }) {
   });
   // Matches the product code exact separator: a no-break space, a middle dot, a
   // no-break space (js/birthday.js, same convention CONTENT.js documents at its own top).
-  const expectedStampText = "Kullan\u0131ld\u0131" + "\u00a0\u00b7\u00a0" + "04.10.2026";
+  const expectedStampText = "Kullan\u0131ld\u0131" + "\u00a0\u00b7\u00a0" + "25.11.2026";
   await check("birthday: \"Evet\" stamps CONTENT.birthday.coupons.used + today's date (dd.mm.yyyy) and persists {id:'YYYY-MM-DD'} via storageSet", () => ({
     ok: afterYesResult.dialogHidden === true && afterYesResult.isUsed === true && afterYesResult.stampHidden === false
       && afterYesResult.expectedUsedLabel === "Kullan\u0131ld\u0131" && afterYesResult.stampText === expectedStampText
-      && afterYesResult.stored && afterYesResult.stored.hug === "2026-10-04",
+      && afterYesResult.stored && afterYesResult.stored.hug === "2026-11-25",
     detail: JSON.stringify({ ...afterYesResult, expectedStampText }),
   }));
   await check("birthday: the stamp reaches the 🎁-tab list live, without needing a reload (same data-coupon id, different container)", () => ({
@@ -1135,7 +1135,7 @@ export async function run({ page, check }) {
   await page.tap("#bday-close-btn");
   await wait(page, 150);
 
-  await openApp(page, { now: "2026-10-04T00:06:00", signedIn: true, keepStorage: true });
+  await openApp(page, { now: "2026-11-25T00:06:00", signedIn: true, keepStorage: true });
   await page.tap(".nav-btn[data-tab=\"birthday-view\"]");
   await wait(page, 150);
   const stampAfterReload = await page.eval(() => {
@@ -1213,7 +1213,7 @@ export async function run({ page, check }) {
 
   // 21. Reduced motion: the voice ring/heart-pulse and the coupon confirm's entrance animation
   // drop out (playback and the dialog itself still work) — the same rule every other scene follows.
-  await openApp(page, { now: "2026-10-04T00:05:00", signedIn: true, voiceAudio: "wav", storage: { "meryem-gate-played-year": "2026" }, reducedMotion: true });
+  await openApp(page, { now: "2026-11-25T00:05:00", signedIn: true, voiceAudio: "wav", storage: { "meryem-gate-played-year": "2026" }, reducedMotion: true });
   await waitUntilOverlayOpen(page);
   await page.tap("#bday-scene0-continue");
   await blowAllCandlesByTap(page);
@@ -1682,10 +1682,10 @@ export const mutants = [
 ];
 
 export const shots = [
-  { name: "locked", open: { signedIn: true, now: "2026-10-03T12:00:00" }, act: async (page) => { await page.tap(".nav-btn[data-tab=\"birthday-view\"]"); } },
+  { name: "locked", open: { signedIn: true, now: "2026-11-24T12:00:00" }, act: async (page) => { await page.tap(".nav-btn[data-tab=\"birthday-view\"]"); } },
   {
     name: "locked-tease",
-    open: { signedIn: true, now: "2026-10-03T12:00:00" },
+    open: { signedIn: true, now: "2026-11-24T12:00:00" },
     act: async (page) => {
       await page.tap(".nav-btn[data-tab=\"birthday-view\"]");
       await wait(page, 100);
@@ -1694,24 +1694,24 @@ export const shots = [
   },
   {
     name: "locked-reduced-motion",
-    open: { signedIn: true, now: "2026-10-03T12:00:00", reducedMotion: true },
+    open: { signedIn: true, now: "2026-11-24T12:00:00", reducedMotion: true },
     act: async (page) => { await page.tap(".nav-btn[data-tab=\"birthday-view\"]"); },
   },
   {
     name: "unlocked-ready",
     // Both flags seeded: gate already played (so it doesn't auto-play over this shot) and the
     // surprise already seen this year (so maybeAutoOpenBirthday doesn't reopen it either).
-    open: { signedIn: true, now: "2026-10-04T00:05:00", storage: { "meryem-gate-played-year": "2026", "meryem-birthday-seen-year": "2026" } },
+    open: { signedIn: true, now: "2026-11-25T00:05:00", storage: { "meryem-gate-played-year": "2026", "meryem-birthday-seen-year": "2026" } },
     act: async (page) => { await page.tap(".nav-btn[data-tab=\"birthday-view\"]"); },
   },
   {
     name: "scene-title",
-    open: { signedIn: true, now: "2026-10-04T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
+    open: { signedIn: true, now: "2026-11-25T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
     act: async (page) => { await waitUntilOverlayOpen(page); await wait(page, 1400); },
   },
   {
     name: "scene-cake-blowui",
-    open: { signedIn: true, now: "2026-10-04T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
+    open: { signedIn: true, now: "2026-11-25T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
     act: async (page) => {
       await waitUntilOverlayOpen(page);
       await page.tap("#bday-scene0-continue");
@@ -1720,7 +1720,7 @@ export const shots = [
   },
   {
     name: "scene-cake-afterblow",
-    open: { signedIn: true, now: "2026-10-04T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
+    open: { signedIn: true, now: "2026-11-25T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
     act: async (page) => {
       await waitUntilOverlayOpen(page);
       await page.tap("#bday-scene0-continue");
@@ -1729,7 +1729,7 @@ export const shots = [
   },
   {
     name: "scene-balloons",
-    open: { signedIn: true, now: "2026-10-04T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
+    open: { signedIn: true, now: "2026-11-25T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
     act: async (page) => {
       await waitUntilOverlayOpen(page);
       await page.tap("#bday-scene0-continue");
@@ -1743,7 +1743,7 @@ export const shots = [
   },
   {
     name: "scene-gift-letter",
-    open: { signedIn: true, now: "2026-10-04T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
+    open: { signedIn: true, now: "2026-11-25T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
     act: async (page) => {
       await waitUntilOverlayOpen(page);
       await page.tap("#bday-scene0-continue");
@@ -1764,7 +1764,7 @@ export const shots = [
   },
   {
     name: "scene-voice",
-    open: { signedIn: true, now: "2026-10-04T00:05:00", storage: { "meryem-gate-played-year": "2026" }, voiceAudio: "wav" },
+    open: { signedIn: true, now: "2026-11-25T00:05:00", storage: { "meryem-gate-played-year": "2026" }, voiceAudio: "wav" },
     act: async (page) => {
       await waitUntilOverlayOpen(page);
       await page.tap("#bday-scene0-continue");
@@ -1788,7 +1788,7 @@ export const shots = [
   },
   {
     name: "scene-coupons",
-    open: { signedIn: true, now: "2026-10-04T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
+    open: { signedIn: true, now: "2026-11-25T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
     act: async (page) => {
       await waitUntilOverlayOpen(page);
       await page.tap("#bday-scene0-continue");
@@ -1810,7 +1810,7 @@ export const shots = [
   },
   {
     name: "coupon-confirm",
-    open: { signedIn: true, now: "2026-10-04T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
+    open: { signedIn: true, now: "2026-11-25T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
     act: async (page) => {
       await waitUntilOverlayOpen(page);
       await page.tap("#bday-scene0-continue");
@@ -1835,14 +1835,14 @@ export const shots = [
   {
     name: "tab-coupons-used",
     open: {
-      signedIn: true, now: "2026-10-04T00:05:00",
-      storage: { "meryem-gate-played-year": "2026", "meryem-birthday-seen-year": "2026", "meryem-coupons-used": JSON.stringify({ hug: "2026-10-04", dinner: "2026-10-04" }) },
+      signedIn: true, now: "2026-11-25T00:05:00",
+      storage: { "meryem-gate-played-year": "2026", "meryem-birthday-seen-year": "2026", "meryem-coupons-used": JSON.stringify({ hug: "2026-11-25", dinner: "2026-11-25" }) },
     },
     act: async (page) => { await page.tap(".nav-btn[data-tab=\"birthday-view\"]"); },
   },
   {
     name: "scene-slideshow",
-    open: { signedIn: true, now: "2026-10-04T00:05:00", storage: { "meryem-gate-played-year": "2026" }, memories: THREE_MEMORIES },
+    open: { signedIn: true, now: "2026-11-25T00:05:00", storage: { "meryem-gate-played-year": "2026" }, memories: THREE_MEMORIES },
     act: async (page) => {
       await waitUntilOverlayOpen(page);
       await page.tap("#bday-scene0-continue");
@@ -1866,7 +1866,7 @@ export const shots = [
   },
   {
     name: "scene-end",
-    open: { signedIn: true, now: "2026-10-04T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
+    open: { signedIn: true, now: "2026-11-25T00:05:00", storage: { "meryem-gate-played-year": "2026" } },
     act: async (page) => {
       await waitUntilOverlayOpen(page);
       await page.tap("#bday-scene0-continue");

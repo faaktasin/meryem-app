@@ -10,8 +10,8 @@
  *   2026-10-01 is a Thursday, so Oct 2026 weekends are 3-4, 10-11, 17-18, 24-25, 31 (a Saturday);
  *   Oct 2026 has 22 weekdays; Feb 2027 starts on a Monday, has 28 days and 20 weekdays.
  *
- * The habit list (CONFIG.habits): spor and kuran are joint (both), arapca and cicek are Meryem's,
- * projeler is Furkan's, erken (Erken çıkış) is Furkan's and due Monday-Friday only. So on a
+ * The habit list (CONFIG.habits): spor and kitap are joint (both), muzik and yuruyus are Meryem's,
+ * su is Furkan's, uyku (Düzenli uyku) is Furkan's and due Monday-Friday only. So on a
  * weekday Furkan has 4 boxes and Meryem 4; on a weekend Furkan has 3 and Meryem 4.
  */
 import { openApp, sleep } from "../harness.mjs";
@@ -104,44 +104,44 @@ const listeners = (page) => page.eval(() => window.__stubListeners());
 
 // ── the hand-computed month: Thursday 15 Oct 2026 ───────────────────────────────────────────
 // Ticks (days of October). Future days (16, 20, 30, 31) are in the data on purpose.
-//   Furkan  spor 1-10,14 (+16,20 future)   kuran 1-15 (+31 future)   projeler 1-5
-//           erken 1,2,3,5,6,7  (3 is a Saturday: not due, must not count)
-//   Meryem  spor 1-12 (+20 future)   kuran 1-15   arapca 1-12   cicek 1-3 (+30 future)
+//   Furkan  spor 1-10,14 (+16,20 future)   kitap 1-15 (+31 future)   su 1-5
+//           uyku 1,2,3,5,6,7  (3 is a Saturday: not due, must not count)
+//   Meryem  spor 1-12 (+20 future)   kitap 1-15   muzik 1-12   yuruyus 1-3 (+30 future)
 const M1 = mk("2026-10", [
   ["spor", "furkan", [...range(1, 10), 14, 16, 20]],
-  ["kuran", "furkan", [...range(1, 15), 31]],
-  ["projeler", "furkan", range(1, 5)],
-  ["erken", "furkan", [1, 2, 3, 5, 6, 7]],
+  ["kitap", "furkan", [...range(1, 15), 31]],
+  ["su", "furkan", range(1, 5)],
+  ["uyku", "furkan", [1, 2, 3, 5, 6, 7]],
   ["spor", "meryem", [...range(1, 12), 20]],
-  ["kuran", "meryem", range(1, 15)],
-  ["arapca", "meryem", range(1, 12)],
-  ["cicek", "meryem", [1, 2, 3, 30]],
+  ["kitap", "meryem", range(1, 15)],
+  ["muzik", "meryem", range(1, 12)],
+  ["yuruyus", "meryem", [1, 2, 3, 30]],
 ]);
 
 // ── stage 4 fixtures: four months for "Aydan aya", and a log of eight entries ─────────────────
 const NOV_D = mk("2026-11", [
-  ["spor", "meryem", range(1, 25)], ["spor", "furkan", range(1, 20)], ["kuran", "meryem", range(1, 30)], ["kuran", "furkan", range(1, 28)],
-  ["arapca", "meryem", range(1, 22)], ["cicek", "meryem", range(1, 10)], ["projeler", "furkan", range(1, 26)], ["erken", "furkan", [2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 16, 17, 18, 19, 20, 23, 24, 25, 26, 27, 30]],
+  ["spor", "meryem", range(1, 25)], ["spor", "furkan", range(1, 20)], ["kitap", "meryem", range(1, 30)], ["kitap", "furkan", range(1, 28)],
+  ["muzik", "meryem", range(1, 22)], ["yuruyus", "meryem", range(1, 10)], ["su", "furkan", range(1, 26)], ["uyku", "furkan", [2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 16, 17, 18, 19, 20, 23, 24, 25, 26, 27, 30]],
 ]);
 const DEC_D = mk("2026-12", [
-  ["spor", "meryem", range(1, 31)], ["spor", "furkan", range(1, 12)], ["kuran", "meryem", range(1, 31)], ["kuran", "furkan", range(1, 31)],
-  ["arapca", "meryem", range(1, 28)], ["cicek", "meryem", range(1, 31)], ["projeler", "furkan", range(1, 15)],
+  ["spor", "meryem", range(1, 31)], ["spor", "furkan", range(1, 12)], ["kitap", "meryem", range(1, 31)], ["kitap", "furkan", range(1, 31)],
+  ["muzik", "meryem", range(1, 28)], ["yuruyus", "meryem", range(1, 31)], ["su", "furkan", range(1, 15)],
 ]);
-const JAN_D = mk("2027-01", [["kuran", "meryem", [1, 2, 3, 4, 5]], ["kuran", "furkan", [1, 2, 3, 4]], ["spor", "meryem", [1, 2, 3, 4, 5]], ["spor", "furkan", [1, 2, 3]], ["arapca", "meryem", [1, 2, 3]]]);
+const JAN_D = mk("2027-01", [["kitap", "meryem", [1, 2, 3, 4, 5]], ["kitap", "furkan", [1, 2, 3, 4]], ["spor", "meryem", [1, 2, 3, 4, 5]], ["spor", "furkan", [1, 2, 3]], ["muzik", "meryem", [1, 2, 3]]]);
 const MOM_MONTHS = { "2026-10": M1, "2026-11": NOV_D, "2026-12": DEC_D, "2027-01": JAN_D };
 const LE = (d, h, mi) => istanbulEpoch(2026, 10, d, h, mi);
 const logEntry = (id, extra) => ({ id, month: "2026-10", day: "2026-10-15", item: "spor", person: "furkan", value: true, by: "furkan", ...extra });
 const LOG8 = [
-  logEntry("a", { item: "arapca", person: "meryem", by: "meryem", at: { __ts: LE(15, 10, 0) }, atLocal: LE(15, 10, 0) }),
+  logEntry("a", { item: "muzik", person: "meryem", by: "meryem", at: { __ts: LE(15, 10, 0) }, atLocal: LE(15, 10, 0) }),
   logEntry("b", { at: null, atLocal: LE(15, 21, 4) }),
-  logEntry("c", { item: "kuran", at: { __ts: LE(15, 8, 30) }, atLocal: LE(15, 8, 30) }),
-  logEntry("e", { item: "cicek", person: "meryem", by: "meryem", at: null, atLocal: LE(15, 9, 0) }),
-  logEntry("f", { item: "kuran", value: false, at: { __ts: LE(15, 7, 0) }, atLocal: LE(15, 7, 0) }),
+  logEntry("c", { item: "kitap", at: { __ts: LE(15, 8, 30) }, atLocal: LE(15, 8, 30) }),
+  logEntry("e", { item: "yuruyus", person: "meryem", by: "meryem", at: null, atLocal: LE(15, 9, 0) }),
+  logEntry("f", { item: "kitap", value: false, at: { __ts: LE(15, 7, 0) }, atLocal: LE(15, 7, 0) }),
   logEntry("g", { day: "2026-10-14", at: { __ts: LE(14, 22, 10) }, atLocal: LE(14, 22, 10) }),
-  logEntry("h", { day: "2026-10-14", item: "projeler", at: { __ts: LE(14, 21, 0) }, atLocal: LE(14, 21, 0) }),
+  logEntry("h", { day: "2026-10-14", item: "su", at: { __ts: LE(14, 21, 0) }, atLocal: LE(14, 21, 0) }),
   logEntry("i", { day: "2026-10-13", at: { __ts: LE(13, 20, 0) }, atLocal: LE(13, 20, 0) }),
 ];
-const NOV_LOG = { id: "d", month: "2026-11", day: "2026-11-09", item: "kuran", person: "meryem", value: true, by: "meryem", at: { __ts: istanbulEpoch(2026, 11, 9, 20, 15) }, atLocal: istanbulEpoch(2026, 11, 9, 20, 15) };
+const NOV_LOG = { id: "d", month: "2026-11", day: "2026-11-09", item: "kitap", person: "meryem", value: true, by: "meryem", at: { __ts: istanbulEpoch(2026, 11, 9, 20, 15) }, atLocal: istanbulEpoch(2026, 11, 9, 20, 15) };
 
 const N_CARDS = "habits: every stat card number equals its monthSummary field through the one rounding helper (15 Oct, a past month, Şubat 2027)";
 const N_LEAD = "habits: the lead line names the leader with the rounded gap, says Başa baş on a tie and is empty before anything is due";
@@ -178,7 +178,7 @@ const N_TARGETS = "habits: every control inside Takip and its day sheet is at le
 
 const N_SINCE = "habits: the shipped config starts every habit on 2026-10-07 (no test seam)";
 const N_WEEK1 = "habits: with the shipped config 1-6 October are due nowhere - calendar, cards and report - and 7 October is";
-const N_WEEKDAY = "habits: Erken çıkış is due Monday to Friday only and a weekend tick never counts";
+const N_WEEKDAY = "habits: Düzenli uyku is due Monday to Friday only and a weekend tick never counts";
 const N_FUTURE = "habits: a tick dated after today never counts, in any number";
 const N_JOINT = "habits: Birlikte counts a joint item-day only when both ticked";
 const N_PERSON = "habits: person percentages are per person (15 Oct)";
@@ -188,7 +188,7 @@ const N_ME = "habits: Ben kimim? appears once on a fresh device, is remembered a
 const N_LOCK = "habits: your own boxes are tappable, the partner's are locked and a tap on them writes nothing";
 const N_TICK = "habits: a tick writes the month document and a log entry with by, an untick writes false";
 const N_HEART = "habits: the joint heart lights only when both ticked (today's panel and the calendar)";
-const N_WEEKEND = "habits: Erken çıkış is absent on a Saturday in today's panel and undue in the day sheet";
+const N_WEEKEND = "habits: Düzenli uyku is absent on a Saturday in today's panel and undue in the day sheet";
 const N_NAV = "habits: the navigator lists exactly the months from 2026-10 to the current and none after";
 const N_FUTURE_DAY = "habits: a future day is dimmed and not tappable, today and past days open the day sheet";
 const N_SHEET = "habits: a past day's sheet groups Birlikte / Meryem / Furkan and its edit lands in that day's month document";
@@ -213,12 +213,12 @@ export async function run({ page, check, root }) {
       habits: CONFIG.habits.map((h) => [h.id, h.label, h.owners.join("+"), h.weekdaysOnly, h.since, h.until === undefined, h.note]),
     }));
     const want = [
-      ["spor", "Spor", "furkan+meryem", false, "2026-10-01", true, "Spor yapacağız"],
-      ["kuran", "Kuran (en az 1 sayfa)", "furkan+meryem", false, "2026-10-01", true, "En az 1 sf Kuran okucaz"],
-      ["arapca", "Arapça tekrarı (en az 15 dk)", "meryem", false, "2026-10-01", true, "Min 15 dk Arapça tekrarı yapacağım"],
-      ["cicek", "Çiçek yapımı", "meryem", false, "2026-10-01", true, "Çiçek yapmaya başlıcam"],
-      ["projeler", "Projeleri geliştirme", "furkan", false, "2026-10-01", true, "Sen elindeki projeleri geliştirmeye başlayıp belli bir seviyeye getireceksin"],
-      ["erken", "Erken çıkış (fazla mesai yok)", "furkan", true, "2026-10-01", true, "Fazla mesai yok işten erken çıkacaksın 🤗"],
+      ["spor", "Spor", "furkan+meryem", false, "2026-10-01", true, "Birlikte hareket edeceğiz"],
+      ["kitap", "Kitap (en az 10 sayfa)", "furkan+meryem", false, "2026-10-01", true, "Her gün biraz kitap okuyacağız"],
+      ["muzik", "Müzik pratiği (en az 15 dk)", "meryem", false, "2026-10-01", true, "Her gün biraz müzik pratiği yapacağım"],
+      ["yuruyus", "Yürüyüş", "meryem", false, "2026-10-01", true, "Her gün kısa bir yürüyüşe çıkacağım"],
+      ["su", "Su içme", "furkan", false, "2026-10-01", true, "Gün boyunca yeterince su içeceğim"],
+      ["uyku", "Düzenli uyku", "furkan", true, "2026-10-01", true, "Hafta içi düzenli saatte uyuyacağım"],
     ];
     return {
       ok: got.start === "2026-10" && got.people.furkan === "Furkan" && got.people.meryem === "Meryem" && JSON.stringify(got.habits) === JSON.stringify(want),
@@ -275,11 +275,11 @@ export async function run({ page, check, root }) {
 
   // ── 2. mid-month (Thu 15 Oct 2026) ────────────────────────────────────────────────────────
   // Due days through the 15th: 15 calendar days; weekends are 3,4,10,11 so 11 weekdays.
-  //   Furkan boxes due = spor 15 + kuran 15 + projeler 15 + erken 11 = 56
-  //   Meryem boxes due = spor 15 + kuran 15 + arapca 15 + cicek 15  = 60
-  //   joint item-days  = spor 15 + kuran 15 = 30
-  // Furkan ticked & due: spor 1-10,14 = 11; kuran 15; projeler 5; erken 1,2,5,6,7 = 5 -> 36
-  // Meryem ticked & due: spor 12; kuran 15; arapca 12; cicek 3 -> 42
+  //   Furkan boxes due = spor 15 + kitap 15 + su 15 + uyku 11 = 56
+  //   Meryem boxes due = spor 15 + kitap 15 + muzik 15 + yuruyus 15  = 60
+  //   joint item-days  = spor 15 + kitap 15 = 30
+  // Furkan ticked & due: spor 1-10,14 = 11; kitap 15; su 5; uyku 1,2,5,6,7 = 5 -> 36
+  // Meryem ticked & due: spor 12; kitap 15; muzik 12; yuruyus 3 -> 42
   const mid = T("2026-10-15");
   await check(N_PERSON, async () => {
     const f = await core(page, "personPercent", "furkan", "2026-10", M1, mid); // 36 / 56
@@ -288,7 +288,7 @@ export async function run({ page, check, root }) {
   });
 
   await check(N_JOINT, async () => {
-    // both ticked: spor 1-10 = 10, kuran 1-15 = 15 -> 25 of 30. (Either-one-ticked would be
+    // both ticked: spor 1-10 = 10, kitap 1-15 = 15 -> 25 of 30. (Either-one-ticked would be
     // spor 1-12,14 = 13 plus 15 = 28 of 30.)
     const b = await core(page, "birliktePercent", "2026-10", M1, mid);
     return { ok: near(b, 25 * 100 / 30), detail: `birlikte ${b} (want 83.3333)` };
@@ -298,31 +298,31 @@ export async function run({ page, check, root }) {
     const got = {
       sporF: await core(page, "itemPercent", I("spor"), "furkan", "2026-10", M1, mid), // 11/15
       sporM: await core(page, "itemPercent", I("spor"), "meryem", "2026-10", M1, mid), // 12/15
-      kuranF: await core(page, "itemPercent", I("kuran"), "furkan", "2026-10", M1, mid), // 15/15
-      arapcaM: await core(page, "itemPercent", I("arapca"), "meryem", "2026-10", M1, mid), // 12/15
-      cicekM: await core(page, "itemPercent", I("cicek"), "meryem", "2026-10", M1, mid), // 3/15
-      projeF: await core(page, "itemPercent", I("projeler"), "furkan", "2026-10", M1, mid), // 5/15
-      arapcaF: await core(page, "itemPercent", I("arapca"), "furkan", "2026-10", M1, mid), // not his
+      kitapF: await core(page, "itemPercent", I("kitap"), "furkan", "2026-10", M1, mid), // 15/15
+      muzikM: await core(page, "itemPercent", I("muzik"), "meryem", "2026-10", M1, mid), // 12/15
+      yuruyusM: await core(page, "itemPercent", I("yuruyus"), "meryem", "2026-10", M1, mid), // 3/15
+      suF: await core(page, "itemPercent", I("su"), "furkan", "2026-10", M1, mid), // 5/15
+      muzikF: await core(page, "itemPercent", I("muzik"), "furkan", "2026-10", M1, mid), // not his
     };
-    const want = { sporF: 1100 / 15, sporM: 80, kuranF: 100, arapcaM: 80, cicekM: 20, projeF: 500 / 15, arapcaF: null };
+    const want = { sporF: 1100 / 15, sporM: 80, kitapF: 100, muzikM: 80, yuruyusM: 20, suF: 500 / 15, muzikF: null };
     const ok = Object.keys(want).every((k) => near(got[k], want[k]));
     return { ok, detail: JSON.stringify(got) };
   });
 
   await check(N_WEEKDAY, async () => {
-    // Erken çıkış, 15 Oct: weekdays 1,2,5,6,7,8,9,12,13,14,15 = 11 due; ticked 1,2,5,6,7 = 5 (the
+    // Düzenli uyku, 15 Oct: weekdays 1,2,5,6,7,8,9,12,13,14,15 = 11 due; ticked 1,2,5,6,7 = 5 (the
     // Saturday tick on the 3rd is ignored) -> 5/11. Without the weekday rule it would be 6/15.
-    const erken = await core(page, "itemPercent", I("erken"), "furkan", "2026-10", M1, mid);
+    const uyku = await core(page, "itemPercent", I("uyku"), "furkan", "2026-10", M1, mid);
     const due = [
-      await core(page, "isDue", I("erken"), T("2026-10-02"), mid), // Friday
-      await core(page, "isDue", I("erken"), T("2026-10-03"), mid), // Saturday
-      await core(page, "isDue", I("erken"), T("2026-10-04"), mid), // Sunday
-      await core(page, "isDue", I("erken"), T("2026-10-05"), mid), // Monday
+      await core(page, "isDue", I("uyku"), T("2026-10-02"), mid), // Friday
+      await core(page, "isDue", I("uyku"), T("2026-10-03"), mid), // Saturday
+      await core(page, "isDue", I("uyku"), T("2026-10-04"), mid), // Sunday
+      await core(page, "isDue", I("uyku"), T("2026-10-05"), mid), // Monday
       await core(page, "isDue", I("spor"), T("2026-10-03"), mid), // an every-day item on a Saturday
     ];
     return {
-      ok: near(erken, 500 / 11) && JSON.stringify(due) === JSON.stringify([true, false, false, true, true]),
-      detail: `erken ${erken} (want 45.4545), due ${JSON.stringify(due)}`,
+      ok: near(uyku, 500 / 11) && JSON.stringify(due) === JSON.stringify([true, false, false, true, true]),
+      detail: `uyku ${uyku} (want 45.4545), due ${JSON.stringify(due)}`,
     };
   });
 
@@ -340,8 +340,8 @@ export async function run({ page, check, root }) {
   });
 
   await check("habits: longest streak within a month, and the current streak when yesterday was missed", async () => {
-    // Furkan complete (every due box ticked) on 1-5, so the longest is 5; the 6th lacks projeler.
-    // Meryem complete on 1-3 (cicek stops after the 3rd) -> 3. On the 15th: today is open, the 14th
+    // Furkan complete (every due box ticked) on 1-5, so the longest is 5; the 6th lacks su.
+    // Meryem complete on 1-3 (yuruyus stops after the 3rd) -> 3. On the 15th: today is open, the 14th
     // is not complete for either of them -> current streak 0.
     const got = {
       lf: await core(page, "longestStreak", "furkan", "2026-10", M1, mid),
@@ -354,10 +354,10 @@ export async function run({ page, check, root }) {
 
   await check("habits: monthSummary - cards, leader, best item, joint days and the daily series (15 Oct)", async () => {
     const s = await core(page, "monthSummary", "2026-10", M1, mid);
-    // jointDays: spor both on 1-10, kuran both on 1-15 -> days where BOTH joint items were done
+    // jointDays: spor both on 1-10, kitap both on 1-15 -> days where BOTH joint items were done
     // by both = 1-10 = 10.  leader: 36*60 = 2160 < 42*56 = 2352 -> meryem.
-    // best item (all owners together): kuran 30/30 = 100 beats spor 23/30 = 76.7.
-    // perDay: d1 both 4/4; d3 (Sat) furkan 3/3 (his weekend erken tick ignored), meryem 4/4; d6 furkan 3/4,
+    // best item (all owners together): kitap 30/30 = 100 beats spor 23/30 = 76.7.
+    // perDay: d1 both 4/4; d3 (Sat) furkan 3/3 (his weekend uyku tick ignored), meryem 4/4; d6 furkan 3/4,
     // meryem 3/4; d11 (Sun) furkan 1/3, meryem 3/4; d14 furkan 2/4, meryem 1/4; d15 1/4 and 1/4.
     const day = (n) => s.perDay[n - 1];
     const want = [
@@ -370,49 +370,49 @@ export async function run({ page, check, root }) {
       s.people.meryem.due === 60 && s.people.meryem.done === 42 && near(s.people.meryem.pct, 70) && s.people.meryem.longest === 3 &&
       s.birlikte.due === 30 && s.birlikte.done === 25 && near(s.birlikte.pct, 25 * 100 / 30) &&
       s.jointDays === 10 && s.leader === "meryem" &&
-      s.bestItem && s.bestItem.id === "kuran" && s.bestItem.label === "Kuran (en az 1 sayfa)" && near(s.bestItem.pct, 100) &&
+      s.bestItem && s.bestItem.id === "kitap" && s.bestItem.label === "Kitap (en az 10 sayfa)" && near(s.bestItem.pct, 100) &&
       s.items.length === 6 && s.items[0].id === "spor" && near(s.items[0].pct, 23 * 100 / 30) && s.items[5].meryem === null &&
       s.perDay.length === 31 && s.perDay[0].key === "2026-10-01" && daysOk;
     return { ok, detail: JSON.stringify({ people: s.people, birlikte: s.birlikte, jointDays: s.jointDays, leader: s.leader, best: s.bestItem, d: [1, 3, 6, 11, 14, 15, 16].map((n) => day(n)) }).slice(0, 600) };
   });
 
   // ── 3. the 1st of the month: only day 1 is due ────────────────────────────────────────────
-  // Thu 1 Oct. Furkan boxes due 4 (spor, kuran, projeler, erken); he ticked spor, kuran -> 2/4.
-  // Meryem boxes due 4; she ticked spor, arapca, cicek -> 3/4. Joint item-days due 2 (spor,
-  // kuran); both ticked spor only -> 1/2. Ticks on day 2 (tomorrow) are ignored.
+  // Thu 1 Oct. Furkan boxes due 4 (spor, kitap, su, uyku); he ticked spor, kitap -> 2/4.
+  // Meryem boxes due 4; she ticked spor, muzik, yuruyus -> 3/4. Joint item-days due 2 (spor,
+  // kitap); both ticked spor only -> 1/2. Ticks on day 2 (tomorrow) are ignored.
   await open(page, "2026-10-01T09:00:00");
   const first = T("2026-10-01");
   const FIRST = mk("2026-10", [
-    ["spor", "furkan", [1]], ["kuran", "furkan", [1]], ["projeler", "furkan", [2]],
-    ["spor", "meryem", [1]], ["arapca", "meryem", [1]], ["cicek", "meryem", [1]], ["kuran", "meryem", [2]],
+    ["spor", "furkan", [1]], ["kitap", "furkan", [1]], ["su", "furkan", [2]],
+    ["spor", "meryem", [1]], ["muzik", "meryem", [1]], ["yuruyus", "meryem", [1]], ["kitap", "meryem", [2]],
   ]);
   await check("habits: on the 1st only day 1 is due (50 / 75 / Birlikte 50, an unticked due item is 0 not null)", async () => {
     const s = await core(page, "monthSummary", "2026-10", FIRST, first);
-    const projeler = await core(page, "itemPercent", I("projeler"), "furkan", "2026-10", FIRST, first); // 0/1
+    const su = await core(page, "itemPercent", I("su"), "furkan", "2026-10", FIRST, first); // 0/1
     const sporF = await core(page, "itemPercent", I("spor"), "furkan", "2026-10", FIRST, first); // 1/1
     const ok =
       s.people.furkan.due === 4 && s.people.furkan.done === 2 && near(s.people.furkan.pct, 50) &&
       s.people.meryem.due === 4 && s.people.meryem.done === 3 && near(s.people.meryem.pct, 75) &&
       s.birlikte.due === 2 && s.birlikte.done === 1 && near(s.birlikte.pct, 50) &&
-      s.jointDays === 0 && s.leader === "meryem" && projeler === 0 && near(sporF, 100) &&
+      s.jointDays === 0 && s.leader === "meryem" && su === 0 && near(sporF, 100) &&
       near(s.perDay[0].furkan, 50) && near(s.perDay[0].meryem, 75) && s.perDay[1].furkan === null &&
       s.people.furkan.longest === 0 && (await core(page, "currentStreak", "furkan", { "2026-10": FIRST }, first)) === 0;
-    return { ok, detail: JSON.stringify({ p: s.people, b: s.birlikte, projeler, sporF }) };
+    return { ok, detail: JSON.stringify({ p: s.people, b: s.birlikte, su, sporF }) };
   });
 
   // ── 4. the last day: Sat 31 Oct ───────────────────────────────────────────────────────────
-  // Furkan: spor 1-30 (not the 31st), kuran 1-31, projeler 1-31, erken on all 22 weekdays (and a
+  // Furkan: spor 1-30 (not the 31st), kitap 1-31, su 1-31, uyku on all 22 weekdays (and a
   // weekend tick on the 31st, ignored). Boxes due = 31+31+31+22 = 115, ticked 30+31+31+22 = 114.
-  // Meryem: spor 1-31, kuran 1-31, arapca 1-24, cicek 1-31. Boxes due 124, ticked 31+31+24+31 = 117.
-  // Joint item-days 62; both ticked spor 1-30 = 30, kuran 31 -> 61.  jointDays = days 1-30 = 30.
+  // Meryem: spor 1-31, kitap 1-31, muzik 1-24, yuruyus 1-31. Boxes due 124, ticked 31+31+24+31 = 117.
+  // Joint item-days 62; both ticked spor 1-30 = 30, kitap 31 -> 61.  jointDays = days 1-30 = 30.
   // Furkan complete 1-30 -> longest 30 and, today (31st) being open, current streak 30.
   // Meryem complete 1-24 -> longest 24; current: the 30th is incomplete -> 0.
   await open(page, "2026-10-31T21:00:00");
   const lastDay = T("2026-10-31");
   const weekdays = range(1, 31).filter((d) => isWeekday(2026, 10, d));
   const LAST = mk("2026-10", [
-    ["spor", "furkan", range(1, 30)], ["kuran", "furkan", range(1, 31)], ["projeler", "furkan", range(1, 31)], ["erken", "furkan", [...weekdays, 31]],
-    ["spor", "meryem", range(1, 31)], ["kuran", "meryem", range(1, 31)], ["arapca", "meryem", range(1, 24)], ["cicek", "meryem", range(1, 31)],
+    ["spor", "furkan", range(1, 30)], ["kitap", "furkan", range(1, 31)], ["su", "furkan", range(1, 31)], ["uyku", "furkan", [...weekdays, 31]],
+    ["spor", "meryem", range(1, 31)], ["kitap", "meryem", range(1, 31)], ["muzik", "meryem", range(1, 24)], ["yuruyus", "meryem", range(1, 31)],
   ]);
   await check("habits: the last day of the month (31 Oct) counts, with its streaks", async () => {
     const s = await core(page, "monthSummary", "2026-10", LAST, lastDay);
@@ -429,12 +429,12 @@ export async function run({ page, check, root }) {
   });
 
   // ── 5. Şubat 2027: 28 days, 20 weekdays (Sun 28 Feb) ──────────────────────────────────────
-  // Furkan ticks only erken, on all 20 weekdays. Boxes due = 28*3 + 20 = 104, ticked 20.
+  // Furkan ticks only uyku, on all 20 weekdays. Boxes due = 28*3 + 20 = 104, ticked 20.
   // Meryem ticks nothing: 28*4 = 112 due, 0 ticked. Joint item-days 56, none both -> 0.
   await open(page, "2027-02-28T20:00:00");
   const feb = T("2027-02-28");
   const febWeekdays = range(1, 28).filter((d) => isWeekday(2027, 2, d));
-  const FEB = mk("2027-02", [["erken", "furkan", febWeekdays]]);
+  const FEB = mk("2027-02", [["uyku", "furkan", febWeekdays]]);
   await check("habits: Şubat 2027 - 28 days, 20 weekdays, percentages over the right denominators", async () => {
     const s = await core(page, "monthSummary", "2027-02", FEB, feb);
     const ok =
@@ -442,19 +442,19 @@ export async function run({ page, check, root }) {
       s.people.furkan.due === 104 && s.people.furkan.done === 20 && near(s.people.furkan.pct, 2000 / 104) &&
       s.people.meryem.due === 112 && s.people.meryem.done === 0 && s.people.meryem.pct === 0 &&
       s.birlikte.due === 56 && s.birlikte.pct === 0 && s.leader === "furkan" &&
-      s.bestItem && s.bestItem.id === "erken" && near(s.bestItem.pct, 100);
+      s.bestItem && s.bestItem.id === "uyku" && near(s.bestItem.pct, 100);
     return { ok, detail: JSON.stringify({ p: s.people, b: s.birlikte, leader: s.leader, best: s.bestItem }) };
   });
 
   // ── 6. a Saturday and a Sunday as "today" ─────────────────────────────────────────────────
-  // Erken çıkış with only the 1st ticked: through Sat 3 Oct the due days are Thu 1 and Fri 2 (the
+  // Düzenli uyku with only the 1st ticked: through Sat 3 Oct the due days are Thu 1 and Fri 2 (the
   // Saturday itself is not due) -> 1/2 = 50; through Sun 4 Oct the same, 50.
   await open(page, "2026-10-03T12:00:00");
-  const ERK = mk("2026-10", [["erken", "furkan", [1, 3]]]); // the Saturday tick must be ignored
-  await check("habits: with a Saturday or a Sunday as today, Erken çıkış still counts only Thu 1 and Fri 2", async () => {
-    const sat = await core(page, "itemPercent", I("erken"), "furkan", "2026-10", ERK, T("2026-10-03"));
-    const sun = await core(page, "itemPercent", I("erken"), "furkan", "2026-10", ERK, T("2026-10-04"));
-    const dayBefore = await core(page, "itemPercent", I("erken"), "furkan", "2026-10", ERK, T("2026-10-02"));
+  const UYK = mk("2026-10", [["uyku", "furkan", [1, 3]]]); // the Saturday tick must be ignored
+  await check("habits: with a Saturday or a Sunday as today, Düzenli uyku still counts only Thu 1 and Fri 2", async () => {
+    const sat = await core(page, "itemPercent", I("uyku"), "furkan", "2026-10", UYK, T("2026-10-03"));
+    const sun = await core(page, "itemPercent", I("uyku"), "furkan", "2026-10", UYK, T("2026-10-04"));
+    const dayBefore = await core(page, "itemPercent", I("uyku"), "furkan", "2026-10", UYK, T("2026-10-02"));
     return { ok: near(sat, 50) && near(sun, 50) && near(dayBefore, 50), detail: `sat ${sat}, sun ${sun}, fri ${dayBefore}` };
   });
 
@@ -476,11 +476,11 @@ export async function run({ page, check, root }) {
   // Mon 2 Nov (4) = 4 days; Thu 29 Oct has nothing, so the run stops there.
   await open(page, "2026-11-02T10:00:00");
   const t2 = T("2026-11-02");
-  const all4 = ["spor", "kuran", "projeler", "erken"];
-  const all3 = ["spor", "kuran", "projeler"];
+  const all4 = ["spor", "kitap", "su", "uyku"];
+  const all3 = ["spor", "kitap", "su"];
   const octS = mk("2026-10", [...all4.map((i) => [i, "furkan", [30]]), ...all3.map((i) => [i, "furkan", [31]])]);
   const novFull = mk("2026-11", [...all3.map((i) => [i, "furkan", [1]]), ...all4.map((i) => [i, "furkan", [2]]),
-    ...["spor", "kuran", "arapca", "cicek"].map((i) => [i, "meryem", [2]])]);
+    ...["spor", "kitap", "muzik", "yuruyus"].map((i) => [i, "meryem", [2]])]);
   const novOpen = mk("2026-11", [...all3.map((i) => [i, "furkan", [1]])]); // today still open
   const novMissed = mk("2026-11", []); // yesterday (1 Nov) missed
   await check(N_STREAK, async () => {
@@ -496,14 +496,14 @@ export async function run({ page, check, root }) {
 
   // ── 9. Firestore helpers against the stub ─────────────────────────────────────────────────
   await open(page, "2026-10-15T12:00:00", {
-    habits: { months: { "2026-10": { days: { "2026-10-14": { kuran: { furkan: true } } } }, "2026-11": { days: { "2026-11-01": { spor: { meryem: true } } } } } },
+    habits: { months: { "2026-10": { days: { "2026-10-14": { kitap: { furkan: true } } } }, "2026-11": { days: { "2026-11-01": { spor: { meryem: true } } } } } },
   });
 
   await check("habits: initHabits keeps the current month's document and holds one habitMonths subscription", async () => {
     const st = await stateOf(page);
     const ls = (await listeners(page)).filter((l) => l.startsWith(MONTHS + "/"));
     return {
-      ok: st.month === "2026-10" && st.day === "2026-10-15" && JSON.stringify(st.data) === JSON.stringify({ days: { "2026-10-14": { kuran: { furkan: true } } } }) && JSON.stringify(ls) === JSON.stringify([`${MONTHS}/2026-10`]),
+      ok: st.month === "2026-10" && st.day === "2026-10-15" && JSON.stringify(st.data) === JSON.stringify({ days: { "2026-10-14": { kitap: { furkan: true } } } }) && JSON.stringify(ls) === JSON.stringify([`${MONTHS}/2026-10`]),
       detail: JSON.stringify({ month: st.month, day: st.day, ls }),
     };
   });
@@ -515,7 +515,7 @@ export async function run({ page, check, root }) {
       await setHabitTick("2026-10", "2026-10-15", "spor", "meryem", false);
     });
     const doc = (await page.stubDb())[MONTHS]["2026-10"];
-    const want = { days: { "2026-10-14": { kuran: { furkan: true } }, "2026-10-15": { spor: { meryem: false, furkan: true } } } };
+    const want = { days: { "2026-10-14": { kitap: { furkan: true } }, "2026-10-15": { spor: { meryem: false, furkan: true } } } };
     const live = await until(async () => (await stateOf(page)).data.days?.["2026-10-15"]?.spor?.furkan === true);
     return { ok: JSON.stringify(doc) === JSON.stringify(want) && live === true, detail: JSON.stringify(doc) };
   });
@@ -535,10 +535,10 @@ export async function run({ page, check, root }) {
 
   await check("habits: addHabitLog made offline leaves at empty (null) and keeps atLocal", async () => {
     await page.eval(() => { window.__STUB_TS_NULL = true; });
-    await page.eval(() => addHabitLog({ month: "2026-10", day: "2026-10-15", item: "kuran", person: "furkan", value: false, by: "furkan", atLocal: 1760000001000 }));
+    await page.eval(() => addHabitLog({ month: "2026-10", day: "2026-10-15", item: "kitap", person: "furkan", value: false, by: "furkan", atLocal: 1760000001000 }));
     await page.eval(() => { window.__STUB_TS_NULL = false; });
     const docs = Object.values((await page.stubDb())[LOG] || {});
-    const off = docs.find((x) => x.item === "kuran") || {};
+    const off = docs.find((x) => x.item === "kitap") || {};
     return { ok: docs.length === 2 && off.at === null && off.atLocal === 1760000001000 && off.by === "furkan" && off.value === false, detail: JSON.stringify(off) };
   });
 
@@ -606,13 +606,13 @@ export async function run({ page, check, root }) {
 
   // ── 11. the month follows appNow() ────────────────────────────────────────────────────────
   // The raw clock says 20 Dec 2026; the birthday rehearsal (?onizleme=dogumgunu) moves appNow()
-  // to her next birthday, 4 Oct 2027. A month taken from new Date() would still say 2026-12.
+  // to her next birthday, 25 Nov 2027. A month taken from new Date() would still say 2026-12.
   await open(page, "2026-12-20T12:00:00", { query: "?onizleme=dogumgunu" });
   await check(N_APPNOW, async () => {
     const st = await stateOf(page);
     const subs = (await listeners(page)).filter((l) => l.startsWith(MONTHS + "/"));
-    // Stage 3 also subscribes the month before (a streak crosses the 1st): 2027-09 beside 2027-10.
-    return { ok: st.month === "2027-10" && st.day === "2027-10-04" && JSON.stringify(subs.slice().sort()) === JSON.stringify([`${MONTHS}/2027-09`, `${MONTHS}/2027-10`]), detail: JSON.stringify({ month: st.month, day: st.day, subs }) };
+    // Stage 3 also subscribes the month before (a streak crosses the 1st): 2027-10 beside 2027-11.
+    return { ok: st.month === "2027-11" && st.day === "2027-11-25" && JSON.stringify(subs.slice().sort()) === JSON.stringify([`${MONTHS}/2027-10`, `${MONTHS}/2027-11`]), detail: JSON.stringify({ month: st.month, day: st.day, subs }) };
   });
 
   // ── 12. the day boundary with the app open ────────────────────────────────────────────────
@@ -727,20 +727,20 @@ export async function run({ page, check, root }) {
       const q = (i, p) => document.querySelector(`#hb-today .hb-heart[data-item="${i}"][data-person="${p}"]`);
       const own = q("spor", "meryem");
       const other = q("spor", "furkan");
-      const pro = q("projeler", "furkan");
+      const pro = q("su", "furkan");
       return {
         own: own.getAttribute("aria-disabled"), ownLock: !!own.querySelector(".hb-lock"),
         other: other.getAttribute("aria-disabled"), otherLock: !!other.querySelector(".hb-lock"),
-        pro: pro.getAttribute("aria-disabled"), arapca: q("arapca", "meryem").getAttribute("aria-disabled"),
+        pro: pro.getAttribute("aria-disabled"), muzik: q("muzik", "meryem").getAttribute("aria-disabled"),
       };
     });
     const before = JSON.stringify(await page.stubDb());
     await tapIn(page, slot("spor", "furkan"));
-    await tapIn(page, slot("projeler", "furkan"));
+    await tapIn(page, slot("su", "furkan"));
     await sleep(300);
     const after = JSON.stringify(await page.stubDb());
     const onAfter = await page.eval(() => document.querySelectorAll("#hb-today .hb-heart.is-on").length);
-    const ok = info.own === null && !info.ownLock && info.other === "true" && info.otherLock && info.pro === "true" && info.arapca === null && before === after && onAfter === 0;
+    const ok = info.own === null && !info.ownLock && info.other === "true" && info.otherLock && info.pro === "true" && info.muzik === null && before === after && onAfter === 0;
     return { ok, detail: JSON.stringify({ info, unchanged: before === after, onAfter, db: after.slice(0, 200) }) };
   });
 
@@ -768,20 +768,20 @@ export async function run({ page, check, root }) {
   });
 
   // ── the joint heart ───────────────────────────────────────────────────────────────────────
-  // 12: spor+kuran both -> a joint day. 13: spor both, kuran only Furkan -> not. 14: spor only
-  // Meryem. 15: spor only Furkan (not both), kuran both. Meryem ticking her spor on the 15th
+  // 12: spor+kitap both -> a joint day. 13: spor both, kitap only Furkan -> not. 14: spor only
+  // Meryem. 15: spor only Furkan (not both), kitap both. Meryem ticking her spor on the 15th
   // makes the 15th joint as well.
   const JH = { days: {
-    "2026-10-12": { spor: { furkan: true, meryem: true }, kuran: { furkan: true, meryem: true } },
-    "2026-10-13": { spor: { furkan: true, meryem: true }, kuran: { furkan: true } },
+    "2026-10-12": { spor: { furkan: true, meryem: true }, kitap: { furkan: true, meryem: true } },
+    "2026-10-13": { spor: { furkan: true, meryem: true }, kitap: { furkan: true } },
     "2026-10-14": { spor: { meryem: true } },
-    "2026-10-15": { spor: { furkan: true }, kuran: { furkan: true, meryem: true } },
+    "2026-10-15": { spor: { furkan: true }, kitap: { furkan: true, meryem: true } },
   } };
   await openTakip(page, NOW3, "meryem", { habits: { months: { "2026-10": JH } } });
   await check(N_HEART, async () => {
     const read = () => page.eval(() => ({
       spor: document.querySelector('#hb-today .hb-row[data-item="spor"] .hb-joint').classList.contains("is-on"),
-      kuran: document.querySelector('#hb-today .hb-row[data-item="kuran"] .hb-joint').classList.contains("is-on"),
+      kitap: document.querySelector('#hb-today .hb-row[data-item="kitap"] .hb-joint').classList.contains("is-on"),
       joint: [...document.querySelectorAll("#hb-month .hb-day.is-joint")].map((d) => d.dataset.day),
       hearts: document.querySelectorAll("#hb-month .hb-day-heart").length,
     }));
@@ -790,12 +790,12 @@ export async function run({ page, check, root }) {
     await until(() => page.eval(() => document.querySelector('#hb-today .hb-row[data-item="spor"] .hb-joint').classList.contains("is-on")));
     const b = await read();
     const ok =
-      a.spor === false && a.kuran === true && JSON.stringify(a.joint) === JSON.stringify(["2026-10-12"]) && a.hearts === 1 &&
-      b.spor === true && b.kuran === true && JSON.stringify(b.joint) === JSON.stringify(["2026-10-12", "2026-10-15"]) && b.hearts === 2;
+      a.spor === false && a.kitap === true && JSON.stringify(a.joint) === JSON.stringify(["2026-10-12"]) && a.hearts === 1 &&
+      b.spor === true && b.kitap === true && JSON.stringify(b.joint) === JSON.stringify(["2026-10-12", "2026-10-15"]) && b.hearts === 2;
     return { ok, detail: JSON.stringify({ a, b }) };
   });
 
-  // ── Erken çıkış on a weekend ──────────────────────────────────────────────────────────────
+  // ── Düzenli uyku on a weekend ──────────────────────────────────────────────────────────────
   await openTakip(page, "2026-10-17T12:00:00", "furkan", { habits: { months: {} } });
   await check(N_WEEKEND, async () => {
     const itemsOf = (root) => page.eval((r) => [...new Set([...document.querySelectorAll(`${r} .hb-heart`)].map((b) => b.dataset.item))], root);
@@ -808,8 +808,8 @@ export async function run({ page, check, root }) {
     const friSheet = await itemsOf("#habits-day-modal");
     await page.eval(() => closeModal("habits-day-modal"));
     const ok =
-      JSON.stringify(sat) === JSON.stringify(["spor", "kuran", "arapca", "cicek", "projeler"]) &&
-      !satSheet.includes("erken") && satSheet.length === 5 && friSheet.includes("erken") && friSheet.length === 6;
+      JSON.stringify(sat) === JSON.stringify(["spor", "kitap", "muzik", "yuruyus", "su"]) &&
+      !satSheet.includes("uyku") && satSheet.length === 5 && friSheet.includes("uyku") && friSheet.length === 6;
     return { ok, detail: JSON.stringify({ sat, satSheet, friSheet }) };
   });
 
@@ -867,14 +867,14 @@ export async function run({ page, check, root }) {
       title: document.getElementById("habits-day-title").textContent,
       groups: [...document.querySelectorAll("#habits-day-modal .hb-group-title")].map((g) => g.textContent),
       rows: [...document.querySelectorAll("#habits-day-modal .hb-row")].map((r) => r.dataset.item),
-      lockedPartner: document.querySelector('#habits-day-modal [data-item="projeler"][data-person="furkan"]').getAttribute("aria-disabled"),
+      lockedPartner: document.querySelector('#habits-day-modal [data-item="su"][data-person="furkan"]').getAttribute("aria-disabled"),
     }));
     const before = JSON.stringify(await page.stubDb());
-    await tapIn(page, '#habits-day-modal [data-item="projeler"][data-person="furkan"]');
+    await tapIn(page, '#habits-day-modal [data-item="su"][data-person="furkan"]');
     await sleep(200);
     const untouched = before === JSON.stringify(await page.stubDb());
-    await tapIn(page, '#habits-day-modal [data-item="arapca"][data-person="meryem"]');
-    const on = await until(() => page.eval(() => document.querySelector('#habits-day-modal [data-item="arapca"][data-person="meryem"]').classList.contains("is-on")));
+    await tapIn(page, '#habits-day-modal [data-item="muzik"][data-person="meryem"]');
+    const on = await until(() => page.eval(() => document.querySelector('#habits-day-modal [data-item="muzik"][data-person="meryem"]').classList.contains("is-on")));
     const db = await page.stubDb();
     const doc = (db[MONTHS] || {})["2026-10"];
     const log = Object.values(db[LOG] || {});
@@ -882,8 +882,8 @@ export async function run({ page, check, root }) {
     await page.eval(() => closeModal("habits-day-modal"));
     const ok =
       head.title === "12 Ekim Pazartesi" && JSON.stringify(head.groups) === JSON.stringify(["Birlikte", "Meryem", "Furkan"]) &&
-      JSON.stringify(head.rows) === JSON.stringify(["spor", "kuran", "arapca", "cicek", "projeler", "erken"]) && head.lockedPartner === "true" && untouched &&
-      on && doc.days["2026-10-12"].arapca.meryem === true && !doc.days["2026-10-15"] && log.length === 1 && log[0].day === "2026-10-12" && log[0].month === "2026-10" && log[0].by === "meryem" &&
+      JSON.stringify(head.rows) === JSON.stringify(["spor", "kitap", "muzik", "yuruyus", "su", "uyku"]) && head.lockedPartner === "true" && untouched &&
+      on && doc.days["2026-10-12"].muzik.meryem === true && !doc.days["2026-10-15"] && log.length === 1 && log[0].day === "2026-10-12" && log[0].month === "2026-10" && log[0].by === "meryem" &&
       cell === "25";
     return { ok, detail: JSON.stringify({ head, untouched, on, doc, log, cell }).slice(0, 600) };
   });
@@ -976,8 +976,8 @@ export async function run({ page, check, root }) {
       const sels = {
         me: "#hb-top .hb-me", title: "#hb-today .hb-title", date: "#hb-today .hb-today-date", hint: "#hb-today .hb-hint",
         rowTogether: '#hb-today .hb-row[data-item="spor"] .hb-row-label', nameTogether: '#hb-today .hb-row[data-item="spor"] .hb-box-name',
-        rowMeryem: '#hb-today .hb-row[data-item="arapca"] .hb-row-label', nameMeryem: '#hb-today .hb-row[data-item="arapca"] .hb-box-name',
-        rowFurkan: '#hb-today .hb-row[data-item="projeler"] .hb-row-label', nameFurkan: '#hb-today .hb-row[data-item="projeler"] .hb-box-name',
+        rowMeryem: '#hb-today .hb-row[data-item="muzik"] .hb-row-label', nameMeryem: '#hb-today .hb-row[data-item="muzik"] .hb-box-name',
+        rowFurkan: '#hb-today .hb-row[data-item="su"] .hb-row-label', nameFurkan: '#hb-today .hb-row[data-item="su"] .hb-box-name',
         navTitle: "#hb-month .hb-nav-title", dow: "#hb-month .hb-dow", dayN: '#hb-month .hb-day[data-day="2026-10-06"] .hb-day-n',
         todayN: '#hb-month .hb-day.is-today .hb-day-n', futureN: '#hb-month .hb-day.is-future .hb-day-n', legend: "#hb-month .hb-leg",
       };
@@ -1047,7 +1047,7 @@ export async function run({ page, check, root }) {
     }
     // by hand, 15 Oct: Meryem 42/60 = 70, Furkan 36/56 = 64.29, Birlikte 25/30 = 83.33
     // (a Birlikte read from a person's own percentage would show %70). Şubat 2027 on the 10th: Furkan has 3 boxes
-    // on each of 10 days plus Erken çıkış on the 8 weekdays = 38 due, 8 ticked = 21.05; Meryem 0/40; Birlikte 0/20.
+    // on each of 10 days plus Düzenli uyku on the 8 weekdays = 38 due, 8 ticked = 21.05; Meryem 0/40; Birlikte 0/20.
     const hand = JSON.stringify(seen[0]) === JSON.stringify(["2026-10", "%70", "%64", "%83"]) && JSON.stringify(seen[2]) === JSON.stringify(["2027-02", "%0", "%21", "%0"]);
     return { ok: ok && hand, detail: JSON.stringify(seen) };
   });
@@ -1134,11 +1134,11 @@ export async function run({ page, check, root }) {
     const want = [];
     for (const it of s.items) for (const p of ["meryem", "furkan"]) if (it.owners.includes(p)) want.push([it.id, p, lab(it[p])]);
     const same = rows.length === want.length && rows.every((r, i) => r[0] === want[i][0] && r[1] === want[i][1] && r[2] === want[i][2]);
-    // by hand (15 Oct): spor 80 / 73, kuran 100 / 100, arapca 80, cicek 20, projeler 33, erken 45
+    // by hand (15 Oct): spor 80 / 73, kitap 100 / 100, muzik 80, yuruyus 20, su 33, uyku 45
     const hand = JSON.stringify(rows.map((r) => r[2])) === JSON.stringify(["%80", "%73", "%100", "%100", "%80", "%20", "%33", "%45"]);
-    // nothing due: Projeleri geliştirme starting after today shows a dash and an empty bar
-    await page.eval(() => { CONFIG.habits.find((h) => h.id === "projeler").since = "2026-10-16"; window.habitsCore.render(); });
-    const dash = (await read()).find((r) => r[0] === "projeler");
+    // nothing due: Su içme starting after today shows a dash and an empty bar
+    await page.eval(() => { CONFIG.habits.find((h) => h.id === "su").since = "2026-10-16"; window.habitsCore.render(); });
+    const dash = (await read()).find((r) => r[0] === "su");
     const ok = same && hand && dash && dash[2] === "—" && /^0(%|px)?$/.test(dash[3]);
     return { ok: !!ok, detail: JSON.stringify({ rows: rows.map((r) => r.slice(0, 3).join(":")), dash }) };
   });
@@ -1148,23 +1148,23 @@ export async function run({ page, check, root }) {
   await check(N_SINCE, async () => {
     await open(page, "2026-10-09T12:00:00", { habitsSince: null });
     const since = await page.eval(() => CONFIG.habits.map((h) => [h.id, h.since]));
-    const ids = ["spor", "kuran", "arapca", "cicek", "projeler", "erken"];
+    const ids = ["spor", "kitap", "muzik", "yuruyus", "su", "uyku"];
     const ok = since.length === 6 && ids.every((id, i) => since[i][0] === id && since[i][1] === "2026-10-07");
     return { ok, detail: JSON.stringify(since) };
   });
 
   await check(N_WEEK1, async () => {
     // Ticks on 1-6 October must count nowhere. By hand, today = Fri 9 Oct, so 7, 8 and 9 Oct are the due days
-    // (all weekdays, so Erken çıkış is due on each): Furkan 4 boxes x 3 days = 12, Meryem 4 x 3 = 12.
-    //   Furkan  spor 5,8  kuran 6,8  projeler 7,9  erken 8   -> counted spor8 kuran8 projeler7+9 erken8 = 5/12 = 41.7 -> 42
-    //   Meryem  spor 5,8  kuran 6,8,9  arapca 7,8,9  cicek 1,9 -> counted 1 + 2 + 3 + 1 = 7/12 = 58.3 -> 58
-    //   Birlikte (spor and kuran, 3 days = 6 item-days): spor 8 both, kuran 8 both, kuran 9 Meryem only, rest no = 2/6 = 33.3 -> 33
-    //   7 Oct: Meryem arapca = 1/4 = 25, Furkan projeler = 1/4 = 25
-    //   8 Oct: Meryem spor kuran arapca = 3/4 = 75, Furkan spor kuran erken = 3/4 = 75
-    //   9 Oct: Meryem kuran arapca cicek = 3/4 = 75, Furkan projeler = 1/4 = 25
+    // (all weekdays, so Düzenli uyku is due on each): Furkan 4 boxes x 3 days = 12, Meryem 4 x 3 = 12.
+    //   Furkan  spor 5,8  kitap 6,8  su 7,9  uyku 8   -> counted spor8 kitap8 su7+9 uyku8 = 5/12 = 41.7 -> 42
+    //   Meryem  spor 5,8  kitap 6,8,9  muzik 7,8,9  yuruyus 1,9 -> counted 1 + 2 + 3 + 1 = 7/12 = 58.3 -> 58
+    //   Birlikte (spor and kitap, 3 days = 6 item-days): spor 8 both, kitap 8 both, kitap 9 Meryem only, rest no = 2/6 = 33.3 -> 33
+    //   7 Oct: Meryem muzik = 1/4 = 25, Furkan su = 1/4 = 25
+    //   8 Oct: Meryem spor kitap muzik = 3/4 = 75, Furkan spor kitap uyku = 3/4 = 75
+    //   9 Oct: Meryem kitap muzik yuruyus = 3/4 = 75, Furkan su = 1/4 = 25
     const OCT = mk("2026-10", [
-      ["spor", "furkan", [5, 8]], ["kuran", "furkan", [6, 8]], ["projeler", "furkan", [7, 9]], ["erken", "furkan", [8]],
-      ["spor", "meryem", [5, 8]], ["kuran", "meryem", [6, 8, 9]], ["arapca", "meryem", [7, 8, 9]], ["cicek", "meryem", [1, 9]],
+      ["spor", "furkan", [5, 8]], ["kitap", "furkan", [6, 8]], ["su", "furkan", [7, 9]], ["uyku", "furkan", [8]],
+      ["spor", "meryem", [5, 8]], ["kitap", "meryem", [6, 8, 9]], ["muzik", "meryem", [7, 8, 9]], ["yuruyus", "meryem", [1, 9]],
     ]);
     const extra = { habitsSince: null, habits: { months: { "2026-10": OCT } } };
     await openTakip(page, "2026-10-09T12:00:00", "meryem", extra);
@@ -1177,7 +1177,7 @@ export async function run({ page, check, root }) {
     const cards = [tiles.meryem && tiles.meryem.num, tiles.furkan && tiles.furkan.num, tiles.together && tiles.together.num];
     const blankDays = [1, 2, 3, 4, 5, 6].every((d) => cells[d] && cells[d][0] === "" && cells[d][1] === "");
     // the October report, read on 1 Nov (days 7-31 due = 25). By hand: Furkan due 25 x 3 + 18 weekdays (7,8,9,12-16,19-23,26-30) = 93,
-    // counted 5 -> 5.38 -> %5; Meryem 4 x 25 = 100, counted 7 -> %7; lead +2; best item Arapça tekrarı 3/25 = 12 -> %12.
+    // counted 5 -> 5.38 -> %5; Meryem 4 x 25 = 100, counted 7 -> %7; lead +2; best item Müzik pratiği 3/25 = 12 -> %12.
     await openTakip(page, "2026-11-01T08:00:00", "meryem", extra);
     await goPrev(page);
     const rep = await page.eval(() => {
@@ -1185,7 +1185,7 @@ export async function run({ page, check, root }) {
       const r = document.querySelector("#hb-report .hb-report");
       return { month: r ? r.dataset.month : null, lead: tx("#hb-report .hb-report-lead"), best: tx("#hb-report .hb-report-best") };
     });
-    const repOk = rep.month === "2026-10" && rep.lead === "Önde: Meryem (+2 puan)" && rep.best === "En düzenli görev: Arapça tekrarı (%12)";
+    const repOk = rep.month === "2026-10" && rep.lead === "Önde: Meryem (+2 puan)" && rep.best === "En düzenli görev: Müzik pratiği (%12)";
     const ok = JSON.stringify(due) === "[false,false,true]" && blankDays
       && JSON.stringify(cells[7]) === '["25","25"]' && JSON.stringify(cells[8]) === '["75","75"]' && JSON.stringify(cells[9]) === '["75","25"]'
       && JSON.stringify(cards) === '["%58","%42","%33"]' && repOk;
@@ -1246,12 +1246,12 @@ export async function run({ page, check, root }) {
     await goPrev(page);
     const firstPrev = await report();
     // by hand, October 2026 with every day due: Meryem 44/124 = 35.48 (card 35), Furkan 39/115 = 33.91 (card 34) -> the cards differ by +1;
-    // best item Kuran 31/62 = 50; joint days 1-10 = 10; longest streaks Furkan 1-5 = 5, Meryem 1-3 = 3.
+    // best item Kitap 31/62 = 50; joint days 1-10 = 10; longest streaks Furkan 1-5 = 5, Meryem 1-3 = 3.
     // Closing line: pool[(2026*12 + 10) % pool.length], so the same month always says the same thing.
     const closeWant = past.pool[(2026 * 12 + 10) % past.pool.length];
     const full =
       past.report && past.month === "2026-10" && past.title === "Ekim karnesi" && past.lead === "Önde: Meryem (+1 puan)" &&
-      past.best === "En düzenli görev: Kuran (%50)" && past.joint === "10 gün ikimiz de" &&
+      past.best === "En düzenli görev: Kitap (%50)" && past.joint === "10 gün ikimiz de" &&
       JSON.stringify(past.streaks) === JSON.stringify([["meryem", 3], ["furkan", 5]]) && past.close === closeWant && past.bear;
     const ok =
       !running.report && running.teaser === "Ay bitince karnemiz burada 🐻" &&
@@ -1280,8 +1280,8 @@ export async function run({ page, check, root }) {
       again.length === 5 &&
       byId(collapsed, "b").pending && byId(collapsed, "b").text === "Furkan · Spor ✓ 15 Eki 21:04 kaydediliyor" &&
       byId(collapsed, "e").pending && /kaydediliyor$/.test(byId(collapsed, "e").text) &&
-      !byId(collapsed, "a").pending && byId(collapsed, "a").text === "Meryem · Arapça tekrarı ✓ 15 Eki 10:00" &&
-      /^Furkan · Kuran geri aldı 15 Eki 07:00$/.test(byId(collapsed, "f").text) &&
+      !byId(collapsed, "a").pending && byId(collapsed, "a").text === "Meryem · Müzik pratiği ✓ 15 Eki 10:00" &&
+      /^Furkan · Kitap geri aldı 15 Eki 07:00$/.test(byId(collapsed, "f").text) &&
       byId(open, "g").text === "Furkan · Spor ✓ 14 Eki 22:10";
     return { ok, detail: JSON.stringify({ collapsed, toggle1, open: open.length, toggle2, again: again.length }).slice(0, 700) };
   });
@@ -1365,12 +1365,12 @@ export async function run({ page, check, root }) {
 
   // ══ Stage 6: fixes from the two verifiers ═════════════════════════════════════════════════════
   // ── N1: a streak older than the previous month, on a fresh load ──────────────────────────────
-  // Every item ticked by its owners on every day (a weekend tick of Erken çıkış is ignored, which is
+  // Every item ticked by its owners on every day (a weekend tick of Düzenli uyku is ignored, which is
   // harmless: it is not due then). Perfect from 1 Oct 2026.
   const perfectMonth = (month, lastDay) => {
     const last = lastDay || new Date(+month.slice(0, 4), +month.slice(5, 7), 0).getDate();
     const d = range(1, last);
-    return mk(month, [["spor", "furkan", d], ["spor", "meryem", d], ["kuran", "furkan", d], ["kuran", "meryem", d], ["arapca", "meryem", d], ["cicek", "meryem", d], ["projeler", "furkan", d], ["erken", "furkan", d]]);
+    return mk(month, [["spor", "furkan", d], ["spor", "meryem", d], ["kitap", "furkan", d], ["kitap", "meryem", d], ["muzik", "meryem", d], ["yuruyus", "meryem", d], ["su", "furkan", d], ["uyku", "furkan", d]]);
   };
   const streakNumbers = (p) => p.eval(() => [...document.querySelectorAll("#hb-stats .hb-streak")].map((e) => [e.dataset.person, e.dataset.kind, +e.dataset.n, e.textContent.replace(/\s+/g, " ").trim()]));
   await check(N_LONGSTREAK, async () => {
@@ -1436,7 +1436,7 @@ export async function run({ page, check, root }) {
   });
 
   // ── layout (stage 6), read from the painted page ─────────────────────────────────────────────
-  const LOGZ = [...LOG8, logEntry("z", { item: "projeler", person: "meryem", value: false, at: null, atLocal: LE(15, 21, 30) })];
+  const LOGZ = [...LOG8, logEntry("z", { item: "su", person: "meryem", value: false, at: null, atLocal: LE(15, 21, 30) })];
   const openFull = (vp, now, extra) => openTakip(page, now || "2026-10-15T12:00:00", "meryem", { viewport: vp, habits: { months: { "2026-10": M1 }, log: LOGZ }, ...(extra || {}) });
   const settleLog = async () => { await until(async () => (await logRows(page)).length > 0); await sleep(250); };
 
@@ -1569,7 +1569,7 @@ export async function run({ page, check, root }) {
   });
 
   await check(N_LOCKEDTICK, async () => {
-    await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: { "2026-10": { days: { "2026-10-15": { spor: { furkan: true, meryem: true }, kuran: { meryem: true } } } } } } });
+    await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: { "2026-10": { days: { "2026-10-15": { spor: { furkan: true, meryem: true }, kitap: { meryem: true } } } } } } });
     const got = await page.eval(() => {
       const parse = window.__app.parse;
       const pick = (p, item) => {
@@ -1581,7 +1581,7 @@ export async function run({ page, check, root }) {
         return { on: b.classList.contains("is-on"), locked: b.classList.contains("is-locked"), bg: cs.backgroundColor, fill: shape.fill, checkStroke: check.stroke, checkOpacity: check.opacity, nameContrast: +window.__app.readable(name).toFixed(2),
           checkVsShape: parse(shape.fill) ? +window.__app.contrast(parse(check.stroke), parse(shape.fill)).toFixed(2) : 0 };
       };
-      return { own: pick("meryem", "spor"), ownOff: pick("meryem", "arapca"), partner: pick("furkan", "spor"), partnerOff: pick("furkan", "kuran") };
+      return { own: pick("meryem", "spor"), ownOff: pick("meryem", "muzik"), partner: pick("furkan", "spor"), partnerOff: pick("furkan", "kitap") };
     });
     const { own, ownOff, partner, partnerOff } = got;
     // yours: a solid disc with a white heart; the partner's: the same pale disc as an empty partner box,
@@ -1642,10 +1642,10 @@ export async function run({ page, check, root }) {
 
   await check(N_JUNKLOG, async () => {
     const log = [
-      logEntry("ok1", { item: "arapca", person: "meryem", by: "meryem", at: { __ts: LE(15, 10, 0) }, atLocal: LE(15, 10, 0) }),
+      logEntry("ok1", { item: "muzik", person: "meryem", by: "meryem", at: { __ts: LE(15, 10, 0) }, atLocal: LE(15, 10, 0) }),
       { id: "j1", month: "2026-10", day: "2026-10-15", item: "spor", person: JUNK, by: JUNK, value: true, at: null, atLocal: "2026-10-15T09:00:00.000Z" },
       { id: "j2", month: "2026-10", day: "2026-10-15", item: { x: 1 }, person: "constructor", by: "constructor", value: "yes", at: "notatimestamp", atLocal: 1e20 },
-      { id: "j3", month: "2026-10", day: "2026-10-15", item: "kuran", person: "toString", by: 7, value: true, at: { __ts: LE(15, 9, 30) }, atLocal: LE(15, 9, 30) },
+      { id: "j3", month: "2026-10", day: "2026-10-15", item: "kitap", person: "toString", by: 7, value: true, at: { __ts: LE(15, 9, 30) }, atLocal: LE(15, 9, 30) },
     ];
     await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: { "2026-10": M1 }, log } });
     await until(async () => (await logRows(page)).length >= 4);
@@ -1666,7 +1666,7 @@ export async function run({ page, check, root }) {
     const neutral = (r) => r && r.dots === 0 && /\bhb-p-none\b/.test(r.cls) && !/hb-p-(meryem|furkan|together)/.test(r.cls);
     const ok =
       !got.pwn && got.injected === 0 && got.rows === 4 && !/function|Object|undefined|NaN/.test(got.logText) &&
-      got.ok1.dots === 1 && /hb-p-meryem/.test(got.ok1.cls) && /^Meryem · Arapça tekrarı ✓/.test(got.ok1.text) &&
+      got.ok1.dots === 1 && /hb-p-meryem/.test(got.ok1.cls) && /^Meryem · Müzik pratiği ✓/.test(got.ok1.text) &&
       neutral(got.j1) && neutral(got.j2) && neutral(got.j3) && got.stats && page.errors.length === 0;
     return { ok, detail: JSON.stringify({ ...got, logText: undefined, errors: page.errors.slice(0, 3) }).slice(0, 900) };
   });
@@ -1685,17 +1685,17 @@ export async function run({ page, check, root }) {
     const st1 = await stateOf(page);
     // 2. the month write is refused: the toast, the pending tap cleared, the heart shows what is stored
     await page.eval(() => { window.__STUB_REJECT = { habitMonths: true }; });
-    await tapIn(page, slot("kuran", "meryem"));
+    await tapIn(page, slot("kitap", "meryem"));
     await sleep(400);
     db = await page.stubDb();
     const box2 = (((db[MONTHS] || {})["2026-10"] || {}).days || {})["2026-10-15"];
     const t2 = await toasts(page);
-    const lit2 = await page.eval((s) => document.querySelector(s).classList.contains("is-on"), slot("kuran", "meryem"));
+    const lit2 = await page.eval((s) => document.querySelector(s).classList.contains("is-on"), slot("kitap", "meryem"));
     const st2 = await stateOf(page);
     const msg = await page.eval(() => CONTENT.habits.saveError);
     const ok =
       box1 && box1.spor && box1.spor.meryem === true && logged1 === 0 && t1.length === 0 && lit1 === true && st1.pending === 0 &&
-      box2 && !box2.kuran && t2.length === 1 && t2[0] === msg && lit2 === false && st2.pending === 0;
+      box2 && !box2.kitap && t2.length === 1 && t2[0] === msg && lit2 === false && st2.pending === 0;
     return { ok, detail: JSON.stringify({ box1, logged1, t1, lit1, p1: st1.pending, box2, t2, lit2, p2: st2.pending }) };
   });
 
@@ -1716,7 +1716,7 @@ export async function run({ page, check, root }) {
   });
 
   await check(N_PILL, async () => {
-    const seedLog = [logEntry("old", { item: "kuran", at: { __ts: LE(15, 8, 0) }, atLocal: LE(15, 8, 0) })];
+    const seedLog = [logEntry("old", { item: "kitap", at: { __ts: LE(15, 8, 0) }, atLocal: LE(15, 8, 0) })];
     await openTakip(page, "2026-10-15T12:00:00", "meryem", { habits: { months: {}, log: seedLog } });
     await until(async () => (await logRows(page)).length === 1);
     // online: the tick echoes back with its server time; the row never carries the pill
@@ -1726,7 +1726,7 @@ export async function run({ page, check, root }) {
     const online = await logRows(page);
     // offline: the write stays pending - the pill shows and the row still sorts by its (estimated) time
     await page.eval(() => { window.__STUB_OFFLINE = true; });
-    await tapIn(page, slot("arapca", "meryem"));
+    await tapIn(page, slot("muzik", "meryem"));
     await until(async () => (await logRows(page)).length === 3);
     await sleep(300);
     const offline = await logRows(page);
@@ -1737,7 +1737,7 @@ export async function run({ page, check, root }) {
     const ids = (rows) => rows.map((r) => r.id);
     const ok =
       online.length === 2 && online.every((r) => !r.pending) && !/kaydediliyor/.test(online[0].text) &&
-      offline.length === 3 && offline[0].pending && /kaydediliyor$/.test(offline[0].text) && /Arapça tekrarı/.test(offline[0].text) && offline.slice(1).every((r) => !r.pending) &&
+      offline.length === 3 && offline[0].pending && /kaydediliyor$/.test(offline[0].text) && /Müzik pratiği/.test(offline[0].text) && offline.slice(1).every((r) => !r.pending) &&
       after.length === 3 && after.every((r) => !r.pending) && JSON.stringify(ids(after)) === JSON.stringify(ids(offline)) &&
       offline[0].text.includes("15 Eki 12:");
     return { ok, detail: JSON.stringify({ online, offline, after }).slice(0, 900) };
@@ -1771,7 +1771,7 @@ export async function run({ page, check, root }) {
     }));
     // a write that fails: the toast says what to do, and the box does not stay lit
     await page.eval(() => { window.setHabitTick = () => Promise.reject(new Error("offline")); });
-    const sel = slot("cicek", "meryem");
+    const sel = slot("yuruyus", "meryem");
     await tapIn(page, sel);
     await until(() => page.eval(() => !!document.querySelector(".toast")), 2000);
     const toast = await page.eval(() => (document.querySelector(".toast") || {}).textContent || null);
@@ -1780,7 +1780,7 @@ export async function run({ page, check, root }) {
     const st = await stateOf(page);
     const joined = read.pool.join(" | ");
     const ok =
-      read.pool.includes("Gelecek ay da el ele 🤍") && read.pool.includes("Küçük adımlarla bir ay daha 🌷") && !/elele|güzel bir ay/.test(joined) &&
+      read.pool.includes("Gelecek ay da devam 💪") && read.pool.includes("Bir ay daha geride kaldı 👏") && !/harika bir ay|devaam/i.test(joined) &&
       read.title === "Gün gün" && /^Gün gün, ayın/.test(read.aria) && read.bars === "Görev görev" &&
       toast === "Kaydedemedik, bir daha dokunalım 💗" && lit === false && st.pending === 0;
     return { ok, detail: JSON.stringify({ title: read.title, aria: read.aria.slice(0, 30), toast, lit, pending: st.pending }) };
@@ -2035,17 +2035,17 @@ export const mutants = [
     expect: N_TARGETS,
   },
   {
-    id: "habits-copy-elele",
+    id: "habits-copy-next-month-wording",
     file: "js/content.js",
-    find: "'Gelecek ay da el ele 🤍'",
-    replace: "'Gelecek ay da elele 🤍'",
+    find: "'Gelecek ay da devam 💪'",
+    replace: "'Gelecek ay da devaam 💪'",
     expect: N_COPY,
   },
   {
     id: "habits-copy-claims-a-good-month",
     file: "js/content.js",
-    find: "'Küçük adımlarla bir ay daha 🌷'",
-    replace: "'Küçük adımlar, güzel bir ay oldu 🌷'",
+    find: "'Bir ay daha geride kaldı 👏'",
+    replace: "'Harika bir ay oldu 👏'",
     expect: N_COPY,
   },
   {

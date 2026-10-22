@@ -712,7 +712,7 @@ export async function closeServer() {
 export async function openApp(page, opts = {}) {
   const {
     /* The default clock is a FIXED date (Sunday 20 Sep 2026, 10:00 Europe/Istanbul), before the
-       birthday gate on 4 Oct. On the real clock the gate auto-opens in every fresh profile once
+       birthday gate on 25 Nov. On the real clock the gate auto-opens in every fresh profile once
        that date passes and swallows the taps of the memories, shell, today and words checks (18
        FAILs measured on 2026-10-08). A green suite must never depend on the day it is run; a check
        that needs "after the gate" or a Takip date (they start 2026-10-01) passes its own `now`. */

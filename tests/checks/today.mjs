@@ -62,7 +62,7 @@ export async function run({ page, check, root }) {
   }));
 
   // 2. Together count + next-milestone line are exact for the spec example
-  await openApp(page, { signedIn: true, now: "2026-10-04T10:00:00" });
+  await openApp(page, { signedIn: true, now: "2026-10-21T10:00:00" });
   await page.eval(() => new Promise((r) => setTimeout(r, 200)));
   const together = await page.eval(() => {
     var loveDate = CONFIG.loveDate;
@@ -79,7 +79,7 @@ export async function run({ page, check, root }) {
       renderedMilestoneText: milestoneEl ? milestoneEl.textContent : null,
     };
   });
-  await check("today: the together count is exact for 2026-10-04T10:00 (260) and the next-milestone line reads 300. günümüze 40 gün kaldı 💕", () => ({
+  await check("today: the together count is exact for 2026-10-21T10:00 (260) and the next-milestone line reads 300. günümüze 40 gün kaldı 💕", () => ({
     ok: together.expectedDays === 260
       && together.renderedDays === "260"
       && together.expectedMilestoneText === "300. günümüze 40 gün kaldı 💕"
@@ -90,7 +90,7 @@ export async function run({ page, check, root }) {
   // 2b. The milestone always points at the NEXT hundred, even exactly on a hundred-day boundary —
   // catches an off-by-one that the 260 example above would not (e.g. re-announcing the day just
   // reached instead of the one still ahead).
-  await openApp(page, { signedIn: true, now: "2026-04-27T00:00:00" });
+  await openApp(page, { signedIn: true, now: "2026-05-14T00:00:00" });
   await page.eval(() => new Promise((r) => setTimeout(r, 200)));
   const boundary = await page.eval(() => ({
     days: Math.floor((appNow().getTime() - CONFIG.loveDate.getTime()) / 86400000),
@@ -110,7 +110,7 @@ export async function run({ page, check, root }) {
   // and the birthday message are what must appear (m18).
   await openApp(page, {
     signedIn: true,
-    now: "2026-10-03T23:59:55",
+    now: "2026-11-24T23:59:55",
     storage: { "meryem-gate-played-year": "2026", "meryem-birthday-seen-year": "2026" },
   });
   await page.eval(() => new Promise((r) => setTimeout(r, 200)));
@@ -144,7 +144,7 @@ export async function run({ page, check, root }) {
   // 2d. m18: on her birthday (all day) Bugün shows a party-hat bear, a birthday greeting and the
   // birthday message; the next day it is back to the ordinary bucket line and the daily message.
   const birthdayToday = {};
-  for (const [key, now] of [["on", "2026-10-04T15:00:00"], ["after", "2026-10-05T15:00:00"]]) {
+  for (const [key, now] of [["on", "2026-11-25T15:00:00"], ["after", "2026-11-26T15:00:00"]]) {
     await openApp(page, {
       signedIn: true,
       now,
@@ -162,7 +162,7 @@ export async function run({ page, check, root }) {
       };
     });
   }
-  await check("today: on 4 Oct the greeting, bear and message are the birthday ones, and on 5 Oct the ordinary ones", () => ({
+  await check("today: on 25 Nov the greeting, bear and message are the birthday ones, and on 26 Nov the ordinary ones", () => ({
     ok: birthdayToday.on.greetingIsBirthday && birthdayToday.on.bearHasHat && birthdayToday.on.msgIsBirthday
       && birthdayToday.after.greetingIsAfternoon && !birthdayToday.after.bearHasHat && birthdayToday.after.msgIsDaily,
     detail: JSON.stringify(birthdayToday),
@@ -276,7 +276,7 @@ export const mutants = [
     file: "js/daily.js",
     find: "Math.floor((now.getTime() - CONFIG.loveDate.getTime()) / 86400000)",
     replace: "Math.floor((now.getTime() - CONFIG.loveDate.getTime()) / 86400000) + 1",
-    expect: "today: the together count is exact for 2026-10-04T10:00 (260) and the next-milestone line reads 300. günümüze 40 gün kaldı 💕",
+    expect: "today: the together count is exact for 2026-10-21T10:00 (260) and the next-milestone line reads 300. günümüze 40 gün kaldı 💕",
   },
   {
     id: "today-milestone-formula",
@@ -345,7 +345,7 @@ export const mutants = [
     file: "js/daily.js",
     find: "'<p class=\"bgn-milestone\">' + nextMilestone + '. günümüze ' + daysToMilestone + ' gün kaldı 💕</p>';",
     replace: "'<p class=\"bgn-milestone\">' + nextMilestone + '. günümüze ' + daysToMilestone + ' gün</p>';",
-    expect: "today: the together count is exact for 2026-10-04T10:00 (260) and the next-milestone line reads 300. günümüze 40 gün kaldı 💕",
+    expect: "today: the together count is exact for 2026-10-21T10:00 (260) and the next-milestone line reads 300. günümüze 40 gün kaldı 💕",
   },
   {
     id: "today-birthday-unlock-listener",
@@ -359,14 +359,14 @@ export const mutants = [
     file: "js/daily.js",
     find: "if (isHerBirthdayToday() && birthdayLines && birthdayLines.length) bucket = 'birthday';",
     replace: "",
-    expect: "today: on 4 Oct the greeting, bear and message are the birthday ones, and on 5 Oct the ordinary ones",
+    expect: "today: on 25 Nov the greeting, bear and message are the birthday ones, and on 26 Nov the ordinary ones",
   },
   {
     id: "today-birthday-message-dropped",
     file: "js/daily.js",
     find: "if (isHerBirthdayToday() && CONTENT.greetings && CONTENT.greetings.birthdayMessage) {",
     replace: "if (false) {",
-    expect: "today: on 4 Oct the greeting, bear and message are the birthday ones, and on 5 Oct the ordinary ones",
+    expect: "today: on 25 Nov the greeting, bear and message are the birthday ones, and on 26 Nov the ordinary ones",
   },
 ];
 
@@ -375,9 +375,9 @@ export const shots = [
   { name: "afternoon", open: { signedIn: true, now: "2026-09-20T14:00:00" } },
   { name: "evening", open: { signedIn: true, now: "2026-09-20T20:00:00" } },
   { name: "night", open: { signedIn: true, now: "2026-09-20T23:30:00" } },
-  // Not 2026-10-04 (the 260-day spec example): that date IS her birthday, so opening the app then
+  // Not 2026-11-25: that date IS her birthday, so opening the app then
   // auto-launches the birthday gate overlay on top of this view — fine for the correctness check
   // (which reads the DOM under it), useless for a design screenshot of the Today view itself.
-  { name: "milestone-boundary", open: { signedIn: true, now: "2026-04-27T00:00:00" } },
+  { name: "milestone-boundary", open: { signedIn: true, now: "2026-05-14T00:00:00" } },
   { name: "reduced-motion", open: { signedIn: true, now: "2026-09-20T08:30:00", reducedMotion: true } },
 ];

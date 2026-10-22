@@ -61,26 +61,26 @@ const remainingMs = (u) => u.days * 86400000 + u.hours * 3600000 + u.minutes * 6
 
 export async function run({ page, check }) {
   // 1. The data.js bug fix itself: today:true for the whole calendar day, false the day before.
-  await openDates(page, { now: "2026-10-04T23:59:00" });
-  const todayLate = await page.eval(() => getNextBirthdayCountdown(10, 4));
-  await openDates(page, { now: "2026-10-03T23:59:00" });
-  const dayBefore = await page.eval(() => getNextBirthdayCountdown(10, 4));
+  await openDates(page, { now: "2026-11-25T23:59:00" });
+  const todayLate = await page.eval(() => getNextBirthdayCountdown(11, 25));
+  await openDates(page, { now: "2026-11-24T23:59:00" });
+  const dayBefore = await page.eval(() => getNextBirthdayCountdown(11, 25));
   await check("dates: getNextBirthdayCountdown returns today:true on the birthday and false the day before", () => ({
     ok: todayLate.today === true && dayBefore.today === false,
     detail: JSON.stringify({ todayLate, dayBefore }),
   }));
 
   // 2. Her birthday, sub-minute countdown the day before (exercises the exact fix boundary).
-  await openDates(page, { now: "2026-10-03T23:59:30" });
+  await openDates(page, { now: "2026-11-24T23:59:30" });
   const herLate = await readCountdown(page, "her");
-  const herLateOk = Math.abs(herLate.now + remainingMs(herLate) - istanbulEpoch(2026, 10, 4, 0, 0, 0)) <= 2000;
+  const herLateOk = Math.abs(herLate.now + remainingMs(herLate) - istanbulEpoch(2026, 11, 25, 0, 0, 0)) <= 2000;
   await check("dates: her countdown reaches midnight of her birthday, not ~364 days, at 23:59:30 the day before", () => ({
     ok: herLateOk,
     detail: JSON.stringify(herLate),
   }));
 
   // 3. Her birthday itself: celebration shown, numbers hidden, no confetti canvas.
-  await openDates(page, { now: "2026-10-04T10:00:00" });
+  await openDates(page, { now: "2026-11-25T10:00:00" });
   const herCeleb = await page.eval(() => ({
     unitsHidden: document.getElementById("countdown-her-bday").hidden,
     celebHidden: document.querySelector(".dts-celebration") ? document.querySelector(".dts-celebration").hidden : null,
@@ -92,16 +92,16 @@ export async function run({ page, check }) {
     detail: JSON.stringify(herCeleb),
   }));
 
-  // 4. His birthday countdown lands on 26 May 2027 from 4 Oct 2026 (this year's already passed).
-  const hisRes = await readCountdown(page, "his"); // still on the 2026-10-04T10:00 page from #3
-  const hisOk = Math.abs(hisRes.now + remainingMs(hisRes) - istanbulEpoch(2027, 5, 26, 0, 0, 0)) <= 2000;
-  await check("dates: his birthday countdown lands on 26 May 2027 (this year's has already passed)", () => ({
+  // 4. His birthday countdown lands on 14 April 2027 from 25 Nov 2026 (this year's already passed).
+  const hisRes = await readCountdown(page, "his"); // still on the 2026-11-25T10:00 page from #3
+  const hisOk = Math.abs(hisRes.now + remainingMs(hisRes) - istanbulEpoch(2027, 4, 14, 0, 0, 0)) <= 2000;
+  await check("dates: his birthday countdown lands on 14 April 2027 (this year's has already passed)", () => ({
     ok: hisOk,
     detail: JSON.stringify(hisRes),
   }));
 
   // 5. His birthday, "today": a short line instead of numbers — no full celebration treatment.
-  await openDates(page, { now: "2027-05-26T09:00:00" });
+  await openDates(page, { now: "2027-04-14T09:00:00" });
   const hisToday = await page.eval(() => ({
     unitsHidden: document.getElementById("countdown-his-bday").hidden,
     lineHidden: document.querySelector(".dts-today-line") ? document.querySelector(".dts-today-line").hidden : null,
@@ -115,9 +115,9 @@ export async function run({ page, check }) {
   // 6. Since-counters: exact elapsed time against CONFIG.firstMeetDate / CONFIG.loveDate.
   await openDates(page, { now: "2026-06-15T12:00:00" });
   const meetRes = await readCountdown(page, "meet");
-  const meetOk = Math.abs(meetRes.now - remainingMs(meetRes) - istanbulEpoch(2026, 3, 10, 0, 0, 0)) <= 2000;
+  const meetOk = Math.abs(meetRes.now - remainingMs(meetRes) - istanbulEpoch(2026, 4, 8, 0, 0, 0)) <= 2000;
   const loveRes = await readCountdown(page, "love");
-  const loveOk = Math.abs(loveRes.now - remainingMs(loveRes) - istanbulEpoch(2026, 1, 17, 0, 0, 0)) <= 2000;
+  const loveOk = Math.abs(loveRes.now - remainingMs(loveRes) - istanbulEpoch(2026, 2, 3, 0, 0, 0)) <= 2000;
   await check("dates: since-counters show the exact elapsed time since firstMeetDate/loveDate", () => ({
     ok: meetOk && loveOk,
     detail: JSON.stringify({ meetRes, loveRes }),
@@ -126,7 +126,7 @@ export async function run({ page, check }) {
   // 7. Next-milestone line: pick `now` so exactly 260 elapsed days have passed since firstMeetDate.
   //    Selected via [data-dts-card="meet"] rather than ".dts-milestone"[0] — the engagement card
   //    (added 2026-09-30) also carries a .dts-milestone and sits earlier in document order.
-  const now260 = isoFromEpoch(istanbulEpoch(2026, 3, 10, 12, 0, 0) + 260 * 86400000);
+  const now260 = isoFromEpoch(istanbulEpoch(2026, 4, 8, 12, 0, 0) + 260 * 86400000);
   await openDates(page, { now: now260 });
   const milestoneText = await page.eval(() => document.querySelector('[data-dts-card="meet"] .dts-milestone').textContent);
   await check("dates: the next-milestone line reads '300. güne 40 gün kaldı' at 260 elapsed days", () => ({
@@ -159,7 +159,7 @@ export async function run({ page, check }) {
   //     title ink, so the true worst point for a dark-on-light ratio is one of the two stops, never
   //     a point between them) — so measuring the title's own ink against BOTH stops directly covers
   //     every pixel the title could ever sit on, including points readable() would never reach.
-  await openDates(page, { now: "2026-10-04T10:00:00" });
+  await openDates(page, { now: "2026-11-25T10:00:00" });
   const titleContrast = await page.eval(() => {
     function tokenRgb(name) {
       const d = document.createElement("div");
@@ -186,9 +186,9 @@ export async function run({ page, check }) {
   const contrastNormal = await page.eval(() => ({
     milestones: [...document.querySelectorAll(".dts-milestone")].map((el) => window.__app.readable(el)),
   }));
-  await openDates(page, { now: "2026-10-04T10:00:00" });
+  await openDates(page, { now: "2026-11-25T10:00:00" });
   const contrastCeleb = await page.eval(() => ({ celebSub: window.__app.readable(document.querySelector(".dts-celebration-sub")) }));
-  await openDates(page, { now: "2027-05-26T09:00:00" });
+  await openDates(page, { now: "2027-04-14T09:00:00" });
   const contrastToday = await page.eval(() => ({ todayLine: window.__app.readable(document.querySelector(".dts-today-line")) }));
   const failures = Object.entries({ ...contrastNormal, ...contrastCeleb, ...contrastToday }).flatMap(([k, v]) =>
     (Array.isArray(v) ? v : [v]).filter((n) => n < 4.5).map((n) => `${k} ${n.toFixed(2)}`)
@@ -214,9 +214,9 @@ export async function run({ page, check }) {
   }));
   const cfgOk =
     cfg.engagementIso != null &&
-    new Date(cfg.engagementIso).getTime() === istanbulEpoch(2026, 7, 25, 0, 0, 0) &&
-    !!cfg.wedding && cfg.wedding.year === 2027 && cfg.wedding.month === 7 && cfg.wedding.day === null;
-  await check("dates: CONFIG.engagementDate is 25 July 2026 and CONFIG.wedding is {year:2027, month:7, day:null}", () => ({
+    new Date(cfg.engagementIso).getTime() === istanbulEpoch(2026, 8, 12, 0, 0, 0) &&
+    !!cfg.wedding && cfg.wedding.year === 2027 && cfg.wedding.month === 8 && cfg.wedding.day === null;
+  await check("dates: CONFIG.engagementDate is 12 August 2026 and CONFIG.wedding is {year:2027, month:8, day:null}", () => ({
     ok: cfgOk,
     detail: JSON.stringify(cfg),
   }));
@@ -225,45 +225,45 @@ export async function run({ page, check }) {
   //     next-milestone line follows the same shared pattern as the meet/love counters.
   await openDates(page, { now: "2026-09-01T12:00:00" });
   const engRes = await readCountdown(page, "engagement");
-  const engOk = Math.abs(engRes.now - remainingMs(engRes) - istanbulEpoch(2026, 7, 25, 0, 0, 0)) <= 2000;
+  const engOk = Math.abs(engRes.now - remainingMs(engRes) - istanbulEpoch(2026, 8, 12, 0, 0, 0)) <= 2000;
   const engMilestoneText = await page.eval(() => document.querySelector('[data-dts-card="engagement"] .dts-milestone').textContent);
   await check("dates: engagement since-counter shows the exact elapsed time since CONFIG.engagementDate, with a next-milestone line", () => ({
     ok: engOk && /\d+\. güne \d+ gün kaldı/.test(engMilestoneText),
     detail: JSON.stringify({ engRes, engMilestoneText }),
   }));
 
-  // 13. Wedding card, day unset: approx months = 9 at 2026-10-04 (target is 1 July 2027).
-  await openDates(page, { now: "2026-10-04T12:00:00" });
+  // 13. Wedding card, day unset: approx months = 9 at 2026-11-10 (target is 1 August 2027).
+  await openDates(page, { now: "2026-11-10T12:00:00" });
   const weddingApprox = await page.eval(() => ({
     monthLine: document.querySelector(".dts-wedding-month") ? document.querySelector(".dts-wedding-month").textContent : null,
     stateText: document.querySelector(".dts-wedding-state") ? document.querySelector(".dts-wedding-state").textContent : null,
     expectedState: CONTENT.dates.weddingApprox.replace("{months}", "9"),
     unitsHidden: document.getElementById("countdown-wedding").hidden,
   }));
-  await check("dates: wedding card shows 9 months remaining and 'Temmuz 2027' at 2026-10-04 (day unset)", () => ({
-    ok: weddingApprox.unitsHidden === true && weddingApprox.monthLine === "Temmuz 2027" && weddingApprox.stateText === weddingApprox.expectedState,
+  await check("dates: wedding card shows 9 months remaining and 'Ağustos 2027' at 2026-11-10 (day unset)", () => ({
+    ok: weddingApprox.unitsHidden === true && weddingApprox.monthLine === "Ağustos 2027" && weddingApprox.stateText === weddingApprox.expectedState,
     detail: JSON.stringify(weddingApprox),
   }));
 
-  // 14. Wedding card, day unset: the target month itself (July 2027) shows weddingThisMonth.
-  await openDates(page, { now: "2027-07-10T12:00:00" });
+  // 14. Wedding card, day unset: the target month itself (August 2027) shows weddingThisMonth.
+  await openDates(page, { now: "2027-08-10T12:00:00" });
   const weddingThisMonth = await page.eval(() => ({
     stateText: document.querySelector(".dts-wedding-state") ? document.querySelector(".dts-wedding-state").textContent : null,
     expected: CONTENT.dates.weddingThisMonth,
   }));
-  await check("dates: wedding card shows weddingThisMonth text on 2027-07-10", () => ({
+  await check("dates: wedding card shows weddingThisMonth text on 2027-08-10", () => ({
     ok: !!weddingThisMonth.stateText && weddingThisMonth.stateText === weddingThisMonth.expected,
     detail: JSON.stringify(weddingThisMonth),
   }));
 
   // 15. Wedding card, day unset: after the target month, weddingDone (and the month line hides).
-  await openDates(page, { now: "2027-08-02T12:00:00" });
+  await openDates(page, { now: "2027-09-02T12:00:00" });
   const weddingDone = await page.eval(() => ({
     stateText: document.querySelector(".dts-wedding-state") ? document.querySelector(".dts-wedding-state").textContent : null,
     expected: CONTENT.dates.weddingDone,
     monthLineHidden: document.querySelector(".dts-wedding-month") ? document.querySelector(".dts-wedding-month").hidden : null,
   }));
-  await check("dates: wedding card shows weddingDone text after the target month has passed (2027-08-02)", () => ({
+  await check("dates: wedding card shows weddingDone text after the target month has passed (2027-09-02)", () => ({
     ok: !!weddingDone.stateText && weddingDone.stateText === weddingDone.expected && weddingDone.monthLineHidden === true,
     detail: JSON.stringify(weddingDone),
   }));
@@ -271,14 +271,14 @@ export async function run({ page, check }) {
   // 16. Setting CONFIG.wedding.day (as Furkan eventually will) switches the card, on the very next
   //     tick, to an exact days/hours/minutes/seconds countdown to that date at 00:00 local — no
   //     page reload or explicit re-render call, tick() already reads CONFIG.wedding fresh. Only
-  //     `day` is set here — `year`/`month` stay CONFIG's default (2027 / July), so the target is
-  //     20 July 2027.
-  await openDates(page, { now: "2027-06-01T12:00:00" });
+  //     `day` is set here — `year`/`month` stay CONFIG's default (2027 / August), so the target is
+  //     20 August 2027.
+  await openDates(page, { now: "2027-07-01T12:00:00" });
   await page.eval(() => { CONFIG.wedding.day = 20; });
   await sleep(1300); // real wall-clock: the 1s setInterval tick must fire at least once
   const weddingCountdownRes = await readCountdown(page, "wedding");
   const weddingCountdownHidden = await page.eval(() => document.getElementById("countdown-wedding").hidden);
-  const weddingTarget = istanbulEpoch(2027, 7, 20, 0, 0, 0);
+  const weddingTarget = istanbulEpoch(2027, 8, 20, 0, 0, 0);
   const weddingCountdownOk =
     weddingCountdownHidden === false &&
     Math.abs(weddingCountdownRes.now + remainingMs(weddingCountdownRes) - weddingTarget) <= 3000;
@@ -288,7 +288,7 @@ export async function run({ page, check }) {
   }));
 
   // 17. The wedding illustration: bride bear (veil) and groom bear (bow tie), side by side.
-  await openDates(page, { now: "2026-10-04T12:00:00" });
+  await openDates(page, { now: "2026-11-10T12:00:00" });
   const weddingBears = await page.eval(() => {
     const scope = document.querySelector(".dts-wedding-bears");
     return {
@@ -326,7 +326,7 @@ export async function run({ page, check }) {
     });
   const pairs = [["her", "his"], ["wedding", "engagement"], ["meet", "love"]];
   for (const [vw, vh] of [[1280, 800], [768, 1024]]) {
-    for (const now of ["2026-06-15T12:00:00", "2026-10-04T10:00:00"]) {
+    for (const now of ["2026-06-15T12:00:00", "2026-11-25T10:00:00"]) {
       await openDates(page, { now, viewport: { width: vw, height: vh } });
       const bx = await boxes();
       const diffs = pairs.map(([a, b]) => ({ top: Math.abs(bx[a].t - bx[b].t), bottom: Math.abs(bx[a].b - bx[b].b) }));
@@ -338,7 +338,7 @@ export async function run({ page, check }) {
       }));
     }
   }
-  for (const now of ["2026-06-15T12:00:00", "2026-10-04T10:00:00"]) {
+  for (const now of ["2026-06-15T12:00:00", "2026-11-25T10:00:00"]) {
     await openDates(page, { now, viewport: { width: 390, height: 844 } });
     const bx = await boxes();
     const order = ORDER;
@@ -397,9 +397,9 @@ export async function run({ page, check }) {
     detail: JSON.stringify({ her: pair.her.worst, his: pair.his.worst }),
   }));
 
-  // 21. His birthday itself (26 May 2027): the card stays blue, the short line replaces the numbers,
+  // 21. His birthday itself (14 April 2027): the card stays blue, the short line replaces the numbers,
   //     the line is readable on the blue ground, and nothing threw.
-  await openDates(page, { now: "2027-05-26T09:00:00" });
+  await openDates(page, { now: "2027-04-14T09:00:00" });
   const hisDay = await page.eval(() => {
     const A = window.__app;
     const card = document.querySelector('[data-dts-card="his"]');
@@ -414,7 +414,7 @@ export async function run({ page, check }) {
       lineColor: getComputedStyle(line).color,
     };
   });
-  await check("dates: on 26 May his card stays blue, shows the short line readable at 4.5:1, and raises no page errors", () => ({
+  await check("dates: on 14 April his card stays blue, shows the short line readable at 4.5:1, and raises no page errors", () => ({
     ok: hisDay.blue && hisDay.lineShown && hisDay.unitsHidden && hisDay.worst >= 4.5 && page.errors.length === 0,
     detail: JSON.stringify({ hisDay, errors: page.errors.slice(0, 3) }),
   }));
@@ -473,16 +473,16 @@ export const mutants = [
   {
     id: "dates-config-engagement-date",
     file: "js/data.js",
-    find: "engagementDate: new Date('2026-07-25T00:00:00'),",
+    find: "engagementDate: new Date('2026-08-12T00:00:00'),",
     replace: "engagementDate: new Date('2026-01-01T00:00:00'),",
-    expect: "dates: CONFIG.engagementDate is 25 July 2026 and CONFIG.wedding is {year:2027, month:7, day:null}",
+    expect: "dates: CONFIG.engagementDate is 12 August 2026 and CONFIG.wedding is {year:2027, month:8, day:null}",
   },
   {
     id: "dates-config-wedding-month",
     file: "js/data.js",
-    find: "wedding: { year: 2027, month: 7, day: null },",
-    replace: "wedding: { year: 2027, month: 8, day: null },",
-    expect: "dates: wedding card shows 9 months remaining and 'Temmuz 2027' at 2026-10-04 (day unset)",
+    find: "wedding: { year: 2027, month: 8, day: null },",
+    replace: "wedding: { year: 2027, month: 7, day: null },",
+    expect: "dates: wedding card shows 9 months remaining and 'Ağustos 2027' at 2026-11-10 (day unset)",
   },
   {
     id: "dates-engagement-wrong-source",
@@ -496,21 +496,21 @@ export const mutants = [
     file: "js/dates.js",
     find: "var monthsDiff = (w.year - now.getFullYear()) * 12 + ((w.month - 1) - now.getMonth());",
     replace: "var monthsDiff = (w.year - now.getFullYear()) * 12 + (w.month - now.getMonth());",
-    expect: "dates: wedding card shows 9 months remaining and 'Temmuz 2027' at 2026-10-04 (day unset)",
+    expect: "dates: wedding card shows 9 months remaining and 'Ağustos 2027' at 2026-11-10 (day unset)",
   },
   {
     id: "dates-wedding-thismonth-flip",
     file: "js/dates.js",
     find: "if (monthsDiff === 0) return { mode: 'thisMonth', monthLabel: weddingMonthLabel(w) };",
     replace: "if (monthsDiff === -1) return { mode: 'thisMonth', monthLabel: weddingMonthLabel(w) };",
-    expect: "dates: wedding card shows weddingThisMonth text on 2027-07-10",
+    expect: "dates: wedding card shows weddingThisMonth text on 2027-08-10",
   },
   {
     id: "dates-wedding-done-after-month",
     file: "js/dates.js",
     find: "if (monthsDiff === 0) return { mode: 'thisMonth', monthLabel: weddingMonthLabel(w) };\n    return { mode: 'done' };",
     replace: "if (monthsDiff === 0) return { mode: 'thisMonth', monthLabel: weddingMonthLabel(w) };\n    return { mode: 'approx', months: monthsDiff, monthLabel: weddingMonthLabel(w) };",
-    expect: "dates: wedding card shows weddingDone text after the target month has passed (2027-08-02)",
+    expect: "dates: wedding card shows weddingDone text after the target month has passed (2027-09-02)",
   },
   {
     id: "dates-wedding-countdown-gate",
@@ -574,7 +574,7 @@ export const shots = [
   { name: "normal", open: { signedIn: true, now: "2026-06-15T12:00:00", storage: seedFlags("2026-06-15T12:00:00") }, act: async (page) => { await page.tap('.nav-btn[data-tab="dates-view"]'); } },
   {
     name: "her-birthday",
-    open: { signedIn: true, now: "2026-10-04T10:00:00", storage: seedFlags("2026-10-04T10:00:00") },
+    open: { signedIn: true, now: "2026-11-25T10:00:00", storage: seedFlags("2026-11-25T10:00:00") },
     act: async (page) => {
       await page.tap('.nav-btn[data-tab="dates-view"]');
       await page.eval(() => new Promise((r) => setTimeout(r, 300)));
@@ -582,17 +582,17 @@ export const shots = [
   },
   {
     name: "his-today",
-    open: { signedIn: true, now: "2027-05-26T09:00:00", storage: seedFlags("2027-05-26T09:00:00") },
+    open: { signedIn: true, now: "2027-04-14T09:00:00", storage: seedFlags("2027-04-14T09:00:00") },
     act: async (page) => { await page.tap('.nav-btn[data-tab="dates-view"]'); },
   },
   {
     name: "reduced-motion",
-    open: { signedIn: true, now: "2026-10-04T10:00:00", storage: seedFlags("2026-10-04T10:00:00"), reducedMotion: true },
+    open: { signedIn: true, now: "2026-11-25T10:00:00", storage: seedFlags("2026-11-25T10:00:00"), reducedMotion: true },
     act: async (page) => { await page.tap('.nav-btn[data-tab="dates-view"]'); },
   },
   {
     name: "wedding-day-set",
-    open: { signedIn: true, now: "2027-06-01T12:00:00", storage: seedFlags("2027-06-01T12:00:00") },
+    open: { signedIn: true, now: "2027-07-01T12:00:00", storage: seedFlags("2027-07-01T12:00:00") },
     act: async (page) => {
       await page.tap('.nav-btn[data-tab="dates-view"]');
       await page.eval(() => { CONFIG.wedding.day = 20; });

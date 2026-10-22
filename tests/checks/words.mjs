@@ -174,7 +174,7 @@ export async function run({ page, check }) {
   }));
 
   // 5. the birthday letter is locked at 23:00 the day before and opens at 09:00 on the day
-  await openApp(page, { signedIn: true, now: "2026-10-03T23:00:00" });
+  await openApp(page, { signedIn: true, now: "2026-11-24T23:00:00" });
   await gotoWords(page);
   const lockedState = await page.eval(() => ({
     locked: document.querySelector('.wz-envelope[data-letter-id="bday"]').classList.contains("wz-envelope--locked"),
@@ -190,7 +190,7 @@ export async function run({ page, check }) {
   // package's concern, not this one's.
   await openApp(page, {
     signedIn: true,
-    now: "2026-10-04T09:00:00",
+    now: "2026-11-25T09:00:00",
     storage: { "meryem-gate-played-year": "2026", "meryem-birthday-seen-year": "2026" },
   });
   await gotoWords(page);
@@ -208,7 +208,7 @@ export async function run({ page, check }) {
     firstParagraph: document.querySelector("#wz-letter-body p") ? document.querySelector("#wz-letter-body p").textContent : null,
   }));
 
-  await check("words: the bday letter is locked at 2026-10-03T23:00 and opens at 2026-10-04T09:00", () => ({
+  await check("words: the bday letter is locked at 2026-11-24T23:00 and opens at 2026-11-25T09:00", () => ({
     ok: lockedState.locked === true && stillClosed === true
       && unlockedState.locked === false && opensNow.hidden === false && opensNow.firstParagraph === expectedBdayFirstParagraph,
     detail: JSON.stringify({ lockedState, stillClosed, unlockedState, opensNow }),
@@ -221,7 +221,7 @@ export async function run({ page, check }) {
   // covers the whole chain, and dropping words.js's listener leaves the envelope locked.
   await openApp(page, {
     signedIn: true,
-    now: "2026-10-03T23:59:55",
+    now: "2026-11-24T23:59:55",
     storage: { "meryem-gate-played-year": "2026", "meryem-birthday-seen-year": "2026" },
   });
   await gotoWords(page);
@@ -353,7 +353,7 @@ export async function run({ page, check }) {
   await openApp(page, { signedIn: true });
   const previewYear = await page.eval(() => {
     var now = new Date();
-    var bday = new Date(now.getFullYear(), 9, 4); // her birthday, month index 9 = October
+    var bday = new Date(now.getFullYear(), 10, 25); // her birthday, month index 10 = November
     return now.getTime() >= bday.getTime() ? now.getFullYear() + 1 : now.getFullYear();
   });
   await openApp(page, {
@@ -468,7 +468,7 @@ export const mutants = [
     file: "js/words.js",
     find: "letter.birthdayOnly === true && !isBirthdayUnlocked();",
     replace: "letter.birthdayOnly === true && isBirthdayUnlocked();",
-    expect: "words: the bday letter is locked at 2026-10-03T23:00 and opens at 2026-10-04T09:00",
+    expect: "words: the bday letter is locked at 2026-11-24T23:00 and opens at 2026-11-25T09:00",
   },
   {
     id: "words-jar-reduced-motion-guard",
@@ -555,10 +555,10 @@ export const shots = [
       for (let i = 0; i < total + 1; i++) await tap(page, "#wz-jar-btn");
     },
   },
-  { name: "letters-locked", open: { signedIn: true, now: "2026-10-03T23:00:00" }, act: async (page) => { await gotoWords(page); } },
+  { name: "letters-locked", open: { signedIn: true, now: "2026-11-24T23:00:00" }, act: async (page) => { await gotoWords(page); } },
   {
     name: "letters-unlocked",
-    open: { signedIn: true, now: "2026-10-04T09:00:00", storage: { "meryem-gate-played-year": "2026", "meryem-birthday-seen-year": "2026" } },
+    open: { signedIn: true, now: "2026-11-25T09:00:00", storage: { "meryem-gate-played-year": "2026", "meryem-birthday-seen-year": "2026" } },
     act: async (page) => { await gotoWords(page); },
   },
   {

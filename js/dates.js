@@ -34,9 +34,9 @@
   function readDatesContent() {
     var d = CONTENT.dates || {};
     HIS_TODAY_LINE = d.hisToday || 'Bugün benim doğum günüm 🎉';
-    ENGAGEMENT_LABEL = d.engagementLabel || 'Nişanımızdan beri';
+    ENGAGEMENT_LABEL = d.engagementLabel || 'Özel günden beri';
     WEDDING_LABEL = d.weddingLabel || 'Düğünümüze';
-    WEDDING_APPROX = d.weddingApprox || 'yaklaşık {months} ay kaldı';
+    WEDDING_APPROX = d.weddingApprox || 'yaklaşık {months} ay var';
     WEDDING_THIS_MONTH = d.weddingThisMonth || 'Bu ay evleniyoruz 💍';
     WEDDING_DONE = d.weddingDone || 'Evlendik! 💍';
   }
@@ -234,7 +234,7 @@
     'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
   ];
 
-  /** "Temmuz 2027" from CONFIG.wedding's {year, month}. */
+  /** "Month YYYY" from CONFIG.wedding's {year, month}. */
   function weddingMonthLabel(w) {
     return (WEDDING_MONTH_NAMES_TR[w.month - 1] || '') + ' ' + w.year;
   }

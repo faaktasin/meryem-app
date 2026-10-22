@@ -11,8 +11,8 @@ import { openApp, sleep } from "../harness.mjs";
 
 export const name = "gate";
 
-const NOT_DUE_NOW = "2026-10-03T23:59:00";
-const DUE_NOW = "2026-10-04T00:01:00";
+const NOT_DUE_NOW = "2026-11-24T23:59:00";
+const DUE_NOW = "2026-11-25T00:01:00";
 
 const N_SKIP_LOOK = "gate: the skip control reads 'Geç' with a chevron, is a plain keyboard-reachable button with an aria-label, no fill, no border, top-right";
 const N_SKIP_SIZE = "gate: the skip control is at least 44 x 44 px and its text reaches 4.5:1 on both ends of the overlay gradient";
@@ -21,8 +21,8 @@ const N_SKIP_CLOSES = "gate: one tap on skip closes the gate, sets this year's f
 const N_SKIP_RELOAD = "gate: after a skip a reload does not bring the gate back";
 const N_SKIP_FINALE = "gate: the skip control is on the love meter and absent on the finale";
 const N_SKIP_PREVIEW = "gate: under the rehearsal clock skip closes the gate and writes no flag";
-const N_WEEK_OPENS = "gate: opens by itself on 4 Oct 00:01 and on 10 Oct 23:59 (the birthday week, both ends)";
-const N_WEEK_CLOSED = "gate: does not open by itself on 11 Oct 00:01 or on 1 Nov, flag unset, while the Sürpriz tab stays unlocked";
+const N_WEEK_OPENS = "gate: opens by itself on 25 Nov 00:01 and on 1 Dec 23:59 (the birthday week, both ends)";
+const N_WEEK_CLOSED = "gate: does not open by itself on 2 Dec 00:01 or on 20 Dec, flag unset, while the Sürpriz tab stays unlocked";
 
 async function waitUntil(fn, timeoutMs) {
   const deadline = Date.now() + (timeoutMs || 2500);
@@ -329,7 +329,7 @@ export async function run({ page, check }) {
   // open its own full-screen overlay on top of the header and shadow the replay button beneath it.
   await openApp(page, {
     signedIn: true,
-    now: "2026-11-01T12:00:00",
+    now: "2026-12-20T12:00:00",
     storage: { "meryem-gate-played-year": "2026", "meryem-birthday-seen-year": "2026" },
   });
   await page.eval(() => new Promise((r) => setTimeout(r, 300)));
@@ -350,25 +350,25 @@ export async function run({ page, check }) {
     detail: JSON.stringify({ beforeReplay, afterReplayTap }),
   }));
 
-  // 7b. The birthday week: the gate opens by itself 4-10 Oct only (flag unset in all of these; the
+  // 7b. The birthday week: the gate opens by itself 25 Nov - 1 Dec only (flag unset in all of these; the
   // birthday "seen" flag is seeded so the surprise's own overlay stays out of the way of the reading).
   const weekProbe = async (now) => {
     await openApp(page, { signedIn: true, now, storage: { "meryem-birthday-seen-year": "2026" } });
     await page.eval(() => new Promise((r) => setTimeout(r, 400)));
     return page.eval(() => ({ hidden: document.getElementById("gate-overlay").hidden, due: window.isGateDue(), unlocked: isBirthdayUnlocked() }));
   };
-  const weekFirst = await weekProbe("2026-10-04T00:01:00");
-  const weekLast = await weekProbe("2026-10-10T23:59:00");
+  const weekFirst = await weekProbe("2026-11-25T00:01:00");
+  const weekLast = await weekProbe("2026-12-01T23:59:00");
   await check(N_WEEK_OPENS, () => ({
     ok: weekFirst.hidden === false && weekFirst.due === true && weekLast.hidden === false && weekLast.due === true,
     detail: JSON.stringify({ weekFirst, weekLast }),
   }));
-  const weekAfter = await weekProbe("2026-10-11T00:01:00");
-  const weekNov = await weekProbe("2026-11-01T12:00:00");
+  const weekAfter = await weekProbe("2026-12-02T00:01:00");
+  const weekLater = await weekProbe("2026-12-20T12:00:00");
   await check(N_WEEK_CLOSED, () => ({
     ok: weekAfter.hidden === true && weekAfter.due === false && weekAfter.unlocked === true
-      && weekNov.hidden === true && weekNov.due === false && weekNov.unlocked === true,
-    detail: JSON.stringify({ weekAfter, weekNov }),
+      && weekLater.hidden === true && weekLater.due === false && weekLater.unlocked === true,
+    detail: JSON.stringify({ weekAfter, weekLater }),
   }));
 
   // 7c. The quiet skip control ("Geç ›", top-right): read back from the live page at 360 and 390 px.
@@ -718,7 +718,7 @@ export const mutants = [
     expect: N_WEEK_CLOSED,
   },
   {
-    // The week one day short: 10 Oct 23:59 is already out.
+    // The week one day short: 1 Dec 23:59 is already out.
     id: "gate-week-too-short",
     file: "js/gate.js",
     find: "var GATE_WEEK_DAYS = 7;",
