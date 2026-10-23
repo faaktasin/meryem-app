@@ -4,11 +4,11 @@
  * The login screen only protects the data if the database refuses everyone else. firestore.rules
  * is the text published in the Firebase console; these checks keep it and the client in step:
  *   1. the rules grant access in exactly one place, users/{userId}/**, and only to the signed-in
- *      account whose uid is that userId;
+ *      account whose uid is that userId; any other allow statement is an explicit `if false`;
  *   2. the client reaches Firestore only through userCollection(), i.e. under the signed-in uid,
  *      so rule 1 covers every read and write the app makes.
- * Both are static. Whether the console holds this same text is checked by hand there (Rules
- * Playground) — nothing in the repo can read the deployed rules.
+ * Both are static. Whether the console holds this same text is checked by hand there — nothing in
+ * the repo can read the deployed rules (read back from the console and matched on 2026-10-23).
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -41,9 +41,10 @@ export async function run({ check, root }) {
 
   await check("rules: firestore.rules allows read/write only on users/{userId}/** and only for that signed-in uid", () => {
     const allows = allowStatements(rules);
-    const only = allows[0];
+    const granting = allows.filter((a) => a.condition !== "false");
+    const only = granting[0];
     const ok = /^\s*rules_version\s*=\s*'2';/m.test(rules) &&
-      allows.length === 1 &&
+      granting.length === 1 &&
       JSON.stringify(only.path.filter(Boolean)) === JSON.stringify(USERS_MATCH) &&
       only.methods.replace(/\s+/g, "") === "read,write" &&
       only.condition === OWNER_ONLY;
@@ -84,6 +85,13 @@ export const mutants = [
     file: "firestore.rules",
     find: "      allow read, write: if request.auth != null && request.auth.uid == userId;\n",
     replace: "      allow read, write: if request.auth != null && request.auth.uid == userId;\n    }\n    match /shared/{document=**} {\n      allow read: if true;\n",
+    expect: "rules: firestore.rules allows read/write only on users/{userId}/** and only for that signed-in uid",
+  },
+  {
+    id: "rules-deny-all-opened",
+    file: "firestore.rules",
+    find: "allow read, write: if false;",
+    replace: "allow read, write: if true;",
     expect: "rules: firestore.rules allows read/write only on users/{userId}/** and only for that signed-in uid",
   },
   {
