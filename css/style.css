@@ -902,6 +902,17 @@ button, input, textarea {
   color: var(--rose-strong);
 }
 
+/* The ?ozel-metin panel: the hint sits clear of the buttons, the buttons clear of each other. */
+.private-hint {
+  margin-bottom: 16px;
+}
+
+.private-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .modal-close {
   background: none;
   border: none;

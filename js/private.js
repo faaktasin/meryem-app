@@ -215,6 +215,7 @@ function _buildPrivatePanel() {
   header.appendChild(close);
 
   var hint = document.createElement('p');
+  hint.className = 'private-hint';
   hint.textContent = text.hint;
 
   var input = document.createElement('input');
@@ -244,9 +245,13 @@ function _buildPrivatePanel() {
 
   box.appendChild(header);
   box.appendChild(hint);
+  var actions = document.createElement('div');
+  actions.className = 'private-actions';
+  actions.appendChild(choose);
+  actions.appendChild(download);
+
   box.appendChild(input);
-  box.appendChild(choose);
-  box.appendChild(download);
+  box.appendChild(actions);
   overlay.appendChild(box);
   overlay.addEventListener('click', function (e) {
     if (e.target === overlay) closeModal(PRIVATE_PANEL_ID);

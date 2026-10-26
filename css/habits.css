@@ -397,7 +397,7 @@
 .hb-cal {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
+  gap: 6px;
 }
 
 .hb-dow {
@@ -1006,13 +1006,9 @@
     padding: 12px;
   }
 
-  /* 360 px: the grid has 324 px, so seven days at gap 2 are 44.3 px wide (a thumb-sized target). */
+  /* 360 px: the grid has 324 px, so seven days at gap 6 are 41.1 px wide (a thumb-sized target). */
   .hb-month {
     padding: 14px 6px 12px;
-  }
-
-  .hb-cal {
-    gap: 2px;
   }
 
   .hb-row-label {
