@@ -235,84 +235,50 @@ export const mutants = [
   {
     id: "layout-panel-gap-removed",
     file: "css/style.css",
-    find: ".private-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}",
-    replace: ".private-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}",
+    find: ".private-actions {\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n}",
+    replace: ".private-actions {\n  display: flex;\n  flex-direction: column;\n  gap: 0;\n}",
     expect: N_PANEL,
   },
   {
     id: "layout-panel-hint-margin-removed",
     file: "css/style.css",
-    find: ".private-hint {
-  margin-bottom: 16px;
-}",
-    replace: ".private-hint {
-  margin-bottom: 0;
-}",
+    find: ".private-hint {\n  margin-bottom: 16px;\n}",
+    replace: ".private-hint {\n  margin-bottom: 0;\n}",
     expect: N_PANEL,
   },
   {
     id: "layout-pill-margin-removed",
     file: "css/words.css",
-    find: ".wz-section-head {
-  margin-bottom: 14px;
-}",
-    replace: ".wz-section-head {
-  margin-bottom: 0;
-}",
+    find: ".wz-section-head {\n  margin-bottom: 14px;\n}",
+    replace: ".wz-section-head {\n  margin-bottom: 0;\n}",
     expect: N_PILL,
   },
   {
     id: "layout-envelope-gap-back-to-10",
     file: "css/words.css",
-    find: "grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;",
-    replace: "grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;",
+    find: "grid-template-columns: repeat(2, minmax(0, 1fr));\n  gap: 14px;",
+    replace: "grid-template-columns: repeat(2, minmax(0, 1fr));\n  gap: 10px;",
     expect: N_GRID,
   },
   {
     id: "layout-envelope-columns-uneven",
     file: "css/words.css",
-    find: "grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}",
-    replace: "grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
-}
-
-@media (min-width: 480px) {
-  .wz-letters-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}",
+    find: "grid-template-columns: repeat(2, minmax(0, 1fr));\n  gap: 14px;\n}",
+    replace: "grid-template-columns: repeat(2, 1fr);\n  gap: 14px;\n}\n\n@media (min-width: 480px) {\n  .wz-letters-grid {\n    grid-template-columns: repeat(4, 1fr);\n  }\n}",
     expect: N_GRID,
   },
   {
     id: "layout-calendar-gap-back-to-2",
     file: "css/habits.css",
-    find: "grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;",
-    replace: "grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 2px;",
+    find: "grid-template-columns: repeat(7, minmax(0, 1fr));\n  gap: 6px;",
+    replace: "grid-template-columns: repeat(7, minmax(0, 1fr));\n  gap: 2px;",
     expect: N_CLOSE,
   },
   {
     id: "layout-letter-close-back-on-the-edge",
     file: "css/words.css",
-    find: "  top: 108px;
-  right: 10px;
-  z-index: 5;",
-    replace: "  top: -8px;
-  right: -8px;
-  z-index: 3;",
+    find: "  top: 108px;\n  right: 10px;\n  z-index: 5;",
+    replace: "  top: -8px;\n  right: -8px;\n  z-index: 3;",
     expect: N_LETTER,
   },
 ];
