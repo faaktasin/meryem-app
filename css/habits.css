@@ -988,6 +988,14 @@
 
 /* ── Narrow phones ──────────────────────────────────── */
 
+/* Seven day cells at gap 6 need 344 px of grid to stay 44 px wide (a thumb-sized target): up to
+   400 px wide the month card gives up its side padding (390 - 2 * 16 - 2 * 2 - 2 = 352 px). */
+@media (max-width: 400px) {
+  .hb-month {
+    padding: 14px 2px 12px;
+  }
+}
+
 @media (max-width: 360px) {
   .hb-stats-grid {
     gap: 6px;
@@ -1003,14 +1011,11 @@
   }
 
   .hb-wrap {
-    padding: 12px;
+    padding: 12px 5px;
   }
 
-  /* 360 px: the grid has 324 px, so seven days at gap 6 are 41.1 px wide (a thumb-sized target). */
-  .hb-month {
-    padding: 14px 6px 12px;
-  }
-
+  /* 360 px: the month card's side padding is set in the 400 px block above; the page gives up
+     some too: 360 - 2 * 5 - 2 * 2 - 2 (card border) = 344 px of grid. */
   .hb-row-label {
     font-size: 0.88rem;
   }
