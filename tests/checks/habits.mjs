@@ -2030,8 +2030,8 @@ export const mutants = [
   {
     id: "habits-calendar-days-narrow-at-360",
     file: "css/habits.css",
-    find: "  .hb-cal {\n    gap: 2px;",
-    replace: "  .hb-cal {\n    gap: 3px;",
+    find: "  .hb-wrap {\n    padding: 12px 5px;",
+    replace: "  .hb-wrap {\n    padding: 12px 12px;",
     expect: N_TARGETS,
   },
   {
