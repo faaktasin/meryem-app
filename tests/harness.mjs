@@ -727,6 +727,15 @@ export async function openApp(page, opts = {}) {
       await sleep(25);
     }
   }
+  if (!signedIn && waitReady && appPage === "index.html") {
+    // The signed-out screen is revealed by the auth callback (the stub fires it ~40 ms after the
+    // script runs), so a read straight after the load can still see the inline display:none.
+    const deadline = Date.now() + 5000;
+    while (!(await page.eval(() => { var a = document.getElementById("auth-screen"); return !!a && getComputedStyle(a).display !== "none"; }))) {
+      if (Date.now() > deadline) throw new Error("openApp: the signed-out screen was not shown within 5 s of the page load (#auth-screen stayed display:none)");
+      await sleep(25);
+    }
+  }
 }
 
 /**
