@@ -3,7 +3,7 @@
  * Network-first strategy: always fetches latest, falls back to cache offline.
  */
 
-var CACHE_NAME = 'meryem-v18';
+var CACHE_NAME = 'meryem-v19';
 var ASSETS = [
   './',
   './index.html',

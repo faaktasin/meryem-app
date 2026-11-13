@@ -1067,8 +1067,8 @@ export async function run({ page, check, root }) {
     // by hand: 70 - 64.29 = 5.71 -> +6 points to Meryem; nothing ticked at all -> an exact tie
     const ok =
       lead.text === "Önde: Meryem (+6 puan)" && lead.who === "meryem" &&
-      tie.text === "Başa baş 💞" && tie.who === "tie" &&
-      nothing === "" && noLeader === "" && roundedTie === "Başa baş 💞" && furkanLead === "Önde: Furkan (+13 puan)";
+      tie.text === "Başa baş 💞" /* textOf collapses the no-break space to a plain one */ && tie.who === "tie" &&
+      nothing === "" && noLeader === "" && roundedTie === "Başa baş\u00a0💞" && furkanLead === "Önde: Furkan (+13 puan)";
     return { ok, detail: JSON.stringify({ lead, tie, nothing, noLeader, roundedTie, furkanLead }) };
   });
 
@@ -1248,7 +1248,7 @@ export async function run({ page, check, root }) {
     // by hand, October 2026 with every day due: Meryem 44/124 = 35.48 (card 35), Furkan 39/115 = 33.91 (card 34) -> the cards differ by +1;
     // best item Kitap 31/62 = 50; joint days 1-10 = 10; longest streaks Furkan 1-5 = 5, Meryem 1-3 = 3.
     // Closing line: pool[(2026*12 + 10) % pool.length], so the same month always says the same thing.
-    const closeWant = past.pool[(2026 * 12 + 10) % past.pool.length];
+    const closeWant = past.pool[(2026 * 12 + 10) % past.pool.length].replace(/\s+/g, " "); // the card text is read with its no-break space collapsed
     const full =
       past.report && past.month === "2026-10" && past.title === "Ekim karnesi" && past.lead === "Önde: Meryem (+1 puan)" &&
       past.best === "En düzenli görev: Kitap (%50)" && past.joint === "10 gün ikimiz de" &&
@@ -1780,7 +1780,7 @@ export async function run({ page, check, root }) {
     const st = await stateOf(page);
     const joined = read.pool.join(" | ");
     const ok =
-      read.pool.includes("Gelecek ay da devam 💪") && read.pool.includes("Bir ay daha geride kaldı 👏") && !/harika bir ay|devaam/i.test(joined) &&
+      read.pool.includes("Gelecek ay da devam\u00a0💪") && read.pool.includes("Bir ay daha geride kaldı\u00a0👏") && !/harika bir ay|devaam/i.test(joined) &&
       read.title === "Gün gün" && /^Gün gün, ayın/.test(read.aria) && read.bars === "Görev görev" &&
       toast === "Kaydedemedik, bir daha dokunalım 💗" && lit === false && st.pending === 0;
     return { ok, detail: JSON.stringify({ title: read.title, aria: read.aria.slice(0, 30), toast, lit, pending: st.pending }) };
@@ -2037,14 +2037,14 @@ export const mutants = [
   {
     id: "habits-copy-next-month-wording",
     file: "js/content.js",
-    find: "'Gelecek ay da devam 💪'",
-    replace: "'Gelecek ay da devaam 💪'",
+    find: "'Gelecek ay da devam\\u00a0💪'",
+    replace: "'Gelecek ay da devaam\\u00a0💪'",
     expect: N_COPY,
   },
   {
     id: "habits-copy-claims-a-good-month",
     file: "js/content.js",
-    find: "'Bir ay daha geride kaldı 👏'",
+    find: "'Bir ay daha geride kaldı\\u00a0👏'",
     replace: "'Harika bir ay oldu 👏'",
     expect: N_COPY,
   },
