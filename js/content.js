@@ -367,7 +367,7 @@ var CONTENT = {
     monthsShort: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'],
     stats: {
       lead: 'Önde: {name} (+{n} puan)',
-      tie: 'Başa baş 💞',
+      tie: 'Başa baş\u00a0💞',
       jointDays: '{n} gün ikimiz de',
       streakDays: '{n} gün',
       streakNow: 'seri',
@@ -386,14 +386,14 @@ var CONTENT = {
       title: '{month} karnesi',
       best: 'En düzenli görev: {item} ({pct})',
       streak: '{name} en uzun seri: 🔥 {n} gün',
-      teaser: 'Ay bitince karnemiz burada 🐻',
+      teaser: 'Ay bitince karnemiz burada\u00a0🐻',
       closing: [
-        'Bir ay daha geride kaldı 👏',
-        'Adım adım ilerleyen bir ay 🌷',
-        'Düzenli gitmek güzel 🌱',
-        'Gelecek ay da devam 💪',
-        'Güzel bir ay oldu 🌟',
-        'Ay tamamlandı, yenisi için hazırız ✨'
+        'Bir ay daha geride kaldı\u00a0👏',
+        'Adım adım ilerleyen bir ay\u00a0🌷',
+        'Düzenli gitmek güzel\u00a0🌱',
+        'Gelecek ay da devam\u00a0💪',
+        'Güzel bir ay oldu\u00a0🌟',
+        'Ay tamamlandı, yenisi için hazırız\u00a0✨'
       ]
     },
     log: {

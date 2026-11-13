@@ -37,6 +37,21 @@ export async function run({ page, check, root }) {
       detail: JSON.stringify(info),
     };
   });
+  // js/content.js asks for a no-break space before a closing emoji so the emoji never wraps onto a
+  // line of its own. Walk every string in CONTENT; a string whose last thing is a plain space and
+  // an emoji run fails. Whitespace after the emoji is ignored (the emoji is still the last thing).
+  await check("shell: no CONTENT string ends in a plain space before its closing emoji (needs \\u00a0)", async () => {
+    const offenders = await page.eval(() => {
+      var bad = [];
+      var re = / (?:\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)+\s*$/u;
+      (function walk(v, path) {
+        if (typeof v === "string") { if (re.test(v)) bad.push(path); }
+        else if (v && typeof v === "object") for (var k in v) if (Object.prototype.hasOwnProperty.call(v, k)) walk(v[k], path + (Array.isArray(v) ? "[" + k + "]" : "." + k));
+      })(window.CONTENT, "CONTENT");
+      return bad;
+    });
+    return { ok: Array.isArray(offenders) && offenders.length === 0, detail: JSON.stringify(offenders) };
+  });
   // openApp's next call navigates again, which resets page.errors — read it before that happens,
   // or a real error on the login screen alone would never be seen by anyone.
   const signedOutErrors = page.errors.slice();
@@ -641,6 +656,13 @@ export async function run({ page, check, root }) {
 }
 
 export const mutants = [
+  {
+    id: "shell-emoji-plain-space",
+    file: "js/content.js",
+    find: "tie: 'Başa baş\\u00a0💞',",
+    replace: "tie: 'Başa baş 💞',",
+    expect: "shell: no CONTENT string ends in a plain space before its closing emoji (needs \\u00a0)",
+  },
   {
     id: "shell-dark-meta-dropped",
     file: "index.html",
