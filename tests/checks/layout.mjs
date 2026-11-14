@@ -32,6 +32,13 @@ const VIEWPORTS = [
 const STORAGE = { "meryem-habits-me": "furkan", "meryem-birthday-seen-year": "2026", "meryem-gate-played-year": "2026" };
 const NOW = "2026-10-26T10:00:00";
 
+/* A 1x1 transparent PNG stands in for a photo; the long titles are the point — a caption that
+   cannot wrap sets the grid column's minimum width. */
+const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==";
+const GALLERY_TITLES = ["Cycling on Büyükada", "A walk in Belgrad Forest", "Picnic", "Sunset", "Coffee", "Movie night", "Beach day", "Birthday"];
+const GALLERY_MEMORIES = GALLERY_TITLES.map((t, i) => ({ id: "g" + i, title: t, date: "2026-0" + (i + 1) + "-10", note: "", lat: 39.9 + i / 100, lng: 32.8, source: "gallery", thumbnail: PNG }));
+const GALLERY_WIDTHS = [390, 1024, 1440, 1920];
+
 const TAB_SCENES = ["today-view", "habits-view", "words-view", "memories-view", "dates-view", "birthday-view"];
 
 const N_OVERLAP = "layout: no two visible interactive elements overlap on any tab, in the ?ozel-metin panel or in an opened letter, at 360, 390 and 1536 px wide";
@@ -41,6 +48,7 @@ const N_OVERFLOW = "layout: no button's content is wider or taller than the butt
 const N_LETTER = "layout: the opened letter's close button does not straddle the edge of the envelope drawing";
 const N_PANEL = "layout: in the ?ozel-metin panel the hint keeps 16 px above the first button and the two buttons are 12 px apart";
 const N_PILL = "layout: in Sözler the Favorilerim pill keeps at least 12 px above the quote box";
+const N_GALLERY = "layout: with 8 memories every gallery polaroid lies inside the Galeri card and the page does not scroll sideways, at 390, 1024, 1440 and 1920 px wide";
 const N_GRID = "layout: the Sözler envelopes sit in equal-width columns, at least 14 px apart, at every width";
 
 /* Runs inside the page. Measures the interactive elements under `root`, in the page's current
@@ -208,6 +216,23 @@ export async function run({ page, check }) {
     }
   }
 
+  const gallery = [];
+  for (const width of GALLERY_WIDTHS) {
+    await open(page, { width, height: 900 }, { memories: GALLERY_MEMORIES });
+    await page.eval(() => { showTab("memories-view"); window.scrollTo(0, 0); });
+    await wait(page, 400);
+    const g = await page.eval(() => {
+      var card = document.querySelector("#gallery-view .card").getBoundingClientRect();
+      var items = Array.prototype.slice.call(document.querySelectorAll("#gallery-view .anilar-polaroid"));
+      var out = items.filter(function (e) {
+        var r = e.getBoundingClientRect();
+        return r.left < card.left - 1 || r.right > card.right + 1;
+      }).length;
+      return { n: items.length, out: out, sw: document.documentElement.scrollWidth, iw: window.innerWidth };
+    });
+    gallery.push({ width, ...g });
+  }
+
   const list = (xs) => (xs.length ? xs.slice(0, 12).join("; ") + (xs.length > 12 ? `; ... ${xs.length} in all` : "") : "none");
   await check(N_OVERLAP, () => ({ ok: found.overlap.length === 0 && sceneErrors.length === 0, detail: list(found.overlap.concat(sceneErrors)) }));
   await check(N_CLOSE, () => ({ ok: found.close.length === 0, detail: list(found.close) }));
@@ -225,6 +250,10 @@ export async function run({ page, check }) {
     ok: pill.length === VIEWPORTS.length && pill.every((s) => parseFloat(s.split("quote-box ")[1]) >= 12),
     detail: pill.join("; "),
   }));
+  await check(N_GALLERY, () => ({
+    ok: gallery.length === GALLERY_WIDTHS.length && gallery.every((g) => g.n === 8 && g.out === 0 && g.sw <= g.iw),
+    detail: gallery.map((g) => `${g.width}px: ${g.n} polaroids, ${g.out} outside the card, page ${g.sw}/${g.iw}`).join("; "),
+  }));
   await check(N_GRID, () => ({
     ok: grid.length === VIEWPORTS.length && grid.every((g) => g.n >= 2 && g.same && g.minGap >= 14 - 0.5),
     detail: grid.map((g) => `${g.size} n=${g.n} widths ${g.widths} minGap ${g.minGap.toFixed(1)}`).join("; "),
@@ -232,6 +261,13 @@ export async function run({ page, check }) {
 }
 
 export const mutants = [
+  {
+    id: "layout-gallery-columns-back-to-1fr",
+    file: "css/style.css",
+    find: "    grid-template-columns: repeat(3, minmax(0, 1fr));",
+    replace: "    grid-template-columns: repeat(3, 1fr);",
+    expect: N_GALLERY,
+  },
   {
     id: "layout-panel-gap-removed",
     file: "css/style.css",
